@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/e/!svn/ver/59941/trunk/e/src/modules/shot
+END
+module.desktop.in
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/e/!svn/ver/59829/trunk/e/src/modules/shot/module.desktop.in
+END
+e-module-shot.edj
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/e/!svn/ver/59797/trunk/e/src/modules/shot/e-module-shot.edj
+END
+e_mod_main.c
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/e/!svn/ver/59792/trunk/e/src/modules/shot/e_mod_main.c
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/e/!svn/ver/59766/trunk/e/src/modules/shot/Makefile.am
+END
+.cvsignore
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/e/!svn/ver/59766/trunk/e/src/modules/shot/.cvsignore
+END
+e_mod_main.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/e/!svn/ver/59766/trunk/e/src/modules/shot/e_mod_main.h
+END

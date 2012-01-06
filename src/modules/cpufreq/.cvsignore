@@ -1,0 +1,8 @@
+.deps
+.libs
+Makefile
+Makefile.in
+*.lo
+module.la
+freqset
+module.desktop

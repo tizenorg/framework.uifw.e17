@@ -1,0 +1,1397 @@
+// TODO:
+// Add group{} locations to all sections. eg. "widget/preview" is found in Wallpaper selector"
+//	Icons:
+//		EFM - All popup icons ... eg, paste copy delete properties
+//		Icons for Menus modules
+//		Icon for Edge Bindings
+//		Icon for Modes?
+//
+
+/*
+ * So how do themes work?
+ *
+ * Themes DECLARE objects (groups of parts) inside a 'collections' section.
+ * Each of these groups are an element of a theme - much like an image in a
+ * web page with <img src=blah.jpg>, but MUCH more powerful. They can scale
+ * without just being stretched or tiled, they can react to all sorts of events
+ * from the user (mouse for example) or other logical events (like being shown
+ * or hidden, etc.) or synthetic signals from enlightenment itself indicating
+ * some new state.
+ *
+ * Each group is split into a parts section that contains all the elements
+ * that make up that group, and how they are laid out. Each part can have
+ * multiple states - described in description sections. There must always be
+ * at least a default description of value 0.0. After this there may possibly
+ * be a programs section. This defines behavior and how the group will react
+ * to events/signals.
+ *
+ * A theme is simply made up of a LOT of these. If a group is not provided in
+ * the theme you are using, it will fall back to the default theme to get the
+ * element. It is assumed the default theme is 100% complete and provides
+ * everything E needs. If this is not the case, there will be problems, so
+ * replace the default theme with great care. As long as the theme you make is
+ * just a normal "overlay" (and falls back to the default where things are
+ * missing) Things will be fairly safe. If you want to make a full default
+ * replacement you will need to methodically go through all of this file
+ * and make sure you have replaced/provided everything here.
+ */
+
+/* Specturm used in all the gradient icons
+ * This needs to be defined outside of the collections
+ *
+ * FIXME: this is bad. namespacing! FIXME!
+ */
+/*
+spectra {
+   spectrum { name: "black_to_trans";
+      color: 0 0 0 255 1;
+      color: 0 0 0 0 1;
+   }
+}
+*/
+/*
+ * this section defined all the theme elements (a collection of groupings of
+ * parts (images, text, rects etc.))
+ */
+collections { /* begin the collection of edje groups that are in this file */
+
+/////////////////////////////////////////////////////////////////////////////
+   /*** DEFAULT WALLPAPER ***/
+   group { name: "e/desktop/background"; /* the name of the group */
+      /* this section defines that images are to be included and how to
+       * encode them */
+      /* this section actually contains the list of parts from bottom to top
+       * (defining the layering/stacking order) */
+      parts {
+	 part { name: "background_image"; /* this is the base background */
+            type: RECT;
+	    description { state: "default" 0.0; /* its default state */
+               color: 0 0 0 255;
+	    }
+	 }
+      }
+   }
+
+   group { name: "e/desktop/background/scrollframe";
+      parts {
+         part { name: "clipper";
+            type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+            }
+         }
+         part { name: "e.swallow.content";
+            clip_to: "clipper";
+            type: SWALLOW;
+            description { state: "default" 0.0;
+               rel1.offset: 0 0;
+               rel2 {
+                  relative: 0.0  0.0;
+                  offset:   -1   -1;
+               }
+            }
+         }
+      }
+   }
+
+/////////////////////////////////////////////////////////////////////////////
+   /*** DEFAULT WINDOW BORDER ***/
+   group { name: "e/widgets/border/default/border";
+      alias: "e/widgets/border/shaped/border";
+      alias: "e/widgets/border/noresize/border";
+      alias: "e/widgets/border/dialog/border";
+      alias: "e/widgets/border/noresize_dialog/border";
+      alias: "e/widgets/border/pixel/border";
+      parts {
+	 part { name: "top";
+	    mouse_events: 0; /* accept no mouse events here */
+            type: RECT;
+	    description { state: "default" 0.0;
+               color: 0 0 0 255;
+	       rel1 { /* this defines the top-left (rel1) point of the part
+		       * and where it is placed. the below values are
+		       * actually the default values, so there is no need
+		       * to actually declare them. */
+		  relative: 0.0 0.0; /* make this point relative to the top
+				      * left of the whole eje object (there
+				      * is no to: section so it's the whole
+				      * object). note that the point is
+				      * calculated as:
+				      *   p.x = obj.width * relative.x
+				      *   p.y = obj.height * relative.y
+				      * (as the to item is the whole object)
+				      */
+		  offset: 0 0; /* and from the relative point, have an offset
+				* of 0 pixels - i.e. - none */
+	       }
+	       rel2 {
+		  relative: 1.0 1.0; /* the bottom-right is relative to the
+				      * base of the title - this way the
+				      * title region will scale based on font
+				      * size */
+		  offset: -1 -1; /* relative to the bottom right */
+		  to_y: "title_base"; /* only y is relative to title_base. the
+				       * rest is relative to the whole object
+				       * (because its not specified) */
+	       }
+	    }
+	 }
+	 part { name: "bottom"; /* this is the bottom of the window */
+            type: RECT;
+	    mouse_events: 0;
+	    description { state: "default" 0.0;
+               color: 0 0 0 255;
+	       rel1 {
+		  relative: 0.0 1.0; /* relative to the bottom-left of the edje
+				      * but 4 pixels up */
+		  offset: 0 -8;
+	       }
+	       rel2 {
+		  relative: 1.0 1.0;
+		  offset: -1 -1;
+	       }
+	    }
+	    description { state: "shaded" 0.0; /* when in a shaded state then
+						* don't display this part */
+	       inherit: "default" 0.0;
+	       visible: 0;
+	    }
+	    description { state: "max" 0.0; /* whem maximised too */
+	       inherit: "default" 0.0;
+	       visible: 0;
+	    }
+	 }
+	 part { name: "icon_area"; /* this is an invisible rectangle that we
+				    * use to place icons within. we use this
+				    * to keep it fixed as the "icone area" so
+				    * the actual swallow part that swallows
+				    * the icon can be moved/resized for
+				    * animations */
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       visible: 0;
+	       align: 0.0 0.5; /* alignt to the left, but center vertically */
+	       aspect: 1.0 1.0; /* prefer ans aspect of 1.0 (ie width / height
+				 * is 1.0 - i.e. - square. aspect here is
+				 * min and max aspect that will be "allowed"
+				 * (since both min and max are 1.0 respectively
+				 * in order). */
+	       aspect_preference: VERTICAL; /* this means that the vertical
+					     * axis controls aspect and the
+					     * icon_area part size will be
+					     * governed by the height of the
+					     * part (the width simply following
+					     * along behind) */
+	       rel1 { /* rel1 - top-left corner of this part */
+		  relative: 0.0 0.0;
+		  offset: 2 2; /* 2 pixels in from the top-left of the border
+				* corner */
+	       }
+	       rel2 {
+		  relative: 0.0 1.0; /* bottom-right of this part is also 2
+				      * pixels in from the left (but align will
+				      * mean it goes to the right) and be 2
+				      * pixels in from the bottom edge of
+				      * "title_base" (remember rel2 is the
+				      * pixel immediately OUTSIDE the part.
+				      * i.e. x + width & y + height). */
+		  offset: 2 -3;
+		  to_y: "title_base";
+	       }
+	    }
+	    description { state: "active" 0.0; /* and an active state */
+	       inherit: "default" 0.0;
+	       rel1 {
+		  offset: 2 3; /* 1 pixel down from default so it looks like it
+				* is pressed down a bit */
+	       }
+	       rel2 {
+		  offset: 2 -2; /* same here - down 1 pixel from "default" */
+	       }
+	    }
+	 }
+	 part { name: "icon_area2"; /* this area is another invisible rect
+				     * that is used for shuffling around parts
+				     * that are relative to it. the states
+				     * below are just a few "random" offsets
+				     * to make it look like whatever is
+				     * relative to icon_area2 is "jiggling"
+				     * around */
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       visible: 0;
+	       rel1.to: "icon_area";
+	       rel2.to: "icon_area";
+	    }
+	    description { state: "uw0" 0.0; /* jiggle */
+	       inherit: "default" 0.0;
+	       rel1.offset: -3 -2;
+	       rel2.offset: -4 -3;
+	    }
+	    description { state: "uw1" 0.0; /* jiggle some more */
+	       inherit: "default" 0.0;
+	       rel1.offset: 5 -2;
+	       rel2.offset: 4 -3;
+	    }
+	    description { state: "uw2" 0.0; /* look at me - jiggling! */
+	       inherit: "default" 0.0;
+	       rel1.offset: -1 4;
+	       rel2.offset: -2 3;
+	    }
+	    description { state: "uw3" 0.0; /* jiggling about */
+	       inherit: "default" 0.0;
+	       rel1.offset: -2 -1;
+	       rel2.offset: -3 -2;
+	    }
+	    description { state: "uw4" 0.0; /* one more jiggle for the dummies */
+	       inherit: "default" 0.0;
+	       rel1.offset: -4 1;
+	       rel2.offset: -5 0;
+	    }
+	 }
+	 part { name: "e.swallow.icon"; /* finally a swallow part - this is
+					 * just a placeholder to SWALLOW
+					 * other external evas objects into
+					 * this region and edje will control
+					 * any object swallowed as if it were
+					 * this part itself (move, resize,
+					 * etc.) */
+	    type: SWALLOW;
+	    description { state: "default" 0.0;
+	       aspect: 1.0 1.0;
+	       aspect_preference: BOTH;
+	       rel1.to: "icon_area2";
+	       rel2.to: "icon_area2";
+	    }
+	    description { state: "shrunk" 0.0;
+	       inherit: "default" 0.0;
+	       rel1.relative: 0.3 0.3;
+	       rel2.relative: 0.7 0.7;
+	    }
+	 }
+	 part { name: "e.text.title"; /* this is a text part - the black
+				       * text on the white title top image */
+	    type: TEXT;
+	    mouse_events: 0;
+	    scale: 1; /* allow this part to scale by a scale factor (dpi) */
+	    description { state: "default" 0.0;
+	       visible: 1;
+	       align: 0.0 0.0; /* align top and left */
+	       rel1 {
+		  relative: 1.0 0.0;
+		  offset: 9 2;
+		  to_x: "icon_area"; /* relative to the right side of the icon
+				      * area but 9 pixels away */
+	       }
+	       rel2 {
+		  relative: 1.0 0.0; /* and the bottom right is inset by 8
+				      * pixels from the right of "title_base"
+				      * but as its aligned to the top we can
+				      * keep this at 2 pixels from the top of
+				      * the whole edje object and let alignment
+				      * make it extend downward from that point
+				      * with the text size defining the min size
+				      * vertically below */
+		  offset: -8 2;
+		  to_x: "title_base";
+	       }
+	       color: 200 200 200 255; /* black */
+	       text {
+		  font: "Sans:style=Bold"; /* Use the Bold style
+					    * of the Sans font from
+					    * fontconfig */
+		  size: 10; /* size in pixels - 10 */
+		  min: 0 1; /* the text will not determine minimum horizontal
+			     * size but WILL determine minimal vertical size
+			     * (thus 0 1 - horiz then vert flags) */
+		  align: 0.0 0.0; /* align text to top-left of the region
+				   * given */
+		  text_class: "title_bar"; /* text class - so font and size
+					    * can be changed by users */
+	       }
+	    }
+	    description { state: "focused" 0.0; /* when the border is focused
+						 * then make the text fade out
+						 * and vanish */
+	       inherit: "default" 0.0;
+	       color: 255 255 255 255;
+	    }
+	 }
+
+	 part { name: "bt_close"; /* the close button shadow */
+	    mouse_events: 0;
+            type: RECT;
+	    description { state: "default" 0.0;
+               color: 255 0 0 255;
+	       align: 1.0 0.5;
+	       min: 20 20; /* min and max size are the same, so never
+			    * resize this */
+	       aspect: 1.0 1.0; /* square - always */
+	       aspect_preference: VERTICAL; /* the vetical axis controls size
+					     * when applying the aspect ratio
+					     * hint above */
+	       rel1 {
+		  relative: 1.0 0.0;
+		  offset: -2 1;
+		  to_x: "top";
+		  to_y: "top";
+	       }
+	       rel2 {
+		  relative: 1.0 1.0;
+		  offset: -2 -2;
+		  to_x: "top";
+		  to_y: "top";
+	       }
+	    }
+	 }
+	 part { name: "bt_max"; /* maximize button shadow */
+	    mouse_events: 0;
+            type: RECT;
+	    description { state: "default" 0.0;
+               color: 255 128 0 255;
+	       align: 1.0 0.5;
+	       min: 20 20;
+	       aspect: 1.0 1.0;
+	       aspect_preference: VERTICAL;
+	       rel1 {
+		  relative: 0.0 0.0;
+		  offset: -2 1;
+		  to_x: "bt_close"; /* left of the close button */
+		  to_y: "top";
+	       }
+	       rel2 {
+		  relative: 0.0 1.0;
+		  offset: -2 -2;
+		  to_x: "bt_close"; /* left of the close button */
+		  to_y: "top";
+	       }
+	    }
+	 }
+	 part { name: "bt_min"; /* minimize button shadow */
+	    mouse_events: 0;
+            type: RECT;
+	    description { state: "default" 0.0;
+               color: 255 255 0 255;
+	       align: 1.0 0.5;
+	       min: 20 20;
+	       aspect: 1.0 1.0;
+	       aspect_preference: VERTICAL;
+	       rel1 {
+		  relative: 0.0 0.0;
+		  offset: -2 1;
+		  to_x: "bt_max"; /* left of the maximize button */
+		  to_y: "top";
+	       }
+	       rel2 {
+		  relative: 0.0 1.0;
+		  offset: -2 -2;
+		  to_x: "bt_max"; /* left of the maximize button */
+		  to_y: "top";
+	       }
+	    }
+	 }
+
+	 part { name: "title_base"; /* an invisible rect part/object used for
+				     * layout purposes */
+	    type: RECT;
+	    mouse_events:  0;
+	    description { state: "default" 0.0;
+	       visible: 0;
+	       rel1 {
+		  relative: 1.0 0.0;
+		  offset: 0 0;
+		  to_x: "icon_area";
+	       }
+	       rel2 {
+		  relative: 0.0 1.0;
+		  offset: -3 4;
+		  to_y: "e.text.title";
+		  to_x: "bt_min";
+	       }
+	    }
+	 }
+	 part { name: "bottom_clip";
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       rel1.to: "bottom";
+	       rel2.to: "bottom";
+	       color: 255 255 255 255;
+	    }
+	 }
+	 part { name: "resize_b";
+	    mouse_events:  0;
+	    clip_to: "bottom_clip";
+            type: RECT;
+	    description { state: "default" 0.0;
+               color: 0 0 0 255;
+	       min: 20 10;
+	       max: 20 10;
+	       rel1 {
+		  to: "bottom";
+		  relative: 0.5 0.0;
+		  offset: 0 -10;
+	       }
+	       rel2 {
+		  to: "bottom";
+		  relative: 0.5 0.0;
+		  offset: 0 -1;
+	       }
+	    }
+	    description { state: "past" 0.0;
+	       inherit: "default" 0.0;
+	       rel1 {
+		  relative: 0.5 1.0;
+		  offset: 0 0;
+	       }
+	       rel2 {
+		  relative: 0.5 1.0;
+		  offset: 0 9;
+	       }
+	    }
+	 }
+
+
+	 part { name: "e.swallow.client"; /* this determines where the actual
+					   * client window will be placed in
+					   * the border design */
+	    type: SWALLOW;
+	    description { state: "default" 0.0;
+	       rel1 {
+		  relative: 0.0 1.0;
+		  offset: 0 0;
+		  to_y: "top";
+	       }
+	       rel2 {
+		  relative: 1.0 0.0;
+		  offset: -1 -1;
+		  to_y: "bottom";
+	       }
+	    }
+	    description { state: "shaded" 0.0;
+	       inherit: "default" 0.0;
+	       rel2 {
+		  relative: 1.0 1.0;
+		  offset: -1 -1;
+		  to_y: "bottom";
+	       }
+	    }
+	    description { state: "max" 0.0;
+	       inherit: "default" 0.0;
+	       rel1 {
+		  relative: 0.0 1.0;
+		  offset: 0 0;
+		  to_y: "top";
+	       }
+	       rel2 {
+		  relative: 1.0 1.0;
+		  offset: -1 -1;
+		  to_y: "bottom";
+	       }
+	    }
+	 }
+
+	 /* these transparent rect parts are used for catching events in a way
+	  * here objects for design don't affect the events. these parts
+	  * are named speciifcally because E has config listening for specific
+	  * signals (events) coming from these named parts and based on those
+	  * will perform certain actions. these are actually all configurable
+	  * by the user, so if they want, clicking the logical "titlebar" could
+	  * close the window, not move it, and so on. the user decides this.
+	  * the theme designer simply indicates the "logcal" use of the theme
+	  * elements they have created */
+	 part { name: "e.event.titlebar";
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       rel1.to: "title_base";
+	       rel2.to: "title_base";
+	       color: 0 0 0 0;
+	    }
+	 }
+
+	 part { name: "e.event.resize.t";
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       rel1 {
+		  relative: 0.0 0.0;
+		  offset: 0 0;
+	       }
+	       rel2 {
+		  relative: 1.0 0.0;
+		  offset: -1 3;
+	       }
+	       color: 0 0 0 0;
+	    }
+	    description { state: "shaded" 0.0;
+	       inherit: "default" 0.0;
+	       visible: 0;
+	    }
+	 }
+	 part { name: "e.event.resize.b";
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       rel1 {
+		  relative: 0.0 1.0;
+		  offset: 0 -4;
+	       }
+	       rel2 {
+		  relative: 1.0 1.0;
+		  offset: -1 -1;
+	       }
+	       color: 0 0 0 0;
+	    }
+	    description { state: "shaded" 0.0;
+	       inherit: "default" 0.0;
+	       visible: 0;
+	    }
+	 }
+
+	 part { name: "e.event.resize.tl";
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       rel1 {
+		  relative: 0.0 0.0;
+		  offset: 0 0;
+	       }
+	       rel2 {
+		  relative: 0.0 0.0;
+		  offset: 15 15;
+	       }
+	       color: 0 0 0 0;
+	    }
+	    description { state: "shaded" 0.0;
+	       inherit: "default" 0.0;
+	       visible: 0;
+	    }
+	 }
+	 part { name: "e.event.resize.tr";
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       rel1 {
+		  relative: 1.0 0.0;
+		  offset: -16 0;
+	       }
+	       rel2 {
+		  relative: 1.0 0.0;
+		  offset: -1 15;
+	       }
+	       color: 0 0 0 0;
+	    }
+	    description { state: "shaded" 0.0;
+	       inherit: "default" 0.0;
+	       visible: 0;
+	    }
+	 }
+	 part { name: "e.event.resize.bl";
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       rel1 {
+		  relative: 0.0 1.0;
+		  offset: 0 -16;
+	       }
+	       rel2 {
+		  relative: 0.0 1.0;
+		  offset: 15 -1;
+	       }
+	       color: 0 0 0 0;
+	    }
+	    description { state: "shaded" 0.0;
+	       inherit: "default" 0.0;
+	       visible: 0;
+	    }
+	 }
+	 part { name: "e.event.resize.br";
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       rel1 {
+		  relative: 1.0 1.0;
+		  offset: -16 -16;
+	       }
+	       rel2 {
+		  relative: 1.0 1.0;
+		  offset: -1 -1;
+	       }
+	       color: 0 0 0 0;
+	    }
+	    description { state: "shaded" 0.0;
+	       inherit: "default" 0.0;
+	       visible: 0;
+	    }
+	 }
+
+	 part { name: "e.event.icon";
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       rel1.to: "icon_area";
+	       rel2.to: "icon_area";
+	       color: 0 0 0 0;
+	    }
+	 }
+
+	 part { name: "e.event.close";
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       rel1.to: "bt_close";
+	       rel2.to: "bt_close";
+	       color: 0 0 0 0;
+	    }
+	 }
+	 part { name: "e.event.minimize";
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       rel1.to: "bt_min";
+	       rel2.to: "bt_min";
+	       color: 0 0 0 0;
+	    }
+	 }
+	 part { name: "e.event.maximize";
+	    type: RECT;
+	    description { state: "default" 0.0;
+	       rel1.to: "bt_max";
+	       rel2.to: "bt_max";
+	       color: 0 0 0 0;
+	    }
+	 }
+      }
+      /* programs - these are basically snippets of simple logic to respond to
+       * incoming signals (generated by signal emisions by code or events) */
+      programs {
+	 program { name: "focus_in"; /* name of the program. must be unique
+				      * within the list of programs attached
+				      * to a group of parts */
+	    signal: "e,state,focused"; /* what signal triggers this program,
+					* if any. this can also be a glob like
+					* "mouse,down,*" for example. note
+					* that globs are slower to match
+					* and empty strings are literal matches
+					* too */
+	    source: "e"; /* the source of the signal - this must also match for
+			  * the program to be run */
+	    action: STATE_SET "focused" 0.0; /* the action the program will
+					      * perform. in this case
+					      * it will set the state to
+					      * "focused" @ value 0.0 */
+	    target: "e.text.title";
+	 }
+	 program { name: "focus_out"; /* this program is run when focus is
+				       * removed from a window border */
+	    signal: "e,state,unfocused";
+	    source: "e";
+	    action: STATE_SET "default" 0.0;
+	    target: "e.text.title";
+	 }
+
+	 program { name: "max_full"; /* run on fullscreen maximize */
+	    signal: "e,action,maximize,fullscreen";
+	    source: "e";
+	    action: STATE_SET "max" 0.0;
+	    target: "bottom";
+	    target: "e.swallow.client";
+	 }
+	 program { name: "unmax_full"; /* run on unmaximize from fullscreen */
+	    signal: "e,action,unmaximize,fullscreen";
+	    source: "e";
+	    action: STATE_SET "default" 0.0;
+	    target: "bottom";
+	    target: "e.swallow.client";
+	 }
+
+// don't have any animation or stat change to do at the start of shading
+//	 program { name: "xx";
+//	    signal: "e,state,shading";
+//	    source: "e";
+//	 }
+	 program { name: "shade_end"; /* run when the window finishes its
+				       * shading animation */
+	    signal: "e,state,shaded";
+	    source: "e";
+	    action: STATE_SET "shaded" 0.0;
+	    target: "bottom";
+	    target: "e.swallow.client";
+	    target: "e.event.resize.tl";
+	    target: "e.event.resize.tr";
+	    target: "e.event.resize.bl";
+	    target: "e.event.resize.br";
+	    target: "e.event.resize.t";
+	    target: "e.event.resize.b";
+	 }
+	 program { name: "unshade_start"; /* run when the window starts
+					   * unshading itself */
+	    signal: "e,state,unshading";
+	    source: "e";
+	    action: STATE_SET "default" 0.0;
+	    target: "bottom";
+	    target: "e.swallow.client";
+	    target: "e.event.resize.tl";
+	    target: "e.event.resize.tr";
+	    target: "e.event.resize.bl";
+	    target: "e.event.resize.br";
+	    target: "e.event.resize.t";
+	    target: "e.event.resize.b";
+	 }
+// don't have any animation or stat change to do at the end of unshading
+//	 program { name: "xx";
+//	    signal: "e,state,unshaded";
+//	    source: "e";
+//	 }
+	 program { name: "resize_b_on";
+	    signal: "mouse,in"; /* on mouse enter... */
+	    source: "e.event.resize.b"; /* in this named part */
+	    action: ACTION_STOP; /* stop the following programs */
+	    target: "resize_b_on2";
+	    target: "resize_b_on3";
+	    after: "resize_b_on2"; /* then run... */
+	 }
+	 program { name: "resize_b_on2";
+	    action: STATE_SET "default" 0.0;
+	    target: "resize_b";
+	    after: "resize_b_on3";
+	 }
+	 program { name: "resize_b_on3";
+	    action: STATE_SET "past" 0.0;
+	    transition: LINEAR 0.5;
+	    target: "resize_b";
+	    after: "resize_b_on2";
+	 }
+	 program { name: "resize_b_off";
+	    signal: "mouse,out"; /* on mouse leave... */
+	    source: "e.event.resize.b";
+	    action: ACTION_STOP;
+	    target: "resize_b_on";
+	    target: "resize_b_on2";
+	    target: "resize_b_on3";
+	 }
+      }
+   }
+
+/////////////////////////////////////////////////////////////////////////////
+/*** DIALOG ***/
+/* Used in all dialogs eg; Wallpaper selector */
+
+   group {
+      name: "e/widgets/dialog/main";
+      images {
+         image: "dia_grad.png" COMP;
+         image: "dia_topshad.png" COMP;
+         image: "dia_botshad.png" COMP;
+         image: "menu_sep.png" COMP;
+      }
+      parts {
+         part {
+            name: "base";
+            mouse_events: 0;
+            description {
+               state: "default" 0.0;
+               color_class: "dialog_base";
+               image.normal: "dia_grad.png";
+               fill {
+                  smooth: 0;
+                  size {
+                     relative: 0.0 1.0;
+                     offset: 64 0;
+                  }
+               }
+            }
+         }
+         part {
+            name: "shadow";
+            mouse_events: 0;
+            description {
+               state: "default" 0.0;
+               rel2.relative: 1.0 0.0;
+               rel2.offset: -1 31;
+               image.normal: "dia_topshad.png";
+               fill {
+                  smooth: 0;
+                  size {
+                     relative: 0.0 1.0;
+                     offset: 64 0;
+                  }
+               }
+            }
+         }
+         part {
+            name: "shadow2";
+            mouse_events: 0;
+            description {
+               state: "default" 0.0;
+               rel1.relative: 0.0 1.0;
+               rel1.offset: 0 -4;
+               image.normal: "dia_botshad.png";
+               fill {
+                  smooth: 0;
+                  size {
+                     relative: 0.0 1.0;
+                     offset: 64 0;
+                  }
+               }
+            }
+         }
+         part {
+            name: "e.swallow.icon";
+            type: SWALLOW;
+            description {
+               state: "default" 0.0;
+               align: 0.0 0.5;
+               fixed: 1 0;
+               rel1 {
+                  relative: 0.0 0.0;
+                  offset: 2  2;
+               }
+               rel2 {
+                  relative: 0.0 0.0;
+                  offset: 2  -5;
+                  to_y: "e.swallow.buttons";
+               }
+            }
+         }
+         part {
+            name: "e.swallow.content";
+            type: SWALLOW;
+            description {
+               state: "default" 0.0;
+               rel1 {
+                  relative: 1.0 0.0;
+                  offset: 2   2;
+                  to_x: "e.swallow.icon";
+               }
+               rel2 {
+                  relative: 1.0 0.0;
+                  offset: -3  -5;
+                  to_y: "e.swallow.buttons";
+               }
+            }
+         }
+         part {
+            name: "separator";
+            mouse_events: 0;
+            description {
+               state: "default" 0.0;
+               min: 16 2;
+               rel1 {
+                  relative: 0.0  1.0;
+                  offset: 4    -1;
+                  to_y: "e.swallow.content";
+               }
+               rel2 {
+                  relative: 1.0  1.0;
+                  offset: -5   0;
+                  to_y: "e.swallow.content";
+               }
+               image {
+                  normal: "menu_sep.png";
+                  border: 2 2 0 0;
+               }
+               fill.smooth: 0;
+            }
+         }
+         part {
+            name: "e.swallow.buttons";
+            type: SWALLOW;
+            description {
+               state: "default" 0.0;
+               align: 0.5 1.0;
+               fixed: 0 1;
+               rel1 {
+                  relative: 0.0 1.0;
+                  offset: 4   -5;
+               }
+               rel2 {
+                  relative: 1.0 1.0;
+                  offset: -5  -5;
+               }
+            }
+         }
+      }
+   }
+   group {
+      name: "e/widgets/dialog/text";
+      styles {
+         style {
+            name: "dialog_style";
+            base: "font=Sans font_size=10 text_class=tb_plain align=center color=#000 style=shadow shadow_color=#ffffff80 wrap=word";
+            tag: "br" "\n";
+            tag: "hilight" "+ font=Sans:style=Bold text_class=tb_light";
+         }
+      }
+      parts {
+         part {
+            name: "e.textblock.message";
+            type: TEXTBLOCK;
+            mouse_events: 0;
+            scale: 1;
+            description {
+               state: "default" 0.0;
+               rel1.offset: 4 4;
+               rel2.offset: -5 -5;
+               text {
+                  style: "dialog_style";
+                  min: 1 1;
+               }
+            }
+         }
+      }
+   }
+
+   group {
+      name: "e/widgets/button";
+      images {
+         image: "bt_base1.png" COMP;
+         image: "bt_base2.png" COMP;
+         image: "bt_hilight.png" COMP;
+         image: "bt_shine.png" COMP;
+         image: "bt_glow.png" COMP;
+         image: "bt_dis_base.png" COMP;
+         image: "bt_dis_hilight.png" COMP;
+      }
+      parts {
+         part {
+            name: "button_image";
+            mouse_events: 1;
+            description {
+               state: "default" 0.0;
+               min: 32 16;
+               image {
+                  normal: "bt_base2.png";
+                  border: 7 7 7 7;
+               }
+            }
+            description {
+               state: "clicked" 0.0;
+               inherit: "default" 0.0;
+               image.normal: "bt_base1.png";
+            }
+            description {
+               state: "disabled" 0.0;
+               inherit: "default" 0.0;
+               image {
+                  normal: "bt_dis_base.png";
+                  border: 4 4 4 4;
+               }
+            }
+         }
+         part {
+            name: "e.swallow.icon";
+            type: SWALLOW;
+            mouse_events: 0;
+            description {
+               state: "default" 0.0;
+               align: 0.0 0.5;
+               rel1 {
+                  relative: 0.0 0.0;
+                  offset: 3   3;
+                  to: "button_image";
+               }
+               rel2 {
+                  relative: 0.0 1.0;
+                  offset: 3  -4;
+                  to: "button_image";
+               }
+            }
+            description {
+               state: "combo" 0.0;
+               inherit: "default" 0.0;
+               aspect: 1.0 1.0;
+               aspect_preference: VERTICAL;
+               align: 0.0 0.5;
+               rel1 {
+                  relative: 0.0 0.0;
+                  offset: 3  3;
+                  to: "button_image";
+               }
+               rel2 {
+                  relative: 0.0 1.0;
+                  offset: 3   -4;
+                  to: "button_image";
+               }
+            }
+            description {
+               state: "icon" 0.0;
+               inherit: "default" 0.0;
+               aspect: 1.0 1.0;
+               aspect_preference: BOTH;
+               align: 0.5 0.5;
+               rel1 {
+                  relative: 0.0 0.0;
+                  offset: 3  3;
+                  to: "button_image";
+               }
+               rel2 {
+                  relative: 1.0 1.0;
+                  offset: -4   -4;
+                  to: "button_image";
+               }
+            }
+         }
+         part {
+            name: "e.text.label";
+            type: TEXT;
+            effect: SOFT_SHADOW;
+            mouse_events: 0;
+            scale: 1;
+            description {
+               state: "default" 0.0;
+               rel1 {
+                  relative: 1.0  0.0;
+                  offset: 2    3;
+                  to_x: "e.swallow.icon";
+                  to_y: "button_image";
+               }
+               rel2 {
+                  relative: 1.0  1.0;
+                  offset: -4   -4;
+                  to: "button_image";
+               }
+               color_class: "button_text";
+               text {
+                  font: "Sans";
+                  size: 10;
+                  min: 1 1;
+                  align: 0.5 0.5;
+                  text_class: "button";
+               }
+            }
+            description {
+               state: "disabled" 0.0;
+               inherit: "default" 0.0;
+               color_class: "button_text_disabled";
+            }
+            description {
+               state: "icon" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
+            }
+         }
+         part {
+            name: "over1";
+            mouse_events: 0;
+            description {
+               state: "default" 0.0;
+               rel2.relative: 1.0 0.5;
+               image {
+                  normal: "bt_hilight.png";
+                  border: 7 7 7 0;
+               }
+            }
+            description {
+               state: "disabled" 0.0;
+               inherit: "default" 0.0;
+               image {
+                  normal: "bt_dis_hilight.png";
+                  border: 4 4 4 0;
+               }
+            }
+         }
+         part {
+            name: "over2";
+            mouse_events: 0;
+            description {
+               state: "default" 0.0;
+               image {
+                  normal: "bt_shine.png";
+                  border: 7 7 7 7;
+               }
+            }
+            description {
+               state: "disabled" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
+            }
+         }
+         part {
+            name: "over3";
+            mouse_events: 0;
+            description {
+               state: "default" 0.0;
+               visible: 0;
+               color: 255 255 255 0;
+               image {
+                  normal: "bt_glow.png";
+                  border: 7 7 9 9;
+               }
+               fill.smooth : 0;
+            }
+            description {
+               state: "clicked" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+               color: 255 255 255 255;
+            }
+         }
+         part {
+            name: "disabler";
+            type: RECT;
+            description {
+               state: "default" 0.0;
+               color: 0 0 0 0;
+               visible: 0;
+            }
+            description {
+               state: "disabled" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+            }
+         }
+      }
+      programs {
+         program {
+            name: "button_click";
+            signal: "mouse,down,1";
+            source: "button_image";
+            action: STATE_SET "clicked" 0.0;
+            target: "button_image";
+            target: "over3";
+         }
+         program {
+            name: "button_unclick";
+            signal: "mouse,up,1";
+            source: "button_image";
+            action: STATE_SET "default" 0.0;
+            target: "button_image";
+            target: "over3";
+         }
+         program {
+            name: "button_unclick2";
+            signal: "mouse,clicked,1";
+            source: "button_image";
+            action: SIGNAL_EMIT "e,action,click" "";
+         }
+         program {
+            name: "text_state";
+            signal: "e,state,text";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "e.swallow.icon";
+            target: "e.text.label";
+         }
+         program {
+            name: "icon_state";
+            signal: "e,state,icon";
+            source: "e";
+            action: STATE_SET "icon" 0.0;
+            target: "e.swallow.icon";
+            target: "e.text.label";
+         }
+         program {
+            name: "combo_state";
+            signal: "e,state,combo";
+            source: "e";
+            action: STATE_SET "combo" 0.0;
+            target: "e.swallow.icon";
+            target: "e.text.label";
+         }
+         program {
+            name: "disable";
+            signal: "e,state,disabled";
+            source: "e";
+            action: STATE_SET "disabled" 0.0;
+            target: "button_image";
+            target: "over1";
+            target: "e.text.label";
+            target: "disabler";
+         }
+         program {
+            name: "enable";
+            signal: "e,state,enabled";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "button_image";
+            target: "over1";
+            target: "e.text.label";
+            target: "disabler";
+         }
+      }
+   }
+
+   group {
+      name: "e/widgets/label";
+      parts {
+         part {
+            name: "e.text.label";
+            type: TEXT;
+            mouse_events: 0;
+            scale: 1;
+            description {
+               state: "default" 0.0;
+               rel1.offset: 2 2;
+               rel2.offset: -3 -3;
+               color: 0 0 0 255;
+               text {
+                  font: "Sans";
+                  size: 10;
+                  min: 1 1;
+                  align: 0.0 0.5;
+                  text_class: "label";
+               }
+            }
+            description {
+               state: "disabled" 0.0;
+               inherit: "default" 0.0;
+               color: 0 0 0 128;
+            }
+         }
+      }
+      programs {
+         program {
+            name: "disable";
+            signal: "e,state,disabled";
+            source: "e";
+            action: STATE_SET "disabled" 0.0;
+            target: "e.text.label";
+         }
+         program {
+            name: "enable";
+            signal: "e,state,enabled";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "e.text.label";
+         }
+      }
+   }
+   
+   group { name: "e/widgets/slidesel";
+      alias: "e/pointer/enlightenment/default/mono";
+      alias: "e/widgets/toolbar";
+      alias: "e/widgets/menu/default/submenu_bg";
+      alias: "e/modules/connman/network";
+      alias: "e/modules/ibar/icon";
+      alias: "e/modules/ibar/icon_overlay";
+      alias: "e/modules/ibar/drop";
+      alias: "e/modules/ibar/drop_overlay";
+      alias: "e/fileman/default/list/drop_between";
+      alias: "e/fileman/desktop/list/drop_in";
+      alias: "e/fileman/desktop/list/drop_between";
+      alias: "e/fileman/desktop/overlay";
+      alias: "e/fileman/desktop/list/fixed";
+      alias: "e/fileman/desktop/list_odd/fixed";
+      alias: "e/sys/halt";
+      alias: "e/sys/reboot";
+      alias: "e/sys/suspend";
+      alias: "e/sys/hibernate";
+      alias:  "e/widgets/gradpreview";
+      alias: "e/widgets/toolbar/item";
+      alias: "e/widgets/menu/default/background";
+      alias: "e/widgets/menu/default/separator";
+      alias: "e/widgets/menu/default/item_bg";
+      alias: "e/widgets/menu/default/icon";
+      alias: "e/widgets/menu/default/label";
+      alias: "e/widgets/menu/default/submenu";
+      alias: "e/widgets/menu/default/check";
+      alias: "e/widgets/menu/default/radio";
+      alias: "e/shelf/default/base";
+      alias: "e/shelf/default/inset";
+      alias: "e/shelf/default/plain";
+      alias: "e/shelf/invisible/base";
+      alias: "e/shelf/invisible/inset";
+      alias: "e/shelf/invisible/plain";
+      alias: "e/shelf/alternate/base";
+      alias: "e/shelf/alternate/inset";
+      alias: "e/shelf/alternate/plain";
+      alias: "e/modules/connman/main";
+      alias: "e/modules/conf_edgebindings/selection";
+      alias: "e/modules/start/main";
+      alias: "e/modules/pager/popup";
+      alias: "e/modules/pager/desk";
+      alias: "e/modules/pager/window";
+      alias: "e/modules/battery/main";
+      alias: "e/modules/battery/popup";
+      alias: "e/modules/temperature/main";
+      alias: "e/modules/clock/main";
+      alias: "e/modules/cpufreq/main";
+      alias: "e/modules/ibox/icon";
+      alias: "e/modules/ibox/icon_overlay";
+      alias: "e/modules/ibox/drop";
+      alias: "e/modules/ibox/drop_overlay";
+      alias: "e/widgets/winlist/main";
+      alias: "e/widgets/winlist/item";
+      alias: "e/widgets/exebuf/main";
+      alias: "e/widgets/exebuf/item";
+      alias: "e/widgets/syscon/main";
+      alias: "e/widgets/syscon/item/button";
+      alias: "e/modules/mixer/main";
+      alias: "e/fileman/default/window/main";
+      alias: "e/fileman/default/progress";
+      alias: "e/fileman/default/scrollframe";
+      alias: "e/fileman/desktop/scrollframe";
+      alias: "e/fileman/default/list/drop_in";
+      alias: "e/fileman/default/rubberband";
+      alias: "e/fileman/default/overlay";
+      alias: "e/fileman/default/icon/variable";
+      alias: "e/fileman/default/icon/fixed";
+      alias: "e/fileman/desktop/icon/variable";
+      alias: "e/fileman/desktop/icon/fixed";
+      alias: "e/fileman/default/list/variable";
+      alias: "e/fileman/default/list_odd/variable";
+      alias: "e/fileman/default/list/fixed";
+      alias: "e/fileman/default/list_odd/fixed";
+      alias: "e/sys/logout";
+      alias: "e/widgets/configure/main";
+      alias: "e/widgets/border/default/move";
+      alias: "e/widgets/border/default/resize";
+      alias: "e/toolbar/default/base";
+      alias: "e/transpreview/0";
+      alias: "e/transpreview/1";
+      alias: "e/transitions/crossfade";
+      alias: "e/transitions/vswipe";
+      alias: "e/widgets/check";
+      alias: "e/widgets/check_icon";
+      alias: "e/widgets/radio";
+      alias: "e/widgets/radio_icon";
+      alias: "e/widgets/scrollframe";
+      alias: "e/widgets/ilist";
+      alias: "e/widgets/ilist_odd";
+      alias: "e/widgets/ilist_header";
+      alias: "e/widgets/ilist_header_odd";
+      alias: "e/widgets/entry";
+      alias: "e/widgets/entry/text";
+      alias: "e/widgets/entry/cursor";
+      alias: "e/widgets/entry/selection";
+      alias: "e/widgets/preview";
+      alias: "e/widgets/deskpreview/desk";
+      alias: "e/widgets/color_well";
+      alias: "e/widgets/spectrum";
+      alias: "e/widgets/cslider";
+      alias: "e/widgets/slider_vertical";
+      alias: "e/widgets/slider_horizontal";
+      alias: "e/widgets/frame";
+      alias: "e/widgets/fontpreview";
+      alias: "e/widgets/textblock";
+      alias: "e/desklock/background";
+      alias: "e/desklock/login_box";
+      alias: "e/gadman/popup";
+      alias: "e/gadman/full_bg";
+      alias: "e/gadman/frame";
+      alias: "e/gadman/control";
+      alias: "e/wizard/extra";
+      alias: "e/wizard/main";
+      alias: "e/widgets/about/main";
+      alias: "e/theme/about";
+      alias: "e/icons/enlightenment/wallpaper_stretch";
+      alias: "e/icons/enlightenment/wallpaper_tile";
+      alias: "e/icons/enlightenment/wallpaper_center";
+      alias: "e/icons/enlightenment/wallpaper_scale_aspect_in";
+      alias: "e/icons/enlightenment/wallpaper_scale_aspect_out";
+      alias: "e/icons/enlightenment/gradient_h";
+      alias: "e/icons/enlightenment/gradient_v";
+      alias: "e/icons/enlightenment/gradient_du";
+      alias: "e/icons/enlightenment/gradient_dd";
+      alias: "e/icons/enlightenment/gradient_rad";
+      alias: "e/init/splash";
+      alias: "e/init/extra_screen";
+      alias: "e/conf/wallpaper/main/window";
+      alias: "e/conf/wallpaper/main/mini";
+      alias: "e/conf/wallpaper/main/mini-theme";
+      alias: "e/conf/wallpaper/main/mini-remote";
+      alias: "e/conf/wallpaper/main/scrollframe";
+      alias: "e/widgets/everything/main";
+      alias: "e/widgets/everything/item";
+      parts {
+	 part { name: "base";
+	    mouse_events: 0;
+            type: RECT;
+	    description { state: "default" 0.0;
+               color: 0 0 0 0;
+	    }
+	 }
+      }
+   }
+}
