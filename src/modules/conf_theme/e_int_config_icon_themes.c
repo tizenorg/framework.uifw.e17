@@ -15,11 +15,11 @@ struct _E_Config_Dialog_Data
    const char *themename;
    int overrides;
    int enable_icon_theme;
+   int match_e17_icon_theme;
    int populating;
    struct 
      {
         Evas_Object *list;
-        Evas_Object *checkbox;
         Evas_Object *preview[4]; /* same size as _icon_previews */
      } gui;
    Ecore_Idler *fill_icon_themes_delayed;
@@ -74,6 +74,7 @@ _create_data(E_Config_Dialog *cfd)
    cfdata->cfd = cfd;
    cfdata->themename = eina_stringshare_add(e_config->icon_theme);
    cfdata->overrides = e_config->icon_theme_overrides;
+   cfdata->match_e17_icon_theme = e_config->xsettings.match_e17_icon_theme;
    cfdata->enable_icon_theme = !!(e_config->icon_theme);   
    return cfdata;
 }
@@ -93,6 +94,9 @@ static int
 _basic_check_changed(E_Config_Dialog *cfd __UNUSED__, E_Config_Dialog_Data *cfdata)
 {
    if (cfdata->overrides != e_config->icon_theme_overrides)
+     return 1;
+
+   if (cfdata->match_e17_icon_theme != e_config->xsettings.match_e17_icon_theme)
      return 1;
 
    if (cfdata->enable_icon_theme != !!(e_config->icon_theme))
@@ -121,6 +125,7 @@ _basic_apply(E_Config_Dialog *cfd, E_Config_Dialog_Data *cfdata)
      e_config->icon_theme = NULL;
    
    e_config->icon_theme_overrides = !!cfdata->overrides;
+   e_config->xsettings.match_e17_icon_theme = cfdata->match_e17_icon_theme;
    e_config_save_queue();
 
    e_util_env_set("E_ICON_THEME", e_config->icon_theme);
@@ -273,9 +278,12 @@ _basic_create(E_Config_Dialog *cfd, Evas *evas, E_Config_Dialog_Data *cfdata)
    e_widget_on_change_hook_set(checkbox, _icon_theme_changed, cfdata);
    e_widget_list_object_append(o, checkbox, 0, 0, 0.0);
 
+   checkbox = e_widget_check_add(evas, _("Use icon theme for applications"), 
+                                 &(cfdata->match_e17_icon_theme));
+   e_widget_list_object_append(o, checkbox, 0, 0, 0.0);
+
    checkbox = e_widget_check_add(evas, _("Icons override general theme"), 
                                  &(cfdata->overrides));
-   e_widget_on_change_hook_set(checkbox, _icon_theme_changed, cfdata);
    e_widget_list_object_append(o, checkbox, 0, 0, 0.0);
 
    e_dialog_resizable_set(cfd->dia, 1);

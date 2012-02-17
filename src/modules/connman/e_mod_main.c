@@ -331,6 +331,19 @@ _connman_service_free(E_Connman_Service *service)
    E_FREE(service);
 }
 
+static const char *
+_connman_service_security_find(const E_Connman_Element *element)
+{
+   const char **security;
+   unsigned int count;
+
+   if (!e_connman_service_security_get(element, &count, &security))
+     return NULL;
+   if ((!security) || (count < 1))
+     return NULL;
+   return security[0];
+}
+
 static void
 _connman_service_changed(void                    *data,
                          const E_Connman_Element *element)
@@ -348,11 +361,12 @@ _connman_service_changed(void                    *data,
 
    GSTR(name, e_connman_service_name_get);
    GSTR(type, e_connman_service_type_get);
-   GSTR(mode, e_connman_service_mode_get);
    GSTR(state, e_connman_service_state_get);
    GSTR(error, e_connman_service_error_get);
-   GSTR(security, e_connman_service_security_get);
    GSTR(ipv4_method, e_connman_service_ipv4_configuration_method_get);
+
+   str = _connman_service_security_find(element);
+   eina_stringshare_replace(&service->security, str);
 
    if (service->ipv4_method && strcmp(service->ipv4_method, "dhcp") == 0)
      {
@@ -439,14 +453,15 @@ _connman_service_new(E_Connman_Module_Context *ctxt,
 
    GSTR(name, e_connman_service_name_get);
    GSTR(type, e_connman_service_type_get);
-   GSTR(mode, e_connman_service_mode_get);
    GSTR(state, e_connman_service_state_get);
    GSTR(error, e_connman_service_error_get);
-   GSTR(security, e_connman_service_security_get);
    GSTR(ipv4_method, e_connman_service_ipv4_method_get);
    GSTR(ipv4_address, e_connman_service_ipv4_address_get);
    GSTR(ipv4_netmask, e_connman_service_ipv4_netmask_get);
 #undef GSTR
+
+   str = _connman_service_security_find(element);
+   eina_stringshare_replace(&service->security, str);
 
    if ((service->state != e_str_failure) && (service->error))
      eina_stringshare_replace(&service->error, NULL);
@@ -554,8 +569,10 @@ _connman_service_disconnect_cb(void            *data,
 
    if (error && dbus_error_is_set(error))
      {
-        if (strcmp(error->name,
-                   "org.moblin.connman.Error.NotConnected") != 0)
+        if ((strcmp(error->name,
+                    "org.moblin.connman.Error.NotConnected") != 0) ||
+	    (strcmp(error->name,
+                    "net.connman.Error.NotConnected") != 0))
           _connman_dbus_error_show(_("Disconnect from network service."),
                                    error);
         dbus_error_free(error);
@@ -587,14 +604,27 @@ _connman_service_connect_cb(void            *data,
 
    if (error && dbus_error_is_set(error))
      {
-        /* TODO: cellular might ask for SetupRequired to enter APN,
-         * username and password
-         */
-          if ((strcmp(error->name,
-                      "org.moblin.connman.Error.PassphraseRequired") == 0) ||
-              (strcmp(error->name,
-                      "org.moblin.connman.Error.Failed") == 0))
+        char *password_needed[] = {
+          "org.moblin.connman.Error.PassphraseRequired",
+          "org.moblin.connman.Error.Failed",
+          "net.connman.Error.PassphraseRequired",
+          "net.connman.Error.Failed",
+          NULL
+        };
+        char *dont_display_error[] = {
+          "org.moblin.connman.Error.AlreadyConnected",
+          "net.connman.Error.AlreadyConnected",
+          "net.connman.Error.OperationAborted",
+          NULL
+        };
+        int i;
+
+        for (i = 0; password_needed[i]; ++i)
+          if (strcmp(error->name, password_needed[i]) == 0)
             {
+               /* TODO: cellular might ask for SetupRequired to enter APN,
+                * username and password
+                */
                E_Connman_Service *service;
 
                service = _connman_ctxt_find_service_stringshare
@@ -608,15 +638,23 @@ _connman_service_connect_cb(void            *data,
                     _connman_service_ask_pass_and_connect(service);
                  }
                else
-     /* TODO: cellular might ask for user and pass */
+                 /* TODO: cellular might ask for user and pass */
                  _connman_dbus_error_show(_("Connect to network service."),
                                           error);
+               break;
             }
-          else if (strcmp(error->name,
-                          "org.moblin.connman.Error.AlreadyConnected") != 0)
-            _connman_dbus_error_show(_("Connect to network service."), error);
 
-          dbus_error_free(error);
+        if (password_needed[i] == NULL)
+          {
+             for (i = 0; dont_display_error[i]; ++i)
+               if (strcmp(error->name, dont_display_error[i]) == 0)
+                 break;
+
+             if (dont_display_error[i] == NULL)
+               _connman_dbus_error_show(_("Connect to network service."), error);
+          }
+
+        dbus_error_free(error);
      }
 
    _connman_default_service_changed_delayed(d->ctxt);
@@ -1625,7 +1663,7 @@ _gc_orient(E_Gadcon_Client       *gcc,
    e_gadcon_client_min_size_set(gcc, 16, 16);
 }
 
-static char *
+static const char *
 _gc_label(E_Gadcon_Client_Class *client_class __UNUSED__)
 {
    return _(_e_connman_Name);

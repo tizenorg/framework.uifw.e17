@@ -13,7 +13,7 @@
 static E_Gadcon_Client *_gc_init(E_Gadcon *gc, const char *name, const char *id, const char *style);
 static void _gc_shutdown(E_Gadcon_Client *gcc);
 static void _gc_orient(E_Gadcon_Client *gcc, E_Gadcon_Orient orient);
-static char *_gc_label(E_Gadcon_Client_Class *client_class);
+static const char *_gc_label(E_Gadcon_Client_Class *client_class);
 static Evas_Object *_gc_icon(E_Gadcon_Client_Class *client_class, Evas *evas);
 static const char *_gc_id_new(E_Gadcon_Client_Class *client_class);
 static void _gc_id_del(E_Gadcon_Client_Class *client_class, const char *id);
@@ -115,8 +115,6 @@ static Eina_Bool  _ibar_cb_config_icons(void *data, int ev_type, void *ev);
 static E_Config_DD *conf_edd = NULL;
 static E_Config_DD *conf_item_edd = NULL;
 
-static int uuid = 0;
-
 Config *ibar_config = NULL;
 
 static E_Gadcon_Client *
@@ -207,7 +205,7 @@ _gc_orient(E_Gadcon_Client *gcc, E_Gadcon_Orient orient)
    e_gadcon_client_min_size_set(gcc, 16, 16);
 }
 
-static char *
+static const char *
 _gc_label(E_Gadcon_Client_Class *client_class __UNUSED__)
 {
    return _("IBar");
@@ -436,27 +434,9 @@ static Config_Item *
 _ibar_config_item_get(const char *id)
 {
    Config_Item *ci;
-   char buf[128];
 
-   if (!id)
-     {
-	snprintf(buf, sizeof(buf), "%s.%d", _gadcon_class.name, ++uuid);
-	id = buf;
-     }
-   else
-     {
-	const Eina_List *l;
+   GADCON_CLIENT_CONFIG_GET(Config_Item, ibar_config->items, _gadcon_class, id);
 
-	/* Find old config, or reuse supplied id */
-	EINA_LIST_FOREACH(ibar_config->items, l, ci)
-	  {
-	     if ((ci->id) && (!strcmp(ci->id, id)))
-	       {
-		  if (!ci->dir) ci->dir = eina_stringshare_add("default");
-		  return ci;
-	       }
-	  }
-     }
    ci = E_NEW(Config_Item, 1);
    ci->id = eina_stringshare_add(id);
    ci->dir = eina_stringshare_add("default");
@@ -1204,57 +1184,6 @@ e_modapi_init(E_Module *m)
 	ci->show_label = 1;
 	ci->eap_label = 0;
 	ibar_config->items = eina_list_append(ibar_config->items, ci);
-     }
-   else
-     {
-	Eina_List *removes = NULL;
-	const Eina_List *l;
-	Config_Item *ci;
-
-	EINA_LIST_FOREACH(ibar_config->items, l, ci)
-	  {
-	     if (!ci->id)
-	       removes = eina_list_append(removes, ci);
-	     else if (!ci->dir)
-	       removes = eina_list_append(removes, ci);
-	     else
-	       {
-		  const Eina_List *ll;
-		  Config_Item *ci2;
-
-		  EINA_LIST_FOREACH(l->next, ll, ci2)
-		    {
-		       if ((ci2->id) && (!strcmp(ci->id, ci2->id)))
-			 {
-			    removes = eina_list_append(removes, ci);
-			    break;
-			 }
-		    }
-	       }
-	  }
-	EINA_LIST_FREE(removes, ci)
-	  {
-	     ibar_config->items = eina_list_remove(ibar_config->items, ci);
-	     if (ci->id) eina_stringshare_del(ci->id);
-	     if (ci->dir) eina_stringshare_del(ci->dir);
-	     E_FREE(ci);
-          }
-	EINA_LIST_FOREACH(ibar_config->items, l, ci)
-          {
-	     if (ci->id)
-	       {
-		  const char *p;
-
-		  p = strrchr(ci->id, '.');
-		  if (p)
-		    {
-		       int id;
-
-		       id = atoi(p + 1);
-		       if (id > uuid) uuid = id;
-		    }
-	       }
-	  }
      }
  
    ibar_config->module = m;

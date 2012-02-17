@@ -11,6 +11,10 @@
  * multi-selecting)
  */
 
+#define DEFAULT_WIDTH 600
+#define DEFAULT_HEIGHT 350
+  
+
 typedef struct _E_Fwin             E_Fwin;
 typedef struct _E_Fwin_Page        E_Fwin_Page;
 typedef struct _E_Fwin_Apps_Dialog E_Fwin_Apps_Dialog;
@@ -440,8 +444,8 @@ _e_fwin_new(E_Container *con,
    E_Fwin *fwin;
    E_Fwin_Page *page;
    Evas_Object *o;
-   char buf[PATH_MAX];
-
+   E_Zone *zone;
+   
    fwin = E_OBJECT_ALLOC(E_Fwin, E_FWIN_TYPE, _e_fwin_free);
    if (!fwin) return NULL;
    fwin->win = e_win_new(con);
@@ -482,11 +486,19 @@ _e_fwin_new(E_Container *con,
 
    e_fm2_path_set(page->fm_obj, dev, path);
    _e_fwin_window_title_set(page);
-   snprintf(buf, sizeof(buf), "e_fwin::%s", e_fm2_real_path_get(fwin->cur_page->fm_obj));
-   e_win_name_class_set(fwin->win, "E", buf);
 
    e_win_size_min_set(fwin->win, 24, 24);
-   e_win_resize(fwin->win, 280 * e_scale, 200 * e_scale);
+
+   zone = e_util_zone_current_get(e_manager_current_get()); 
+   if ((zone) && (zone->w < DEFAULT_WIDTH))
+     {
+	int w, h;
+	e_zone_useful_geometry_get(zone, NULL, NULL, &w, &h);
+	e_win_resize(fwin->win, w, h);
+     }
+   else
+     e_win_resize(fwin->win, DEFAULT_WIDTH, DEFAULT_HEIGHT);
+
    e_win_show(fwin->win);
    if (fwin->win->evas_win)
      e_drop_xdnd_register_set(fwin->win->evas_win, 1);
@@ -1029,7 +1041,7 @@ _e_fwin_config_set(E_Fwin_Page *page)
 static void
 _e_fwin_window_title_set(E_Fwin_Page *page)
 {
-   char buf[4096];
+   char buf[PATH_MAX];
    const char *file;
 
    if (!page) return;
@@ -1045,6 +1057,9 @@ _e_fwin_window_title_set(E_Fwin_Page *page)
         eina_strlcpy(buf, file, sizeof(buf));
         e_win_title_set(page->fwin->win, buf);
      }
+
+   snprintf(buf, sizeof(buf), "e_fwin::%s", e_fm2_real_path_get(page->fm_obj));
+   e_win_name_class_set(page->fwin->win, "E", buf);
 }
 
 static void
@@ -1165,10 +1180,10 @@ _e_fwin_cb_delete(E_Win *win)
 static void
 _e_fwin_cb_move(E_Win *win)
 {
-   E_Fwin *fwin;
+//   E_Fwin *fwin;
 
    if (!win) return;  //safety
-   fwin = win->data;
+//   fwin = win->data;
    /* _e_fwin_geom_save(fwin); */
 }
 
@@ -1496,7 +1511,7 @@ _e_fwin_cb_page_obj_del(void            *data,
    E_Fwin_Page *page;
    
    page = data;
-   printf("------ page obj del %p %p\n", page, page->fm_obj);
+
    evas_object_smart_callback_del(page->fm_obj, "dir_changed",
                                   _e_fwin_changed);
    evas_object_smart_callback_del(page->fm_obj, "dir_deleted",
@@ -1570,15 +1585,13 @@ _e_fwin_zone_del(void *data,
 
 /* fm menu extend */
 static void
-_e_fwin_menu_extend(void                 *data,
+_e_fwin_menu_extend(void                 *data __UNUSED__,
                     Evas_Object          *obj,
                     E_Menu               *m,
                     E_Fm2_Icon_Info *info __UNUSED__)
 {
-   E_Fwin_Page *page;
    E_Menu_Item *mi;
 
-   page = data;
    if (e_fm2_has_parent_get(obj))
      {
         mi = e_menu_item_new(m);
@@ -1891,14 +1904,14 @@ _e_fwin_file_open_dialog(E_Fwin_Page *page,
                                  /* TODO add config for preffered
                                     initial size? */
                                  w = 5 * iw * e_scale;
-                                 if (w > 400)
-                                   w = 400;
+                                 if (w > DEFAULT_WIDTH)
+                                   w = DEFAULT_WIDTH;
                                  if (w > zw)
                                    w = zw;
 
                                  h = 4 * ih * e_scale;
-                                 if (h > 300)
-                                   h = 300;
+                                 if (h > DEFAULT_HEIGHT)
+                                   h = DEFAULT_HEIGHT;
                                  if (h > zh)
                                    h = zh;
 
@@ -1921,7 +1934,6 @@ _e_fwin_file_open_dialog(E_Fwin_Page *page,
                }
           }
         if (!need_dia) return;
-        need_dia = 0;
      }
 
    apps = _e_fwin_suggested_apps_list_get(files, &mlist);

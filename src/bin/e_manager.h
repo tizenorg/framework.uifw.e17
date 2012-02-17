@@ -9,27 +9,7 @@ typedef struct _E_Manager_Comp_Source E_Manager_Comp_Source;
 #define E_MANAGER_H
 
 #define E_MANAGER_TYPE (int) 0xE0b01008
-
-struct _E_Manager_Comp
-{
-   struct {
-      Evas             * (*evas_get)             (void *data, E_Manager *man);
-      void               (*update)               (void *data, E_Manager *man);
-      const Eina_List  * (*src_list_get)         (void *data, E_Manager *man);
-      Evas_Object      * (*src_image_get)        (void *data, E_Manager *man, E_Manager_Comp_Source *src);
-      Evas_Object      * (*src_shadow_get)       (void *data, E_Manager *man, E_Manager_Comp_Source *src);
-      Evas_Object      * (*src_image_mirror_add) (void *data, E_Manager *man, E_Manager_Comp_Source *src);
-      Eina_Bool          (*src_visible_get)      (void *data, E_Manager *man, E_Manager_Comp_Source *src);
-      void               (*src_hidden_set)       (void *data, E_Manager *man, E_Manager_Comp_Source *src, Eina_Bool hidden);
-      Eina_Bool          (*src_hidden_get)       (void *data, E_Manager *man, E_Manager_Comp_Source *src);
-#ifdef _F_COMP_SCREEN_LOCK_
-      void               (*screen_lock)          (void *data, E_Manager *man);
-      void               (*screen_unlock)        (void *data, E_Manager *man);
-#endif
-   } func;
-   void                   *data;
-};
-
+  
 struct _E_Manager
 {
    E_Object             e_obj_inherit;
@@ -46,6 +26,37 @@ struct _E_Manager
    Ecore_X_Window       initwin;
    
    E_Manager_Comp      *comp;
+};
+
+struct _E_Manager_Comp
+{
+  struct {
+    Evas             * (*evas_get)             (void *data, E_Manager *man);
+    void               (*update)               (void *data, E_Manager *man);
+    const Eina_List  * (*src_list_get)         (void *data, E_Manager *man);
+    Evas_Object      * (*src_image_get)        (void *data, E_Manager *man, E_Manager_Comp_Source *src);
+    Evas_Object      * (*src_shadow_get)       (void *data, E_Manager *man, E_Manager_Comp_Source *src);
+    Evas_Object      * (*src_image_mirror_add) (void *data, E_Manager *man, E_Manager_Comp_Source *src);
+    Eina_Bool          (*src_visible_get)      (void *data, E_Manager *man, E_Manager_Comp_Source *src);
+    void               (*src_hidden_set)       (void *data, E_Manager *man, E_Manager_Comp_Source *src, Eina_Bool hidden);
+    Eina_Bool          (*src_hidden_get)       (void *data, E_Manager *man, E_Manager_Comp_Source *src);
+    E_Manager_Comp_Source * (*src_get)         (void *data, E_Manager *man, Ecore_X_Window win);
+    E_Popup          * (*src_popup_get)        (void *data, E_Manager *man, E_Manager_Comp_Source *src);
+    E_Border         * (*src_border_get)       (void *data, E_Manager *man, E_Manager_Comp_Source *src);
+    Ecore_X_Window     (*src_window_get)       (void *data, E_Manager *man, E_Manager_Comp_Source *src);
+#ifdef _F_COMP_SCREEN_LOCK_
+    void               (*screen_lock)          (void *data, E_Manager *man);
+    void               (*screen_unlock)        (void *data, E_Manager *man);
+#endif
+#ifdef _F_COMP_INPUT_REGION_SET_
+    Eina_Bool          (*src_input_region_set) (void *data, E_Manager *man, E_Manager_Comp_Source *src, int x, int y, int w, int h);
+#endif
+#ifdef _F_COMP_MOVE_LOCK_
+    Eina_Bool          (*src_move_lock)        (void *data, E_Manager *man, E_Manager_Comp_Source *src);
+    Eina_Bool          (*src_move_unlock)      (void *data, E_Manager *man, E_Manager_Comp_Source *src);
+#endif
+  } func;
+  void                   *data;
 };
 
 EINTERN int        e_manager_init(void);
@@ -124,6 +135,20 @@ EAPI void             e_manager_comp_event_src_add_send(E_Manager *man, E_Manage
 EAPI void             e_manager_comp_event_src_del_send(E_Manager *man, E_Manager_Comp_Source *src, void (*afterfunc) (void *data, E_Manager *man, E_Manager_Comp_Source *src), void *data);
 EAPI void             e_manager_comp_event_src_config_send(E_Manager *man, E_Manager_Comp_Source *src, void (*afterfunc) (void *data, E_Manager *man, E_Manager_Comp_Source *src), void *data);
 EAPI void             e_manager_comp_event_src_visibility_send(E_Manager *man, E_Manager_Comp_Source *src, void (*afterfunc) (void *data, E_Manager *man, E_Manager_Comp_Source *src), void *data);
-
+EAPI E_Manager_Comp_Source *e_manager_comp_src_get(E_Manager *man, Ecore_X_Window win);
+EAPI E_Popup         *e_manager_comp_src_popup_get(E_Manager *man, E_Manager_Comp_Source *src);
+EAPI E_Border        *e_manager_comp_src_border_get(E_Manager *man, E_Manager_Comp_Source *src);
+EAPI Ecore_X_Window   e_manager_comp_src_window_get(E_Manager *man, E_Manager_Comp_Source *src);
+#ifdef _F_COMP_SCREEN_LOCK_
+EAPI void             e_manager_comp_screen_lock(E_Manager *man);
+EAPI void             e_manager_comp_screen_unlock(E_Manager *man);
+#endif
+#ifdef _F_COMP_INPUT_REGION_SET_
+EAPI Eina_Bool        e_manager_comp_src_input_region_set(E_Manager *man, E_Manager_Comp_Source *src, int x, int y, int w, int h);
+#endif
+#ifdef _F_COMP_MOVE_LOCK_
+EAPI Eina_Bool        e_manager_comp_src_move_lock(E_Manager *man, E_Manager_Comp_Source *src);
+EAPI Eina_Bool        e_manager_comp_src_move_unlock(E_Manager *man, E_Manager_Comp_Source *src);
+#endif
 #endif
 #endif

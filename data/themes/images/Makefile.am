@@ -7,16 +7,7 @@ arrow_down.png \
 arrow_left.png \
 arrow_right.png \
 arrow_up.png \
-ball.png \
 base_bg.png \
-bat_content1b.png \
-bat_content1.png \
-bat_content2b.png \
-bat_content2.png \
-bat_content3b.png \
-bat_content3.png \
-bat_over.png \
-bat_shadow.png \
 bd_bottom.png \
 bd_button_close_focused.png \
 bd_button_close_shadow.png \
@@ -34,7 +25,6 @@ bd_top_hilight.png \
 bd_top.png \
 big_arrow_down.png \
 big_arrow_up.png \
-bluetooth.png \
 bluetooth-powered.png \
 bluetooth-inactive.png \
 bluetooth-hidden.png \
@@ -62,7 +52,6 @@ busy-6.png \
 busy-7.png \
 busy-8.png \
 busy-9.png \
-cfg.png \
 check_base.png \
 check_on.png \
 check_sel.png \
@@ -96,6 +85,7 @@ everything_box.png \
 outline.png \
 everything_item_bg.png \
 exclam.png \
+favorites.png \
 frame_1.png \
 frame_2.png \
 gadman_border.png \
@@ -312,8 +302,6 @@ illume-kbd-on.png \
 illume-mode-dual-left.png \
 illume-mode-dual-top.png \
 illume-mode-single.png \
-init_check1.png \
-init_check2.png \
 inset_raised.png \
 inset_sunk_dark.png \
 inset_sunk.png \
@@ -362,11 +350,10 @@ pointer_glint_12.png \
 pointer_glow.png \
 pointer_mono.png \
 pointer.png \
-power_glow.png \
-power.png \
 radio_base.png \
 radio_on.png \
 radio_sel.png \
+refresh.png \
 sb_runnerh.png \
 sb_runnerv.png \
 shelf_alt_bg.png \
@@ -390,11 +377,6 @@ topsh.png \
 transition_vswipe.png \
 vgrad_dark.png \
 vgrad_light.png \
-wifi_0.png \
-wifi_1.png \
-wifi_2.png \
-wifi_3.png \
-wifi_4.png \
 wp-tb1.png \
 wp-bot1.png \
 wp-tb2.png \
@@ -409,6 +391,7 @@ exq-bglight.png \
 exq-logo.png \
 exq-dot.png \
 exq-dot-glow.png \
+exq-vgrad.png \
 connman-disconnect.png \
 connman-disconnect-offline.png \
 connman-ethernet.png \
@@ -453,4 +436,14 @@ flip_pmb.png \
 flip_pmt.png \
 flip_shad.png \
 flip_t.png \
-flip_colon.png
+flip_colon.png \
+bulb-0.png \
+bulb-1.png \
+bulb-2.png \
+batt_base.png \
+batt_level.png \
+batt_over.png \
+batt_power.png \
+bg_shadow.png \
+bg_over.png \
+bg_base.png

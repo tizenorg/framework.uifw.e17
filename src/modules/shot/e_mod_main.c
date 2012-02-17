@@ -172,7 +172,7 @@ _save_to(const char *file)
         if (z)
           {
              unsigned char *src, *dst, *s, *d;
-             int sstd, dstd, y;
+             int sstd, y;
              
              o = evas_object_image_add(evas_object_evas_get(o_img));
              evas_object_image_colorspace_set(o, EVAS_COLORSPACE_ARGB8888);
@@ -181,7 +181,6 @@ _save_to(const char *file)
              src = evas_object_image_data_get(o_img, EINA_FALSE);
              sstd = evas_object_image_stride_get(o_img);
              dst = evas_object_image_data_get(o, EINA_TRUE);
-             dstd = evas_object_image_stride_get(o);
              d = dst;
              for (y = 0; y < z->h; y++)
                {
@@ -201,6 +200,7 @@ _file_select_ok_cb(void *data __UNUSED__, E_Dialog *dia)
    const char *file;
 
    file = e_widget_fsel_selection_path_get(o_fsel);
+   printf("SAVE: %s\n", file);
    if (file) _save_to(file);
    if (dia) e_util_defer_object_del(E_OBJECT(dia));
    if (win)
@@ -227,12 +227,13 @@ _win_save_cb(void *data __UNUSED__, void *data2 __UNUSED__)
    E_Dialog *dia;
    Evas_Object *o;
    Evas_Coord mw, mh;
-  
+   
    dia = e_dialog_new(scon, "E", "_e_shot_fsel");
    e_dialog_title_set(dia, _("Select screenshot save location"));
-   o = e_widget_fsel_add(dia->win->evas, "~/", "/", NULL, NULL,
+   o = e_widget_fsel_add(dia->win->evas, "~/", "/", "shot.jpg", NULL,
                          NULL, NULL,
                          NULL, NULL, 1);
+   e_widget_fsel_window_object_set(o, E_OBJECT(dia->win));
    o_fsel = o;
    evas_object_show(o);
    e_widget_size_min_get(o, &mw, &mh);

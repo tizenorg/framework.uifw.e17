@@ -209,7 +209,7 @@ _e_exec_cb_exec(void *data, Efreet_Desktop *desktop, char *exec, int remaining)
 //			    ECORE_EXE_PIPE_AUTO | ECORE_EXE_PIPE_READ | ECORE_EXE_PIPE_ERROR |
 //			    ECORE_EXE_PIPE_READ_LINE_BUFFERED | ECORE_EXE_PIPE_ERROR_LINE_BUFFERED,
 //			    inst);
-   if ((desktop) && (desktop->path))
+   if ((desktop) && (desktop->path) && (desktop->path[0]))
      {
         if (!getcwd(buf, sizeof(buf)))
           {
@@ -225,7 +225,7 @@ _e_exec_cb_exec(void *data, Efreet_Desktop *desktop, char *exec, int remaining)
                                 _("Enlightenment was unable to change to directory:<br>"
                                   "<br>"
                                   "%s"),
-			   buf);
+			   desktop->path);
              return NULL;
           }
         e_util_library_path_strip();
@@ -446,10 +446,6 @@ _e_exec_startup_id_pid_find(const Eina_Hash *hash __UNUSED__, const void *key __
    search = data;
    EINA_LIST_FOREACH(value, l, inst)
      {
-        int pid = -1;
-        
-        if (inst->exe)
-           pid = ecore_exe_pid_get(inst->exe);
         if (((search->startup_id > 0) && 
              (search->startup_id == inst->startup_id)) ||
             ((inst->exe) && (search->pid > 1) && 

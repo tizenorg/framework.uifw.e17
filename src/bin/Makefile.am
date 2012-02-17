@@ -9,7 +9,6 @@ INCLUDES = \
 -I$(top_srcdir) \
 -I$(top_srcdir)/src/bin \
 @e_cflags@ \
-@x_cflags@ \
 @cf_cflags@ \
 @VALGRIND_CFLAGS@ \
 @EDJE_DEF@ \
@@ -29,7 +28,11 @@ internal_bin_PROGRAMS = \
 enlightenment_fm_op \
 enlightenment_init \
 enlightenment_sys \
-enlightenment_thumb
+enlightenment_thumb 
+
+if HAVE_EEZE
+internal_bin_PROGRAMS += enlightenment_backlight
+endif
 
 ENLIGHTENMENTHEADERS = \
 e_about.h \
@@ -37,6 +40,7 @@ e_acpi.h \
 e_actions.h \
 e_alert.h \
 e_atoms.h \
+e_backlight.h \
 e_bg.h \
 e_bindings.h \
 e_border.h \
@@ -53,6 +57,7 @@ e_confirm_dialog.h \
 e_container.h \
 e_datastore.h \
 e_desk.h \
+e_deskenv.h \
 e_desklock.h \
 e_dialog.h \
 e_dnd.h \
@@ -176,14 +181,17 @@ e_widget_toolbar.h \
 e_widget_toolbook.h \
 e_win.h \
 e_xinerama.h \
+e_xsettings.h \
 e_zone.h
+
 
 enlightenment_src = \
 e_about.c \
 e_acpi.c \
-e_actions.c \
 e_alert.c \
+e_actions.c \
 e_atoms.c \
+e_backlight.c \
 e_bg.c \
 e_bindings.c \
 e_border.c \
@@ -200,6 +208,7 @@ e_confirm_dialog.c \
 e_container.c \
 e_datastore.c \
 e_desk.c \
+e_deskenv.c \
 e_desklock.c \
 e_dialog.c \
 e_dnd.c \
@@ -318,6 +327,7 @@ e_widget_toolbar.c \
 e_widget_toolbook.c \
 e_win.c \
 e_xinerama.c \
+e_xsettings.c \
 e_zone.c \
 $(ENLIGHTENMENTHEADERS)
 
@@ -326,7 +336,7 @@ e_main.c \
 $(enlightenment_src)
 
 enlightenment_LDFLAGS = -export-dynamic
-enlightenment_LDADD = @e_libs@ @x_libs@ @dlopen_libs@ @cf_libs@ @VALGRIND_LIBS@ -lm
+enlightenment_LDADD = @e_libs@ @dlopen_libs@ @cf_libs@ @VALGRIND_LIBS@ -lm
 
 enlightenment_imc_SOURCES = \
 e.h \
@@ -338,8 +348,8 @@ enlightenment_imc_LDADD = @E_IMC_LIBS@
 
 enlightenment_start_SOURCES = \
 e_start_main.c
-
-enlightenment_start_LDADD = @dlopen_libs@
+enlightenment_start_CFLAGS = $(INCLUDES) @E_START_CFLAGS@
+enlightenment_start_LDADD = @dlopen_libs@ @E_START_LIBS@
 
 enlightenment_thumb_SOURCES = \
 e_sha1.c \
@@ -359,18 +369,37 @@ e_sys_main.c
 
 enlightenment_sys_LDADD = @E_SYS_LIBS@
 
+if HAVE_EEZE
+enlightenment_backlight_SOURCES = \
+e_backlight_main.c
+
+enlightenment_backlight_CFLAGS = @EEZE_CFLAGS@
+enlightenment_backlight_LDADD = @EEZE_LIBS@
+endif
+
 enlightenment_init_SOURCES = \
 e_init_main.c \
 e_xinerama.c
 
 enlightenment_init_LDADD = @E_INIT_LIBS@
 
+#enlightenment_alert_SOURCES = \
+#e_alert_main.c
+
+#enlightenment_alert_LDADD = @E_ALERT_LIBS@
+#enlightenment_alert_CFLAGS = @E_ALERT_CFLAGS@
+
 # HACK! why install-data-hook? install-exec-hook is run after bin_PROGRAMS
 # and before internal_bin_PROGRAMS are installed. install-data-hook is
 # run after both
 setuid_root_mode = a=rx,u+xs
+if HAVE_EEZE
 install-data-hook:
 	@chmod $(setuid_root_mode) $(DESTDIR)$(libdir)/enlightenment/utils/enlightenment_sys$(EXEEXT) || true
-
+	@chmod $(setuid_root_mode) $(DESTDIR)$(libdir)/enlightenment/utils/enlightenment_backlight$(EXEEXT) || true
+else
+install-data-hook:
+	@chmod $(setuid_root_mode) $(DESTDIR)$(libdir)/enlightenment/utils/enlightenment_sys$(EXEEXT) || true
+endif
 installed_headersdir = $(prefix)/include/enlightenment
 installed_headers_DATA = $(ENLIGHTENMENTHEADERS)

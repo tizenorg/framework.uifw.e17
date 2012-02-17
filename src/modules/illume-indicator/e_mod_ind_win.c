@@ -153,6 +153,8 @@ e_mod_ind_win_new(E_Zone *zone)
    /* set this window on proper zone */
    e_border_zone_set(iwin->win->border, zone);
    iwin->win->border->user_skip_winlist = 1;
+   iwin->win->border->lock_focus_in = 1;
+   iwin->win->border->lock_focus_out = 1;
 
    /* set this window to be a dock window. This needs to be done after show 
     * as E will sometimes reset the window type */
@@ -392,9 +394,9 @@ _e_mod_ind_win_cb_mouse_move(void *data, Evas *evas __UNUSED__, Evas_Object *obj
         /* tell edj we are going to start moving */
         edje_object_signal_emit(iwin->o_base, "e,action,move,start", "e");
 
-	/* tell quickpanel to hide because we are going to drag */
-	ecore_x_e_illume_quickpanel_state_send(bd->zone->black_win, 
-					      ECORE_X_ILLUME_QUICKPANEL_STATE_OFF);
+        /* tell quickpanel to hide because we are going to drag */
+        ecore_x_e_illume_quickpanel_state_send(bd->zone->black_win, 
+                                              ECORE_X_ILLUME_QUICKPANEL_STATE_OFF);
 
         /* send message that we are going to start dragging */
         ecore_x_e_illume_drag_start_send(bd->client.win);

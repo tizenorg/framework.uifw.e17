@@ -539,7 +539,6 @@ _e_mod_policy_cb_hook_layout(void *data __UNUSED__, void *data2 __UNUSED__)
                zl = eina_list_append(zl, bd->zone);
           }
      }
-   l = eina_list_free(l);
 
    /* loop the zones that need updating and call the policy update function */
    EINA_LIST_FREE(zl, zone) 
@@ -547,5 +546,4 @@ _e_mod_policy_cb_hook_layout(void *data __UNUSED__, void *data2 __UNUSED__)
         if ((_policy) && (_policy->funcs.zone_layout))
           _policy->funcs.zone_layout(zone);
      }
-   zl = eina_list_free(zl);
 }

@@ -33,7 +33,7 @@ e_hints_init(void)
    roots = ecore_x_window_root_list(&num);
    if (roots)
      {
-        Ecore_X_Atom supported[41];
+        Ecore_X_Atom supported[43];
         int supported_num, i;
 
         supported_num = 0;
@@ -110,6 +110,8 @@ e_hints_init(void)
         supported[supported_num++] = ECORE_X_ATOM_NET_WM_PING;
         supported[supported_num++] = ECORE_X_ATOM_NET_WM_SYNC_REQUEST;
         supported[supported_num++] = ECORE_X_ATOM_NET_WM_SYNC_REQUEST_COUNTER;
+        supported[supported_num++] = ECORE_X_ATOM_E_VIDEO_PARENT;
+        supported[supported_num++] = ECORE_X_ATOM_E_VIDEO_POSITION;
 
         for (i = 0; i < num; i++)
           {

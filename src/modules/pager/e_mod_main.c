@@ -5,7 +5,7 @@
 static E_Gadcon_Client *_gc_init(E_Gadcon *gc, const char *name, const char *id, const char *style);
 static void _gc_shutdown(E_Gadcon_Client *gcc);
 static void _gc_orient(E_Gadcon_Client *gcc, E_Gadcon_Orient orient __UNUSED__);
-static char *_gc_label(E_Gadcon_Client_Class *client_class __UNUSED__);
+static const char *_gc_label(E_Gadcon_Client_Class *client_class __UNUSED__);
 static Evas_Object *_gc_icon(E_Gadcon_Client_Class *client_class __UNUSED__, Evas *evas);
 static const char *_gc_id_new(E_Gadcon_Client_Class *client_class __UNUSED__);
 
@@ -251,7 +251,7 @@ _gc_orient(E_Gadcon_Client *gcc, E_Gadcon_Orient orient __UNUSED__)
    e_gadcon_client_min_size_set(gcc, 16, 16);
 }
 
-static char *
+static const char *
 _gc_label(E_Gadcon_Client_Class *client_class __UNUSED__)
 {
    return _("Pager");
@@ -609,7 +609,7 @@ _pager_window_new(Pager_Desk *pd, E_Border *border)
 	edje_object_part_swallow(pw->o_window, "e.swallow.icon", o);
      }
 
-   if (border->client.icccm.urgent)
+   if (border->client.icccm.urgent && !border->focused)
      {
 	if (!(border->iconic))
 	  edje_object_signal_emit(pd->o_desk, "e,state,urgent", "e");
@@ -1357,7 +1357,7 @@ _pager_cb_event_border_urgent_change(void *data __UNUSED__, int type __UNUSED__,
 	     pw = _pager_desk_window_find(pd, ev->border);
 	     if (pw)
 	       {
-		  if (urgent)
+		  if (urgent && !ev->border->focused)
 		    {
 		       if (!(ev->border->iconic))
 			 {
@@ -2460,7 +2460,7 @@ _pager_popup_cb_action_show(E_Object *obj __UNUSED__, const char *params __UNUSE
 static void
 _pager_popup_cb_action_switch(E_Object *obj __UNUSED__, const char *params, Ecore_Event_Key *ev)
 {
-   int max_x,max_y, desk_x, desk_y;
+   int max_x,max_y, desk_x;
    int x = 0, y = 0;
 
    if (!act_popup)
@@ -2473,7 +2473,6 @@ _pager_popup_cb_action_switch(E_Object *obj __UNUSED__, const char *params, Ecor
 
    e_zone_desk_count_get(act_popup->pager->zone, &max_x, &max_y);
    desk_x = current_desk->x /* + x <=this is always 0 */;
-   desk_y = current_desk->y /* + y <=this is always 0 */;
 
    if (!strcmp(params, "left"))
      x = -1;

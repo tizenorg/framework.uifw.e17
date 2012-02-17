@@ -11,7 +11,7 @@ static void _e_desk_event_desk_before_show_free(void *data, void *ev);
 static void _e_desk_event_desk_after_show_free(void *data, void *ev);
 static void _e_desk_event_desk_deskshow_free(void *data, void *ev);
 static void _e_desk_event_desk_name_change_free(void *data, void *ev);
-static void _e_desk_show_begin(E_Desk *desk, int mode, int dx, int dy);
+static void _e_desk_show_begin(E_Desk *desk, int mode, int x, int dy);
 static void _e_desk_show_end(E_Desk *desk);
 static Eina_Bool _e_desk_show_animator(void *data);
 static void _e_desk_hide_begin(E_Desk *desk, int mode, int dx, int dy);
@@ -48,7 +48,7 @@ e_desk_new(E_Zone *zone, int x, int y)
    Eina_List *l;
    E_Config_Desktop_Name *cfname;
    char name[40];
-   int ok;
+   int ok = 0;
 
    E_OBJECT_CHECK_RETURN(zone, NULL);
    E_OBJECT_TYPE_CHECK_RETURN(zone, E_ZONE_TYPE, NULL);
@@ -61,7 +61,6 @@ e_desk_new(E_Zone *zone, int x, int y)
    desk->y = y;
 
    /* Get current desktop's name */
-   ok = 0;
    EINA_LIST_FOREACH(e_config->desktop_names, l, cfname)
      {
 	if ((cfname->container >= 0) &&
@@ -91,8 +90,8 @@ e_desk_name_set(E_Desk *desk, const char *name)
 
    E_OBJECT_CHECK(desk);
    E_OBJECT_TYPE_CHECK(desk, E_DESK_TYPE);
-   if (desk->name) eina_stringshare_del(desk->name);
-   desk->name = eina_stringshare_add(name);
+
+   eina_stringshare_replace(&desk->name, name);
 
    ev = E_NEW(E_Event_Desk_Name_Change, 1);
    ev->desk = desk;
@@ -107,12 +106,14 @@ e_desk_name_add(int container, int zone, int desk_x, int desk_y, const char *nam
    E_Config_Desktop_Name *cfname;
 
    e_desk_name_del(container, zone, desk_x, desk_y);
+
    cfname = E_NEW(E_Config_Desktop_Name, 1);
    cfname->container = container;
    cfname->zone = zone;
    cfname->desk_x = desk_x;
    cfname->desk_y = desk_y;
    if (name) cfname->name = eina_stringshare_add(name);
+   else cfname->name = NULL;
    e_config->desktop_names = eina_list_append(e_config->desktop_names, cfname);
 }
 
@@ -130,7 +131,7 @@ e_desk_name_del(int container, int zone, int desk_x, int desk_y)
 	     e_config->desktop_names = 
 	       eina_list_remove_list(e_config->desktop_names, l);
 	     if (cfname->name) eina_stringshare_del(cfname->name);
-	     free(cfname);
+	     E_FREE(cfname);
 	     break;
 	  }
      }
@@ -169,7 +170,7 @@ e_desk_name_update(void)
 	    			     ((int) zone->num != cfname->zone)) continue;
 				 if ((cfname->desk_x != d_x) || 
 				     (cfname->desk_y != d_y)) continue;
-				 e_desk_name_set(desk,cfname->name);
+				 e_desk_name_set(desk, cfname->name);
 				 ok = 1;
 				 break;
 		       	      }
@@ -179,7 +180,7 @@ e_desk_name_update(void)
 				 snprintf(name, sizeof(name), 
 					  _(e_config->desktop_default_name), 
 					  d_x, d_y);
-				 e_desk_name_set(desk,name);
+				 e_desk_name_set(desk, name);
 			      }
 			 }
 		    }
@@ -196,9 +197,10 @@ e_desk_show(E_Desk *desk)
    E_Event_Desk_Show *ev;
    E_Event_Desk_Before_Show *eev;
    E_Event_Desk_After_Show *eeev;
+   Edje_Message_Float_Set *msg;
    Eina_List *l;
    E_Shelf *es;
-   int was_zone = 0, x, y, dx = 0, dy = 0, prev_x = 0, prev_y = 0;
+   int was_zone = 0, x, y, dx = 0, dy = 0;
 
    E_OBJECT_CHECK(desk);
    E_OBJECT_TYPE_CHECK(desk, E_DESK_TYPE);
@@ -221,8 +223,6 @@ e_desk_show(E_Desk *desk)
 	     if (desk2->visible)
 	       {
 		  desk2->visible = 0;
-		  prev_x = desk2->x;
-		  prev_y = desk2->y;
 		  dx = desk->x - desk2->x;
 		  dy = desk->y - desk2->y;
 		  if (e_config->desk_flip_animate_mode > 0)
@@ -236,6 +236,15 @@ e_desk_show(E_Desk *desk)
    desk->zone->desk_x_current = desk->x;
    desk->zone->desk_y_current = desk->y;
    desk->visible = 1;
+
+   msg = alloca(sizeof(Edje_Message_Float_Set) + (4 * sizeof(double)));
+   msg->count = 5;
+   msg->val[0] = e_config->desk_flip_animate_time;
+   msg->val[1] = (double) desk->x;
+   msg->val[2] = (double) desk->zone->desk_x_count;
+   msg->val[3] = (double) desk->y;
+   msg->val[4] = (double) desk->zone->desk_y_count;
+   edje_object_message_send(desk->zone->bg_object, EDJE_MESSAGE_FLOAT_SET, 0, msg);
 
    if (desk->zone->bg_object) was_zone = 1;
    if (e_config->desk_flip_animate_mode == 0)
@@ -258,17 +267,14 @@ e_desk_show(E_Desk *desk)
 
    if (e_config->desk_flip_animate_mode > 0)
      _e_desk_show_begin(desk, e_config->desk_flip_animate_mode, dx, dy);
-
-   if (e_config->focus_last_focused_per_desktop)
-     e_desk_last_focused_focus(desk);
+   else
+     {
+        if (e_config->focus_last_focused_per_desktop)
+           e_desk_last_focused_focus(desk);
+     }
 
    if (was_zone)
-     {
-	if (e_config->desk_flip_pan_bg)
-	  e_bg_zone_slide(desk->zone, prev_x, prev_y);
-	else
-	  e_bg_zone_update(desk->zone, E_BG_TRANSITION_DESK);
-     }
+     e_bg_zone_update(desk->zone, E_BG_TRANSITION_DESK);
    else
      e_bg_zone_update(desk->zone, E_BG_TRANSITION_START);
 
@@ -316,7 +322,7 @@ e_desk_show(E_Desk *desk)
 	ecore_event_add(E_EVENT_DESK_AFTER_SHOW, eeev, 
 			_e_desk_event_desk_after_show_free, NULL);
      }
-
+   e_zone_edge_flip_eval(desk->zone);
 }
 
 EAPI void
@@ -515,7 +521,9 @@ static void
 _e_desk_free(E_Desk *desk)
 {
    if (desk->name) eina_stringshare_del(desk->name);
+   desk->name = NULL;
    if (desk->animator) ecore_animator_del(desk->animator);
+   desk->animator = NULL;
    free(desk);
 }
 
@@ -597,6 +605,7 @@ _e_desk_show_begin(E_Desk *desk, int mode, int dx, int dy)
 	       }
 	     else if ((bd->desk == desk) && (!bd->sticky))
 	       {
+                  e_border_tmp_input_hidden_push(bd);
 		  bd->fx.start.t = t;
 		  if (mode == 1)
 		    {
@@ -670,11 +679,24 @@ _e_desk_show_end(E_Desk *desk)
 		  if (!bd->visible)
 		    e_border_show(bd);
 	       }
+             e_border_tmp_input_hidden_pop(bd);
 	  }
      }
 
-   if (e_config->focus_last_focused_per_desktop)
-     e_desk_last_focused_focus(desk);
+   if ((e_config->focus_policy == E_FOCUS_MOUSE) ||
+       (e_config->focus_policy == E_FOCUS_SLOPPY))
+     {
+        if (e_config->focus_last_focused_per_desktop)
+          {
+             if (!e_border_under_pointer_get(desk, NULL))
+                e_desk_last_focused_focus(desk);
+          }
+     }
+   else
+     {
+        if (e_config->focus_last_focused_per_desktop)
+           e_desk_last_focused_focus(desk);
+     }
 
    e_container_border_list_free(bl);
    ecore_x_window_shadow_tree_flush();

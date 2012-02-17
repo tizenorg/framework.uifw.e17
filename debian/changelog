@@ -1,4 +1,68 @@
-e17 (1:1.0.0.001+svn.60234slp2+build14) unstable; urgency=low
+e17 (1:1.0.0.001+svn.65871slp2+build09) unstable; urgency=low
+
+  * Add Feature - app-in-app window resize
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.65871slp2+build09
+
+ -- Gwanglim Lee <gl77.lee@samsung.com>  Thu, 16 Feb 2012 14:45:34 +0900
+
+e17 (1:1.0.0.001+svn.65871slp2+build08) unstable; urgency=low
+
+  * [E_RANDR ] bug fix - add null check code
+    [E_BORDER] bug fix - transient_for child's layer is not correct in border_raise/lower
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.65871slp2+build08
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Fri, 10 Feb 2012 13:43:12 +0900
+
+e17 (1:1.0.0.001+svn.65871slp2+build07) unstable; urgency=low
+
+  * Add Feature - illume window state for app-in-app
+   - Add illume window state to E_Border structure
+  *  Add Feature
+   - COMP_MOVE_LOCK : add window's movement lock / unlock on Compositor
+                     ( it does not effect to X Geometry. it just effect to compositor's evas object geometry )
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.65871slp2+build07
+
+ -- Gwangyeong Mun <kk.moon@samsung.com>  Thu, 02 Feb 2012 17:31:10 +0900
+
+e17 (1:1.0.0.001+svn.65871slp2+build06) unstable; urgency=low
+
+  * Add Feature
+   - COMP_INPUT_REGION_SET : enable set compositor's input region
+   - Add screen_lock/unlock helper function
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.65871slp2+build06
+
+ -- Gwangyeong Mun <kk.moon@samsung.com>  Tue, 27 Dec 2011 19:25:44 +0900
+
+e17 (1:1.0.0.001+svn.65871slp2+build05) unstable; urgency=low
+
+  * Change configure.ac files
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.65871slp2+build05
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Thu, 22 Dec 2011 17:11:05 +0900
+
+e17 (1:1.0.0.001+svn.65871slp2+build04) unstable; urgency=low
+
+  * Change configure.ac and debian/rules files
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.65871slp2+build04
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Wed, 21 Dec 2011 18:53:02 +0900
+
+e17 (1:1.0.0.001+svn.65871slp2+build03) unstable; urgency=low
+
+  * Featuring
+    - _F_COMP_SCREEN_LOCK_          : enable screen lock/unlock feature
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.65871slp2+build03
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Tue, 20 Dec 2011 20:18:54 +0900
+
+e17 (1:1.0.0.001+svn.65871slp2+build02) unstable; urgency=low
 
   * Featuring
     - _F_DO_NOT_USE_SIG_HANDLER_    : not to use e's signal handler
@@ -8,9 +72,19 @@ e17 (1:1.0.0.001+svn.60234slp2+build14) unstable; urgency=low
     - _F_NOTIFICATION_LAYER_POLICY_ : enable notification layer policy
     - _F_COMP_SCREEN_LOCK_          : enable screen lock/unlock feature
   * Git: slp/pkgs/e/e17
-  * Tag: e17_1.0.0.001+svn.60234slp2+build14
+  * Tag: e17_1.0.0.001+svn.65871slp2+build02
 
  -- Doyoun Kang <doyoun.kang@samsung.com>  Tue, 20 Dec 2011 14:14:51 +0900
+
+e17 (1:1.0.0.001+svn.65871slp2+build01) unstable; urgency=low
+
+  * E17 upgrade (svn rev.65871)
+    - SLP uses X lib not XCB 
+    - SLP doesn't make enlightenment_alert binary (Because it uses XCB only)
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.65871slp2+build01
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Mon, 19 Dec 2011 13:51:02 +0900
 
 e17 (1:1.0.0.001+svn.60234slp2+build13) unstable; urgency=low
 

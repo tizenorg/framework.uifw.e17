@@ -46,9 +46,7 @@ e_module_shutdown(void)
 
    /* do not use EINA_LIST_FREE! e_object_del modifies list */
    if (x_fatal)
-     {
-        e_module_save_all();
-     }
+       e_module_save_all();
    else
      {
         while (_e_modules)
@@ -81,7 +79,7 @@ e_module_all_load(void)
      {
 	if (!em) continue;
 
-       printf ("[E17_MODULE_INFO] NAME:%s,   ENABLE:%d,  DELAYED:%d\n", em->name, em->enabled, em->delayed);
+        printf ("[E17_MODULE_INFO] NAME:%s,   ENABLE:%d,  DELAYED:%d\n", em->name, em->enabled, em->delayed);
 
 	if ((em->delayed) && (em->enabled))
 	  {
@@ -97,9 +95,9 @@ e_module_all_load(void)
 
 	     if (!em->name) continue;
 
-	     setenv("E_MODULE_LOAD", em->name, 1);
+	     e_util_env_set("E_MODULE_LOAD", em->name);
 	     snprintf (buf, sizeof(buf), _("Loading Module: %s"), em->name);
-	     e_init_status_set(em->name);
+	     e_init_status_set(buf);
 
 	     m = e_module_new(em->name);
 	     if (m) e_module_enable(m);
@@ -143,7 +141,7 @@ e_module_new(const char *name)
 	m->error = 1;
 	goto init_done;
      }
-   m->handle = dlopen(modpath, RTLD_NOW | RTLD_GLOBAL);
+   m->handle = dlopen(modpath, (RTLD_NOW | RTLD_GLOBAL));
    if (!m->handle)
      {
 	snprintf(body, sizeof(body), 
@@ -575,7 +573,6 @@ _e_module_sort_priority(const void *d1, const void *d2)
    m2 = d2;
    return (m2->priority - m1->priority);
 }
-
 
 static void 
 _e_module_event_update_free(void *data __UNUSED__, void *event) 

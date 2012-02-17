@@ -35,6 +35,9 @@ e_modapi_init(E_Module *m)
    e_configure_registry_item_add("appearance/theme", 20, _("Theme"), NULL, 
                                  "preferences-desktop-theme", 
                                  e_int_config_theme);
+   e_configure_registry_item_add("appearance/xsettings", 20, _("Applications"), NULL, 
+                                 "preferences-desktop-theme", 
+                                 e_int_config_xsettings);
    e_configure_registry_item_add("appearance/colors", 30, _("Colors"), NULL,
                                  "preferences-desktop-color",
                                  e_int_config_color_classes);
@@ -109,6 +112,8 @@ e_modapi_shutdown(E_Module *m __UNUSED__)
       e_object_del(E_OBJECT(cfd));
    while ((cfd = e_config_dialog_get("E", "appearance/wallpaper")))
       e_object_del(E_OBJECT(cfd));
+   while ((cfd = e_config_dialog_get("E", "appearance/xsettings")))
+     e_object_del(E_OBJECT(cfd));
    
    e_configure_registry_item_del("appearance/startup");
    e_configure_registry_item_del("appearance/scale");
@@ -120,6 +125,7 @@ e_modapi_shutdown(E_Module *m __UNUSED__)
    e_configure_registry_item_del("appearance/colors");
    e_configure_registry_item_del("appearance/theme");
    e_configure_registry_item_del("appearance/wallpaper");
+   e_configure_registry_item_del("appearance/xsettings");
    e_configure_registry_category_del("appearance");
    
    while ((cfd = e_config_dialog_get("E", "internal/borders_border")))

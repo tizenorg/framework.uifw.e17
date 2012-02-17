@@ -74,7 +74,7 @@ e_int_config_desklock(E_Container *con, const char *params __UNUSED__)
    v->override_auto_apply = 1;
 
    cfd = e_config_dialog_new(con, _("Screen Lock Settings"), "E",
-			     "screen/screen_lock", "preferences-desklock",
+			     "screen/screen_lock", "preferences-system-lock-screen",
 			     0, v, NULL);
    return cfd;
 }
@@ -189,14 +189,12 @@ _basic_screensaver_lock_cb_changed(void *data, Evas_Object *o __UNUSED__)
 }
 
 static Evas_Object *
-_basic_create(E_Config_Dialog *cfd, Evas *evas, E_Config_Dialog_Data *cfdata)
+_basic_create(E_Config_Dialog *cfd __UNUSED__, Evas *evas, E_Config_Dialog_Data *cfdata)
 {
    Evas_Object *otb, *ol, *ow, *of;
    E_Radio_Group *rg;
-   E_Zone *zone;
    int screen_count;
 
-   zone = e_zone_current_get(cfd->con);
    screen_count = ecore_x_xinerama_screen_count_get();
 
    otb = e_widget_toolbook_add(evas, (24 * e_scale), (24 * e_scale));

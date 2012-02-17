@@ -78,38 +78,31 @@ e_int_config_mime_edit_done(void *data)
 static void
 _fill_data(E_Config_Dialog_Data *cfdata) 
 {
-   const char *homedir;
+   const char *s, *homedir;
+   Eina_List *l;
    char buf[4096];
 
    if (!cfdata) return;
    homedir = e_user_homedir_get();
 
    snprintf(buf, sizeof(buf), "/usr/local/etc/mime.types");
-   if (ecore_file_exists(buf))
-     _load_mimes(cfdata, buf);
-
+   if (ecore_file_exists(buf)) _load_mimes(cfdata, buf);
    snprintf(buf, sizeof(buf), "/etc/mime.types");
-   if (ecore_file_exists(buf))
-     _load_mimes(cfdata, buf);
+   if (ecore_file_exists(buf)) _load_mimes(cfdata, buf);
 
-   snprintf(buf, sizeof(buf), "/usr/local/share/mime/globs");
-   if (ecore_file_exists(buf))
-     _load_globs(cfdata, buf);
-
-   snprintf(buf, sizeof(buf), "/usr/share/mime/globs");
-   if (ecore_file_exists(buf))
-     _load_globs(cfdata, buf);
-
+   EINA_LIST_FOREACH(efreet_config_dirs_get(), l, s)
+     {
+        snprintf(buf, sizeof(buf), "%s/mime/globs", s);
+        if (ecore_file_exists(buf)) _load_globs(cfdata, buf);
+     }
+   
    snprintf(buf, sizeof(buf), "%s/.mime.types", homedir);
-   if (ecore_file_exists(buf))
-     _load_mimes(cfdata, buf);
-
-   snprintf(buf, sizeof(buf), "%s/.local/share/mime/globs", homedir);
-   if (ecore_file_exists(buf))
-     _load_globs(cfdata, buf);
-
+   if (ecore_file_exists(buf)) _load_mimes(cfdata, buf);
+   
+   snprintf(buf, sizeof(buf), "%s/mime/globs", efreet_data_home_get());
+   if (ecore_file_exists(buf)) _load_globs(cfdata, buf);
+   
    cfdata->mimes = eina_list_sort(cfdata->mimes, 0, _sort_mimes);
-
    _fill_types(cfdata);
 }
 
@@ -343,7 +336,7 @@ _load_mimes(E_Config_Dialog_Data *cfdata, char *file)
 			    cfdata->mimes = eina_list_append(cfdata->mimes, mime);
 			 }
 		    }
-	       }
+               }
 	  }
 	while ((*p != '\n') && (*p != 0));
      }
@@ -493,36 +486,14 @@ static Config_Mime *
 _find_mime(E_Config_Dialog_Data *cfdata, char *mime) 
 {
    Config_Mime *cm;
-   const char *tmp;
    Eina_List *l;
-
+                    
    if (!cfdata) return NULL;
-
-   if (eina_list_count(cfdata->mimes) > 10)
+   EINA_LIST_FOREACH(cfdata->mimes, l, cm)
      {
-	tmp = eina_stringshare_add(mime);
-
-	EINA_LIST_FOREACH(cfdata->mimes, l, cm)
-	  {
-	     if (!cm) continue;
-	     if (cm->mime != mime) continue;
-
-	     eina_stringshare_del(tmp);
-	     return cm;
-	  }
-
-	eina_stringshare_del(tmp);
+        if (!cm) continue;
+        if (!strcmp(cm->mime, mime)) return cm;
      }
-   else
-     {
-	EINA_LIST_FOREACH(cfdata->mimes, l, cm)
-	  {
-	     if (!cm) continue;
-	     if (strcmp(cm->mime, mime)) continue;
-	     return cm;
-	  }
-     }
-
    return NULL;
 }
 

@@ -252,7 +252,7 @@ ALL_LINGUAS="bg ca cs da de el eo es fi fr fr_CH he hu it ja ko nb nl pl pt_BR r
 AC_SUBST(ALL_LINGUAS)
 
 m4_ifdef([AM_GNU_GETTEXT_VERSION], [
-AM_GNU_GETTEXT_VERSION([0.12.1])
+AM_GNU_GETTEXT_VERSION([0.17])
 ])
 
 m4_ifdef([AM_GNU_GETTEXT], [
@@ -376,12 +376,12 @@ eeze_mount=
 EEZE_MOUNT_CONFIG=0
 if test "x$e_cv_want_mount_eeze" != "xno" ; then
       AC_CHECK_LIB([eeze], [eeze_disk_function],
-##        [
-##           eeze_mount="eeze >= 1.1.0"
-##           EEZE_MOUNT_CONFIG=1
-##           AC_DEFINE_UNQUOTED([HAVE_EEZE_MOUNT], [1], [enable eeze mounting])
-##           AC_MSG_NOTICE([eeze mounting enabled])
-##        ],
+        [
+           eeze_mount="eeze >= 1.0.0 ecore-con >= 1.0.0"
+           EEZE_MOUNT_CONFIG=1
+           AC_DEFINE_UNQUOTED([HAVE_EEZE_MOUNT], [1], [enable eeze mounting])
+           AC_MSG_NOTICE([eeze mounting enabled])
+        ],
         [
            AC_MSG_NOTICE([eeze mounting disabled])
            e_cv_want_mount_eeze=no
@@ -398,7 +398,7 @@ AM_CONDITIONAL([HAVE_EEZE_MOUNT], [false])
 test -n "$hal_mount" && AC_DEFINE_UNQUOTED([HAVE_HAL_MOUNT], [1], [enable HAL mounting])
 test -n "$udisks_mount" && AC_DEFINE_UNQUOTED([HAVE_UDISKS_MOUNT], [1], [enable Udisks mounting])
 AM_CONDITIONAL([HAVE_UDISKS_MOUNT], [test -n "$udisks_mount"])
-##AM_CONDITIONAL([HAVE_EEZE_MOUNT], [test -n "$eeze_mount"])
+AM_CONDITIONAL([HAVE_EEZE_MOUNT], [test -n "$eeze_mount"])
 
 # doxygen program for documentation building
 
@@ -409,6 +409,10 @@ PKG_CHECK_MODULES(E_REMOTE, [
   ecore >= 1.0.0
   ecore-ipc >= 1.0.0
   eet >= 1.4.0
+  eina >= 1.0.0
+])
+
+PKG_CHECK_MODULES(E_START, [
   eina >= 1.0.0
 ])
 
@@ -430,7 +434,13 @@ PKG_CHECK_MODULES(E_THUMB, [
   efreet >= 1.0.0
 ])
 
-efm_requires="ecore >= 1.0.0 ecore-file >= 1.0.0 ecore-ipc >= 1.0.0 eet >= 1.4.0 efreet >= 1.0.0 eina >= 1.0.0 edbus >= 1.0.0"
+efm_requires="\
+ecore >= 1.0.0 \
+ecore-file >= 1.0.0 \
+ecore-ipc >= 1.0.0 \
+eet >= 1.4.0 \
+efreet >= 1.0.0 \
+eina >= 1.0.0"
 efm_requires+=" $eeze_mount $dbus_mount $hal_mount $udisks_mount"
 
 PKG_CHECK_MODULES(E_FM, [$efm_requires])
@@ -444,6 +454,7 @@ PKG_CHECK_MODULES(E_FM_OP, [
 PKG_CHECK_MODULES(E_FM_OPEN, [
   ecore >= 1.0.0
   ecore-ipc >= 1.0.0
+  ecore-con >= 1.0.0
   eet >= 1.4.0
   eina >= 1.0.0
 ])
@@ -485,9 +496,27 @@ PKG_CHECK_MODULES(E, [
   $udisks_mount
   $device_backend
 ])
-requirements_e="evas >= 1.0.0 ecore >= 1.0.0 ecore-x >= 1.0.0 ecore-evas >= 1.0.0 ecore-con >= 1.0.0 ecore-ipc >= 1.0.0 ecore-file >= 1.0.0 eet >= 1.4.0 edje >= 1.0.0 efreet >= 1.0.0 efreet-mime >= 1.0.0 eina >= 1.0.0 dbus-1 edbus >= 1.0.0 $hal_mount $udisks_mount $eeze_mount $device_backend"
+requirements_e="\
+evas >= 1.0.0 \
+ecore >= 1.0.0 \
+ecore-x >= 1.0.0 \
+ecore-evas >= 1.0.0 \
+ecore-con >= 1.0.0 \
+ecore-ipc >= 1.0.0 \
+ecore-file >= 1.0.0 \
+eet >= 1.4.0 \
+edje >= 1.0.0 \
+efreet >= 1.0.0 \
+efreet-mime >= 1.0.0 \
+eina >= 1.0.0 \
+dbus-1 \
+edbus >= 1.0.0 \
+$hal_mount \
+$udisks_mount \
+$eeze_mount \
+$device_backend"
 
-AC_E_CHECK_PKG(ECORE_IMF, [ecore-imf >= 1.0.0 ecore-imf-evas >= 1.0.0], [], [:])
+AC_E_CHECK_PKG(ECORE_IMF, [ ecore-imf >= 1.0.0 ecore-imf-evas >= 1.0.0 ], [], [:])
 
 e_libs=$E_LIBS" "$LIBINTL" "$fnmatch_libs" "$ECORE_IMF_LIBS" "$execinfo_libs
 e_cflags="-DUSE_E_CONFIG_H "$E_CFLAGS" "$ECORE_IMF_CFLAGS
@@ -505,6 +534,10 @@ e_extra_features+="-D_F_WINDOW_GROUP_RAISE_ "
 e_extra_features+="-D_F_NOTIFICATION_LAYER_POLICY_ "
 # enable screen lock / unlock
 e_extra_features+="-D_F_COMP_SCREEN_LOCK_ "
+# enable set compositor's input region
+e_extra_features+="-D_F_COMP_INPUT_REGION_SET_ "
+# enable window move lock / unlock
+e_extra_features+="-D_F_COMP_MOVE_LOCK_ "
 
 have_extra_features=no
 AC_ARG_ENABLE(extra_features,
@@ -562,22 +595,27 @@ AC_DEFINE(E_INTERNAL, 1, "This define can be used to wrap internal E stuff, as c
 AM_CONDITIONAL(HAVE_BATTERY, false)
 define([CHECK_MODULE_BATTERY],
 [
-  AC_E_CHECK_PKG(BATTERY, [ecore >= 1.0.0 ecore-file >= 1.0.0 ecore-con >= 1.0.0 eina >= 1.0.0], [], [BATTERY=false])
+  AC_E_CHECK_PKG(BATTERY, [ ecore >= 1.0.0 ecore-file >= 1.0.0 ecore-con >= 1.0.0 eina >= 1.0.0 ], [], [BATTERY=false])
 ])
 
+have_openbsd="no"
 BATTERY_LDFLAGS=
 case "$host_os" in
   darwin*)
     BATTERY_LDFLAGS="-framework Foundation -framework IOKit"
   ;;
+  openbsd*)
+    have_openbsd="yes"
+  ;;
 esac
 
 AC_SUBST(BATTERY_LDFLAGS)
+AM_CONDITIONAL([HAVE_OPENBSD], [test "x${have_openbsd}" = "xyes"])
 
 AM_CONDITIONAL(HAVE_TEMPERATURE, false)
 define([CHECK_MODULE_TEMPERATURE],
 [
-  AC_E_CHECK_PKG(TEMPERATURE, [ecore >= 1.0.0 ecore-file >= 1.0.0 eina >= 1.0.0], [], [TEMPERATURE=false])
+  AC_E_CHECK_PKG(TEMPERATURE, [ ecore >= 1.0.0 ecore-file >= 1.0.0 eina >= 1.0.0 ], [], [TEMPERATURE=false])
 ])
 
 have_exchange=no
@@ -606,7 +644,7 @@ AC_ARG_ENABLE([enotify],
   AC_CACHE_VAL([e_cv_want_enotify], [e_cv_want_enotify=yes])
 )
 if test "x$e_cv_want_enotify" != "xno" ; then
-  AC_E_CHECK_PKG(ENOTIFY, [ edbus >= 1.0.999 enotify >= 1.0.999 ], 
+  AC_E_CHECK_PKG(ENOTIFY, [ edbus >= 1.0.0 enotify >= 1.0.0 ], 
   [
     AC_DEFINE_UNQUOTED([HAVE_ENOTIFY], [1], [enable enotify])
   ], 
@@ -653,7 +691,7 @@ AC_SUBST(SOUND_LIBS)
 AM_CONDITIONAL(HAVE_ECONNMAN, false)
 define([CHECK_MODULE_CONNMAN],
 [
-  AC_E_CHECK_PKG(ECONNMAN, [edbus >= 1.0.0 econnman >= 1.0.0], [], [CONNMAN=false])
+  AC_E_CHECK_PKG(ECONNMAN, [ edbus >= 1.0.0 econnman >= 1.0.0 ], [], [CONNMAN=false])
 ])
 AC_SUBST(ECONNMAN_CFLAGS)
 AC_SUBST(ECONNMAN_LIBS)
@@ -661,7 +699,7 @@ AC_SUBST(ECONNMAN_LIBS)
 AM_CONDITIONAL(HAVE_EBLUEZ, false)
 define([CHECK_MODULE_BLUEZ],
 [
-  AC_E_CHECK_PKG(EBLUEZ, [edbus >= 1.0.0 ebluez >= 1.0.0], [], [BLUEZ=false])
+  AC_E_CHECK_PKG(EBLUEZ, [ edbus >= 1.0.0 ebluez >= 1.0.0 ], [], [BLUEZ=false])
 ])
 AC_SUBST(EBLUEZ_CFLAGS)
 AC_SUBST(EBLUEZ_LIBS)
@@ -669,10 +707,11 @@ AC_SUBST(EBLUEZ_LIBS)
 AM_CONDITIONAL(HAVE_EOFONO, false)
 define([CHECK_MODULE_OFONO],
 [
-  AC_E_CHECK_PKG(EOFONO, [edbus >= 1.0.0 eofono >= 1.0.0], [], [OFONO=false])
+  AC_E_CHECK_PKG(EOFONO, [ edbus >= 1.0.0 eofono >= 1.0.0 ], [], [OFONO=false])
 ])
 AC_SUBST(EOFONO_CFLAGS)
 AC_SUBST(EOFONO_LIBS)
+
 
 AC_E_OPTIONAL_MODULE([ibar], true)
 AC_E_OPTIONAL_MODULE([dropshadow], true)
@@ -680,6 +719,7 @@ AC_E_OPTIONAL_MODULE([clock], true)
 AC_E_OPTIONAL_MODULE([pager], true)
 AC_E_OPTIONAL_MODULE([battery], true, [CHECK_MODULE_BATTERY])
 AC_E_OPTIONAL_MODULE([temperature], true, [CHECK_MODULE_TEMPERATURE])
+AC_E_OPTIONAL_MODULE([notification], true, [CHECK_MODULE_NOTIFICATION])
 AC_E_OPTIONAL_MODULE([cpufreq], true)
 AC_E_OPTIONAL_MODULE([ibox], true)
 AC_E_OPTIONAL_MODULE([start], true)
@@ -715,6 +755,9 @@ AC_E_OPTIONAL_MODULE([everything], true)
 AC_E_OPTIONAL_MODULE([systray], true)
 AC_E_OPTIONAL_MODULE([comp], true)
 AC_E_OPTIONAL_MODULE([shot], true)
+AC_E_OPTIONAL_MODULE([backlight], true)
+AC_E_OPTIONAL_MODULE([tasks], true)
+AC_E_OPTIONAL_MODULE([conf_randr], true)
 
 SUSPEND=""
 HIBERNATE=""
@@ -742,7 +785,6 @@ case "$host_os" in
       ;;
 esac
 
-
 AC_OUTPUT([
 Makefile
 enlightenment.spec
@@ -764,6 +806,8 @@ src/modules/battery/Makefile
 src/modules/battery/module.desktop
 src/modules/temperature/Makefile
 src/modules/temperature/module.desktop
+src/modules/notification/Makefile
+src/modules/notification/module.desktop
 src/modules/cpufreq/Makefile
 src/modules/cpufreq/module.desktop
 src/modules/ibox/Makefile
@@ -811,6 +855,8 @@ src/modules/conf_interaction/Makefile
 src/modules/conf_interaction/module.desktop
 src/modules/msgbus/Makefile
 src/modules/msgbus/module.desktop
+src/modules/conf_randr/Makefile
+src/modules/conf_randr/module.desktop
 src/modules/gadman/Makefile
 src/modules/gadman/module.desktop
 src/modules/mixer/Makefile
@@ -829,6 +875,7 @@ src/modules/illume2/module.desktop
 src/modules/illume2/keyboards/Makefile
 src/modules/illume2/policies/Makefile
 src/modules/illume2/policies/illume/Makefile
+src/modules/illume2/policies/tablet/Makefile
 src/modules/illume-home/Makefile
 src/modules/illume-home/module.desktop
 src/modules/illume-home-toggle/Makefile
@@ -840,6 +887,7 @@ src/modules/illume-keyboard/Makefile
 src/modules/illume-keyboard/module.desktop
 src/modules/illume-keyboard/keyboards/Makefile
 src/modules/illume-keyboard/dicts/Makefile
+src/modules/illume-keyboard/images/Makefile
 src/modules/illume-indicator/Makefile
 src/modules/illume-indicator/module.desktop
 src/modules/illume-indicator/images/Makefile
@@ -860,13 +908,16 @@ src/modules/comp/Makefile
 src/modules/comp/module.desktop
 src/modules/shot/Makefile
 src/modules/shot/module.desktop
+src/modules/backlight/Makefile
+src/modules/backlight/module.desktop
+src/modules/tasks/Makefile
+src/modules/tasks/module.desktop
 src/preload/Makefile
 data/Makefile
 data/images/Makefile
 data/input_methods/Makefile
 data/themes/Makefile
 data/themes/images/Makefile
-data/other/Makefile
 data/xsession/Makefile
 data/xsession/enlightenment.desktop
 data/tools/Makefile
@@ -875,6 +926,7 @@ data/etc/sysactions.conf
 data/icons/Makefile
 data/backgrounds/Makefile
 doc/Makefile
+doc/Doxyfile
 doc/e.dox
 config/Makefile
 config/default/Makefile

@@ -8,11 +8,6 @@ EAPI E_Path *path_icons = NULL;
 EAPI E_Path *path_modules = NULL;
 EAPI E_Path *path_backgrounds = NULL;
 EAPI E_Path *path_messages = NULL;
-EAPI int restart = 0;
-EAPI int good = 0;
-EAPI int evil = 0;
-EAPI int starting = 1;
-EAPI int stopping = 0;
 
 typedef struct _E_Util_Fake_Mouse_Up_Info E_Util_Fake_Mouse_Up_Info;
 typedef struct _E_Util_Image_Import_Settings E_Util_Image_Import_Settings;
@@ -990,7 +985,7 @@ EAPI Evas_Object *
 e_util_icon_theme_icon_add(const char *icon_name, unsigned int size, Evas *evas)
 {
    if (!icon_name) return NULL;
-   if (icon_name[0] == '/') return e_util_icon_add(icon_name, evas);
+   if (icon_name[0] == '/') return _e_util_icon_add(icon_name, evas, size);
    else
      {
 	Evas_Object *obj;
@@ -1576,14 +1571,14 @@ _e_util_conf_timer_new(void *data)
 }
 
 EAPI Eina_Bool
-e_util_module_config_check(const char *module_name, int conf, int epoch, int version)
+e_util_module_config_check(const char *module_name, int loaded, int current)
 {
-   if ((conf >> 16) < epoch)
+   if ((loaded >> 16) < (current >> 16))
      {
 	ecore_timer_add(1.0, _e_util_conf_timer_old, strdup(module_name));
 	return EINA_FALSE;
      }
-   else if (conf > version)
+   else if (loaded > current)
      {
 	ecore_timer_add(1.0, _e_util_conf_timer_new, strdup(module_name));
 	return EINA_FALSE;

@@ -84,7 +84,6 @@ EAPI E_Manager *
 e_manager_new(Ecore_X_Window root, int num)
 {
    E_Manager *man;
-   Ecore_Event_Handler *h;
 
    if (!ecore_x_window_manage(root)) return NULL;
    ecore_x_window_background_color_set(root, 0, 0, 0);
@@ -106,22 +105,46 @@ e_manager_new(Ecore_X_Window root, int num)
 	man->win = man->root;
      }
 
-   h = ecore_event_handler_add(ECORE_X_EVENT_WINDOW_SHOW_REQUEST, _e_manager_cb_window_show_request, man);
-   if (h) man->handlers = eina_list_append(man->handlers, h);
-   h = ecore_event_handler_add(ECORE_X_EVENT_WINDOW_CONFIGURE, _e_manager_cb_window_configure, man);
-   if (h) man->handlers = eina_list_append(man->handlers, h);
-   h = ecore_event_handler_add(ECORE_EVENT_KEY_DOWN, _e_manager_cb_key_down, man);
-   if (h) man->handlers = eina_list_append(man->handlers, h);
-   h = ecore_event_handler_add(ECORE_EVENT_KEY_UP, _e_manager_cb_key_up, man);
-   if (h) man->handlers = eina_list_append(man->handlers, h);
-   h = ecore_event_handler_add(ECORE_X_EVENT_FRAME_EXTENTS_REQUEST, _e_manager_cb_frame_extents_request, man);
-   if (h) man->handlers = eina_list_append(man->handlers, h);
-   h = ecore_event_handler_add(ECORE_X_EVENT_PING, _e_manager_cb_ping, man);
-   if (h) man->handlers = eina_list_append(man->handlers, h);
-   h = ecore_event_handler_add(ECORE_X_EVENT_SCREENSAVER_NOTIFY, _e_manager_cb_screensaver_notify, man);
-   if (h) man->handlers = eina_list_append(man->handlers, h);
-   h = ecore_event_handler_add(ECORE_X_EVENT_CLIENT_MESSAGE, _e_manager_cb_client_message, man);
-   if (h) man->handlers = eina_list_append(man->handlers, h);
+   man->handlers = 
+     eina_list_append(man->handlers, 
+                      ecore_event_handler_add(ECORE_X_EVENT_WINDOW_SHOW_REQUEST, 
+                                              _e_manager_cb_window_show_request, 
+                                              man));
+   man->handlers = 
+     eina_list_append(man->handlers, 
+                      ecore_event_handler_add(ECORE_X_EVENT_WINDOW_CONFIGURE, 
+                                              _e_manager_cb_window_configure, 
+                                              man));
+   man->handlers = 
+     eina_list_append(man->handlers, 
+                      ecore_event_handler_add(ECORE_EVENT_KEY_DOWN, 
+                                              _e_manager_cb_key_down, 
+                                              man));
+   man->handlers = 
+     eina_list_append(man->handlers, 
+                      ecore_event_handler_add(ECORE_EVENT_KEY_UP, 
+                                              _e_manager_cb_key_up, 
+                                              man));
+   man->handlers = 
+     eina_list_append(man->handlers, 
+                      ecore_event_handler_add(ECORE_X_EVENT_FRAME_EXTENTS_REQUEST, 
+                                              _e_manager_cb_frame_extents_request, 
+                                              man));
+   man->handlers = 
+     eina_list_append(man->handlers, 
+                      ecore_event_handler_add(ECORE_X_EVENT_PING, 
+                                              _e_manager_cb_ping, 
+                                              man));
+   man->handlers = 
+     eina_list_append(man->handlers, 
+                      ecore_event_handler_add(ECORE_X_EVENT_SCREENSAVER_NOTIFY, 
+                                              _e_manager_cb_screensaver_notify, 
+                                              man));
+   man->handlers = 
+     eina_list_append(man->handlers, 
+                      ecore_event_handler_add(ECORE_X_EVENT_CLIENT_MESSAGE, 
+                                              _e_manager_cb_client_message, 
+                                              man));
 
    man->pointer = e_pointer_window_new(man->root, 1);
 
@@ -543,6 +566,12 @@ e_manager_comp_src_list(E_Manager *man)
    return man->comp->func.src_list_get(man->comp->data, man);
 }
 
+EAPI E_Manager_Comp_Source*
+e_manager_comp_src_get(E_Manager *man, Ecore_X_Window win)
+{
+   return man->comp->func.src_get(man->comp->data, man, win);
+}
+
 EAPI Evas_Object *
 e_manager_comp_src_image_get(E_Manager *man, E_Manager_Comp_Source *src)
 {
@@ -578,6 +607,78 @@ e_manager_comp_src_hidden_get(E_Manager *man, E_Manager_Comp_Source *src)
 {
    return man->comp->func.src_hidden_get(man->comp->data, man, src);
 }
+
+EAPI Ecore_X_Window
+e_manager_comp_src_window_get(E_Manager *man, E_Manager_Comp_Source *src)
+{
+   return man->comp->func.src_window_get(man->comp->data, man, src);
+}
+
+EAPI E_Popup *
+e_manager_comp_src_popup_get(E_Manager *man, E_Manager_Comp_Source *src)
+{
+   return man->comp->func.src_popup_get(man->comp->data, man, src);
+}
+
+EAPI E_Border *
+e_manager_comp_src_border_get(E_Manager *man, E_Manager_Comp_Source *src)
+{
+   return man->comp->func.src_border_get(man->comp->data, man, src);
+}
+
+#ifdef _F_COMP_SCREEN_LOCK_
+EAPI void
+e_manager_comp_screen_lock(E_Manager *man)
+{
+   E_OBJECT_CHECK(man);
+   E_OBJECT_TYPE_CHECK(man, E_MANAGER_TYPE);
+   if (!man->comp) return;
+   return man->comp->func.screen_lock(man->comp->data, man);
+}
+
+EAPI void
+e_manager_comp_screen_unlock(E_Manager *man)
+{
+   E_OBJECT_CHECK(man);
+   E_OBJECT_TYPE_CHECK(man, E_MANAGER_TYPE);
+   if (!man->comp) return;
+   return man->comp->func.screen_unlock(man->comp->data, man);
+}
+#endif
+
+#ifdef _F_COMP_INPUT_REGION_SET_
+EAPI Eina_Bool
+e_manager_comp_src_input_region_set(E_Manager *man, E_Manager_Comp_Source *src, int x, int y, int w, int h)
+{
+   E_OBJECT_CHECK_RETURN(man, EINA_FALSE);
+   E_OBJECT_TYPE_CHECK_RETURN(man, E_MANAGER_TYPE, EINA_FALSE);
+   if (!man->comp) return EINA_FALSE;
+   E_OBJECT_CHECK_RETURN(src, EINA_FALSE);
+   return man->comp->func.src_input_region_set(man->comp->data, man, src, x, y, w, h);
+}
+#endif
+
+#ifdef _F_COMP_MOVE_LOCK_
+EAPI Eina_Bool
+e_manager_comp_src_move_lock(E_Manager *man, E_Manager_Comp_Source *src)
+{
+   E_OBJECT_CHECK_RETURN(man, EINA_FALSE);
+   E_OBJECT_TYPE_CHECK_RETURN(man, E_MANAGER_TYPE, EINA_FALSE);
+   if (!man->comp) return EINA_FALSE;
+   E_OBJECT_CHECK_RETURN(src, EINA_FALSE);
+   return man->comp->func.src_move_lock(man->comp->data, man, src);
+}
+
+EAPI Eina_Bool
+e_manager_comp_src_move_unlock(E_Manager *man, E_Manager_Comp_Source *src)
+{
+   E_OBJECT_CHECK_RETURN(man, EINA_FALSE);
+   E_OBJECT_TYPE_CHECK_RETURN(man, E_MANAGER_TYPE, EINA_FALSE);
+   if (!man->comp) return EINA_FALSE;
+   E_OBJECT_CHECK_RETURN(src, EINA_FALSE);
+   return man->comp->func.src_move_unlock(man->comp->data, man, src);
+}
+#endif
 
 EAPI void
 e_manager_comp_event_resize_send(E_Manager *man)

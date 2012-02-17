@@ -5,7 +5,7 @@
 static E_Gadcon_Client *_gc_init(E_Gadcon *gc, const char *name, const char *id, const char *style);
 static void _gc_shutdown(E_Gadcon_Client *gcc);
 static void _gc_orient(E_Gadcon_Client *gcc, E_Gadcon_Orient orient);
-static char *_gc_label(E_Gadcon_Client_Class *client_class);
+static const char *_gc_label(E_Gadcon_Client_Class *client_class);
 static Evas_Object *_gc_icon(E_Gadcon_Client_Class *client_class, Evas *evas);
 static const char *_gc_id_new(E_Gadcon_Client_Class *client_class);
 
@@ -82,7 +82,7 @@ _gc_init(E_Gadcon *gc, const char *name, const char *id, const char *style)
 
 #ifdef HAVE_EEZE
    eeze_init();
-#else
+#elif !defined __OpenBSD__
    e_dbus_init();
    e_hal_init();
 #endif
@@ -103,7 +103,7 @@ _gc_shutdown(E_Gadcon_Client *gcc)
 
 #ifdef HAVE_EEZE
    eeze_shutdown();
-#else
+#elif !defined __OpenBSD__
    e_hal_shutdown();
    e_dbus_shutdown();
 #endif
@@ -139,7 +139,7 @@ _gc_orient(E_Gadcon_Client *gcc, E_Gadcon_Orient orient __UNUSED__)
    e_gadcon_client_min_size_set(gcc, mw, mh);
 }
 
-static char *
+static const char *
 _gc_label(E_Gadcon_Client_Class *client_class __UNUSED__)
 {
    return _("Battery");
@@ -364,6 +364,8 @@ _battery_config_updated(void)
      {
 #ifdef HAVE_EEZE
         ok = _battery_udev_start();
+#elif defined __OpenBSD__
+	ok = _battery_openbsd_start();
 #else
         ok = _battery_dbus_start();
 #endif
@@ -561,13 +563,19 @@ _battery_update(int full, int time_left, int time_full, Eina_Bool have_battery, 
           }
         else if (have_power || ((time_left / 60) > battery_config->alert))
           _battery_warning_popup_destroy(inst);
+        if ((have_battery) && (!have_power) && (full >= 0) &&
+            (battery_config->suspend_below > 0) &&
+            (full < battery_config->suspend_below))
+           e_sys_action_do(E_SYS_HIBERNATE, NULL);
      }
    if (!have_battery)
      e_powersave_mode_set(E_POWERSAVE_MODE_LOW);
    else
      {
-        if ((have_power) || (full > 95))
+        if (have_power)
           e_powersave_mode_set(E_POWERSAVE_MODE_LOW);
+        else if (full > 95)
+          e_powersave_mode_set(E_POWERSAVE_MODE_MEDIUM);
         else if (full > 30)
           e_powersave_mode_set(E_POWERSAVE_MODE_HIGH);
         else
@@ -624,9 +632,9 @@ _battery_cb_exe_data(void *data __UNUSED__, int type __UNUSED__, void *event)
                   int have_power = 0;
            
                   if (sscanf(ev->lines[i].line, "%i %i %i %i %i", &full, &time_left, &time_full, 
-                                    &have_battery, &have_power) == 5)
+                             &have_battery, &have_power) == 5)
                     _battery_update(full, time_left, time_full,
-                                           have_battery, have_power);
+                                    have_battery, have_power);
                   else
                     e_powersave_mode_set(E_POWERSAVE_MODE_LOW);
                }
@@ -666,8 +674,9 @@ e_modapi_init(E_Module *m)
    E_CONFIG_VAL(D, T, alert, INT);
    E_CONFIG_VAL(D, T, alert_p, INT);
    E_CONFIG_VAL(D, T, alert_timeout, INT);
+   E_CONFIG_VAL(D, T, suspend_below, INT);
    E_CONFIG_VAL(D, T, force_mode, INT);
-#ifdef HAVE_EEZE
+#if defined HAVE_EEZE || defined __OpenBSD__
    E_CONFIG_VAL(D, T, fuzzy, INT);
 #endif
 
@@ -679,8 +688,9 @@ e_modapi_init(E_Module *m)
 	battery_config->alert = 30;
 	battery_config->alert_p = 10;
 	battery_config->alert_timeout = 0;
+	battery_config->suspend_below = 0;
 	battery_config->force_mode = 0;
-#ifdef HAVE_EEZE
+#if defined HAVE_EEZE || defined __OpenBSD__
 	battery_config->fuzzy = 0;
 #endif
      }
@@ -688,6 +698,7 @@ e_modapi_init(E_Module *m)
    E_CONFIG_LIMIT(battery_config->alert, 0, 60);
    E_CONFIG_LIMIT(battery_config->alert_p, 0, 100);
    E_CONFIG_LIMIT(battery_config->alert_timeout, 0, 300);
+   E_CONFIG_LIMIT(battery_config->suspend_below, 0, 50);
    E_CONFIG_LIMIT(battery_config->force_mode, 0, 2);
 
    battery_config->module = m;
@@ -754,6 +765,8 @@ e_modapi_shutdown(E_Module *m __UNUSED__)
    
 #ifdef HAVE_EEZE
    _battery_udev_stop();
+#elif defined __OpenBSD__
+   _battery_openbsd_stop();
 #else
    _battery_dbus_stop();
 #endif

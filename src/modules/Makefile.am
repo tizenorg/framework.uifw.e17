@@ -26,6 +26,10 @@ if USE_MODULE_TEMPERATURE
 SUBDIRS += temperature
 endif
 
+if USE_MODULE_NOTIFICATION
+SUBDIRS += notification
+endif
+
 if USE_MODULE_CPUFREQ
 SUBDIRS += cpufreq
 endif
@@ -122,6 +126,10 @@ if USE_MODULE_CONF_INTERACTION
 SUBDIRS += conf_interaction
 endif
 
+if USE_MODULE_CONF_RANDR
+SUBDIRS += conf_randr
+endif
+
 if USE_MODULE_GADMAN
 SUBDIRS += gadman
 endif
@@ -175,3 +183,10 @@ if USE_MODULE_SHOT
 SUBDIRS += shot
 endif
 
+if USE_MODULE_BACKLIGHT
+SUBDIRS += backlight
+endif
+
+if USE_MODULE_TASKS
+SUBDIRS += tasks
+endif

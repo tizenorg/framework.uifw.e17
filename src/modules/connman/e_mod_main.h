@@ -3,7 +3,8 @@
 
 #include "config.h"
 #include <e.h>
-#include <E_Connman.h>
+#define E_CONNMAN_I_KNOW_THIS_API_IS_SUBJECT_TO_CHANGE 1
+#include <connman0_7x/E_Connman.h>
 #include <eina_log.h>
 
 #define MOD_CONF_VERSION 2
