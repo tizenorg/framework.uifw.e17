@@ -1,7 +1,7 @@
 Name:       e17
 Summary:    The Enlightenment window manager
-Version:    0.16.199.svn60234
-Release:    1
+Version:    1.0.0.001+svn.65871slp2
+Release:    1.1
 Group:      System/GUI/Other
 License:    BSD
 URL:        http://www.enlightenment.org/
@@ -74,7 +74,8 @@ export CFLAGS+=" -fvisibility=hidden -fPIC -DDO_NOT_USE_SIG_HANDLER"
 export LDFLAGS+=" -fvisibility=hidden -Wl,--hash-style=both -Wl,--as-needed"
 
 %autogen --disable-static
-%configure --disable-static \
+LIBS='-ledbus' ./configure --prefix=/usr --disable-static \
+    --enable-extra-features \
     --disable-clock \
     --disable-temperature \
     --disable-mixer \
@@ -159,17 +160,24 @@ export LDFLAGS+=" -fvisibility=hidden -Wl,--hash-style=both -Wl,--as-needed"
     --disable-illume-mode-toggle \
     --disable-illume-softkey \
     --disable-comp \
-    --disable-illume2
+    --disable-illume2 \
+    --disable-notification \
+    --disable-conf_randr \
+    --disable-tasks \
+    --disable-backlight
+#    --disable-backlight \ 
+#    --disable-shot
 
 make %{?jobs:-j%jobs}
 
 %install
 rm -rf %{buildroot}
 %make_install
+#make install
 
 %files 
 %defattr(-,root,root,-)
-/etc/*
+/usr/etc/*
 /usr/bin/*
 /usr/lib/enlightenment/*
 
