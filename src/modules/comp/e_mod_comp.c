@@ -2,6 +2,9 @@
 #include "e_mod_main.h"
 #include "e_mod_comp.h"
 #include "e_mod_comp_update.h"
+#ifdef HAVE_WAYLAND_CLIENTS
+#include "e_mod_comp_wl.h"
+#endif
 
 #define OVER_FLOW 2
 
@@ -440,7 +443,7 @@ _e_mod_comp_win_ready_timeout_setup(E_Comp_Win *cw)
    else
      {
         cw->ready_timeout = ecore_timer_add
-            (_comp_mod->conf->first_draw_delay, _e_mod_comp_cb_win_show_ready_timeout, cw);
+          (_comp_mod->conf->first_draw_delay, _e_mod_comp_cb_win_show_ready_timeout, cw);
      }
 }
 
@@ -508,9 +511,13 @@ _e_mod_comp_win_update(E_Comp_Win *cw)
 
    if ((!cw->pixmap) || (cw->needpix))
      {
-        Ecore_X_Pixmap pm;
+        Ecore_X_Pixmap pm = 0;
 
-        pm = ecore_x_composite_name_window_pixmap_get(cw->win);
+#ifdef HAVE_WAYLAND_CLIENTS
+        if ((cw->bd) && (cw->bd->borderless))
+          pm = e_mod_comp_wl_pixmap_get(cw->win);
+#endif
+        if (!pm) pm = ecore_x_composite_name_window_pixmap_get(cw->win);
         if (pm)
           {
              Ecore_X_Pixmap oldpm;
@@ -591,7 +598,10 @@ _e_mod_comp_win_update(E_Comp_Win *cw)
    if ((cw->c->gl) && (_comp_mod->conf->texture_from_pixmap) &&
        (!cw->shaped) && (!cw->rects))
      {
-        DBG("DEBUG - pm now %x\n", ecore_x_composite_name_window_pixmap_get(cw->win));
+/* #ifdef HAVE_WAYLAND_CLIENTS */
+/*         DBG("DEBUG - pm now %x\n", e_mod_comp_wl_pixmap_get(cw->win)); */
+/* #endif */
+        /* DBG("DEBUG - pm now %x\n", ecore_x_composite_name_window_pixmap_get(cw->win)); */
         evas_object_image_size_set(cw->obj, cw->pw, cw->ph);
         EINA_LIST_FOREACH(cw->obj_mirror, l, o)
           {
@@ -1107,7 +1117,13 @@ nocomp:
                        printf("^^^^ redirect2 %x\n", cw->win);
                        printf("  redr\n");
                        ecore_x_composite_redirect_window(cw->win, ECORE_X_COMPOSITE_UPDATE_MANUAL);
-                       cw->pixmap = ecore_x_composite_name_window_pixmap_get(cw->win);
+
+#ifdef HAVE_WAYLAND_CLIENTS
+                       if ((cw->bd) && (cw->bd->borderless))
+                         cw->pixmap = e_mod_comp_wl_pixmap_get(cw->win);
+#endif
+                       if (!cw->pixmap)
+                         cw->pixmap = ecore_x_composite_name_window_pixmap_get(cw->win);
                        if (cw->pixmap)
                          {
                             ecore_x_pixmap_geometry_get(cw->pixmap, NULL, NULL, &(cw->pw), &(cw->ph));
@@ -2043,40 +2059,46 @@ _e_mod_comp_win_show(E_Comp_Win *cw)
      }
    else
      cw->dmg_updates = 1;
+
    if ((!cw->redirected) || (!cw->pixmap))
      {
-// we redirect all subwindows anyway
-//        ecore_x_composite_redirect_window(cw->win, ECORE_X_COMPOSITE_UPDATE_MANUAL);
-              cw->pixmap = ecore_x_composite_name_window_pixmap_get(cw->win);
-              if (cw->pixmap)
-                {
-                   ecore_x_pixmap_geometry_get(cw->pixmap, NULL, NULL, &(cw->pw), &(cw->ph));
-                   _e_mod_comp_win_ready_timeout_setup(cw);
-                }
-              else
-                {
-                   cw->pw = 0;
-                   cw->ph = 0;
-                }
-              if ((cw->pw <= 0) || (cw->ph <= 0))
-                {
-                   if (cw->pixmap)
-                     {
-                        ecore_x_pixmap_free(cw->pixmap);
-                        cw->pixmap = 0;
-                     }
-//             cw->show_ready = 0; // hmm maybe not needed?
-                }
-              cw->redirected = 1;
-              DBG("  [0x%x] up resize %ix%i\n", cw->win, cw->pw, cw->ph);
-              e_mod_comp_update_resize(cw->up, cw->pw, cw->ph);
-              e_mod_comp_update_add(cw->up, 0, 0, cw->pw, cw->ph);
-              evas_object_image_size_set(cw->obj, cw->pw, cw->ph);
-              EINA_LIST_FOREACH(cw->obj_mirror, l, o)
-                {
-                   evas_object_image_size_set(o, cw->pw, cw->ph);
-                }
-              ecore_x_e_comp_pixmap_set(cw->win, cw->pixmap);
+        // we redirect all subwindows anyway
+        //        ecore_x_composite_redirect_window(cw->win, ECORE_X_COMPOSITE_UPDATE_MANUAL);
+#ifdef HAVE_WAYLAND_CLIENTS
+        if ((cw->bd) && (cw->bd->borderless))
+          cw->pixmap = e_mod_comp_wl_pixmap_get(cw->win);
+#endif
+        if (!cw->pixmap)
+          cw->pixmap = ecore_x_composite_name_window_pixmap_get(cw->win);
+        if (cw->pixmap)
+          {
+             ecore_x_pixmap_geometry_get(cw->pixmap, NULL, NULL, &(cw->pw), &(cw->ph));
+             _e_mod_comp_win_ready_timeout_setup(cw);
+          }
+        else
+          {
+             cw->pw = 0;
+             cw->ph = 0;
+          }
+        if ((cw->pw <= 0) || (cw->ph <= 0))
+          {
+             if (cw->pixmap)
+               {
+                  ecore_x_pixmap_free(cw->pixmap);
+                  cw->pixmap = 0;
+               }
+             //             cw->show_ready = 0; // hmm maybe not needed?
+          }
+        cw->redirected = 1;
+        DBG("  [0x%x] up resize %ix%i\n", cw->win, cw->pw, cw->ph);
+        e_mod_comp_update_resize(cw->up, cw->pw, cw->ph);
+        e_mod_comp_update_add(cw->up, 0, 0, cw->pw, cw->ph);
+        evas_object_image_size_set(cw->obj, cw->pw, cw->ph);
+        EINA_LIST_FOREACH(cw->obj_mirror, l, o)
+          {
+             evas_object_image_size_set(o, cw->pw, cw->ph);
+          }
+        ecore_x_e_comp_pixmap_set(cw->win, cw->pixmap);
      }
    if ((cw->dmg_updates >= 1) && (cw->show_ready))
      {
@@ -2998,6 +3020,24 @@ _e_mod_comp_key_down(void *data __UNUSED__,
    return ECORE_CALLBACK_PASS_ON;
 }
 
+static Eina_Bool
+_e_mod_comp_signal_user(void *data __UNUSED__,
+                        int type   __UNUSED__,
+                        void      *event)
+{
+   Ecore_Event_Signal_User *ev = event;
+   
+   if (ev->number == 1)
+     {
+        // e17 uses this to pop up config panel
+     }
+   else if (ev->number == 2)
+     {
+        _e_mod_comp_fps_toggle();
+     }
+   return ECORE_CALLBACK_PASS_ON;
+}
+
 //////////////////////////////////////////////////////////////////////////
 static Evas *
 _e_mod_comp_evas_get_func(void          *data,
@@ -3164,10 +3204,30 @@ _e_mod_comp_add(E_Manager *man)
    E_Comp *c;
    Ecore_X_Window *wins;
    Ecore_X_Window_Attributes att;
+   Eina_Bool res;
    int i, num;
 
    c = calloc(1, sizeof(E_Comp));
    if (!c) return NULL;
+
+   res = ecore_x_screen_is_composited(man->num);
+   if (res)
+     {
+        e_util_dialog_internal
+           (_("Compositor Error"),
+           _("Another compositor is already running<br>"
+             "on your screen."));
+        free(c);
+        return NULL;
+     }
+
+   c->cm_selection = ecore_x_window_input_new(man->root, 0, 0, 1, 1);
+   if (!c->cm_selection)
+     {
+        free(c);
+        return NULL;
+     }
+   ecore_x_screen_is_composited_set(man->num, c->cm_selection);
    
    ecore_x_e_comp_sync_supported_set(man->root, _comp_mod->conf->efl_sync);
 
@@ -3199,19 +3259,9 @@ _e_mod_comp_add(E_Manager *man)
         return NULL;
      }
 
-   /* FIXME check if already composited? */
-   c->cm_selection = ecore_x_window_input_new(man->root, 0, 0, 1, 1);
-   if (!c->cm_selection)
-     {
-        ecore_x_composite_render_window_disable(c->win);
-        free(c);
-        return NULL;
-     }
-   ecore_x_screen_is_composited_set(c->man->num, c->cm_selection);
-
    if (c->man->num == 0) e_alert_composite_win = c->win;
 
-   if (_comp_mod->conf->engine == E_EVAS_ENGINE_GL_X11)
+   if (_comp_mod->conf->engine == ENGINE_GL)
      {
         int opt[20];
         int opt_i = 0;
@@ -3247,7 +3297,7 @@ _e_mod_comp_add(E_Manager *man)
      }
    if (!c->ee)
      {
-        if (_comp_mod->conf->engine == E_EVAS_ENGINE_GL_X11)
+        if (_comp_mod->conf->engine == ENGINE_GL)
           {
              e_util_dialog_internal
                (_("Compositor Warning"),
@@ -3264,7 +3314,6 @@ _e_mod_comp_add(E_Manager *man)
    ecore_evas_show(c->ee);
 
    c->ee_win = ecore_evas_window_get(c->ee);
-   ecore_x_screen_is_composited_set(c->man->num, c->ee_win);
    ecore_x_composite_redirect_subwindows
      (c->man->root, ECORE_X_COMPOSITE_UPDATE_MANUAL);
 
@@ -3365,7 +3414,6 @@ _e_mod_comp_del(E_Comp *c)
         c->grabbed = 0;
         ecore_x_ungrab();
      }
-   ecore_x_screen_is_composited_set(c->man->num, 0);
    while (c->wins)
      {
         cw = (E_Comp_Win *)(c->wins);
@@ -3390,8 +3438,8 @@ _e_mod_comp_del(E_Comp *c)
    if (c->wins_list) eina_list_free(c->wins_list);
 
    ecore_x_window_free(c->cm_selection);
-   ecore_x_screen_is_composited_set(c->man->num, 0);
    ecore_x_e_comp_sync_supported_set(c->man->root, 0);
+   ecore_x_screen_is_composited_set(c->man->num, 0);
 
    free(c);
 }
@@ -3422,6 +3470,7 @@ e_mod_comp_init(void)
    handlers = eina_list_append(handlers, ecore_event_handler_add(ECORE_X_EVENT_WINDOW_DAMAGE, _e_mod_comp_damage_win, NULL));
 
    handlers = eina_list_append(handlers, ecore_event_handler_add(ECORE_EVENT_KEY_DOWN, _e_mod_comp_key_down, NULL));
+   handlers = eina_list_append(handlers, ecore_event_handler_add(ECORE_EVENT_SIGNAL_USER, _e_mod_comp_signal_user, NULL));
 
    handlers = eina_list_append(handlers, ecore_event_handler_add(E_EVENT_CONTAINER_RESIZE, _e_mod_comp_randr, NULL));
 
@@ -3456,6 +3505,12 @@ e_mod_comp_init(void)
             "or Ecore was built without XDamage support."));
         return 0;
      }
+
+#ifdef HAVE_WAYLAND_CLIENTS
+   if (!e_mod_comp_wl_init())
+     EINA_LOG_ERR("Failed to initialize Wayland Client Support !!\n");
+#endif
+
    EINA_LIST_FOREACH(e_manager_list(), l, man)
      {
         E_Comp *c;
@@ -3477,6 +3532,10 @@ e_mod_comp_shutdown(void)
    EINA_LIST_FREE(compositors, c) _e_mod_comp_del(c);
 
    E_FREE_LIST(handlers, ecore_event_handler_del);
+
+#ifdef HAVE_WAYLAND_CLIENTS
+   e_mod_comp_wl_shutdown();
+#endif
 
    if (damages) eina_hash_free(damages);
    if (windows) eina_hash_free(windows);

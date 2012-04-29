@@ -44,7 +44,7 @@ static void _e_gadman_client_remove (void *data __UNUSED__, E_Gadcon_Client *gcc
 
 E_Gadcon_Client *current = NULL;
 Manager *Man = NULL;
-static E_Gadcon_Location * location = NULL;
+static E_Gadcon_Location *location = NULL;
 
 /* Implementation */
 void
@@ -70,9 +70,9 @@ gadman_init(E_Module *m)
    e_container_shape_change_callback_add(Man->container, on_shape_change, NULL);
 
    /* create and register "desktop" location */
-   location = e_gadcon_location_new ("Desktop", E_GADCON_SITE_DESKTOP, 
-				     _e_gadman_client_add, NULL, 
-				     _e_gadman_client_remove, NULL);
+   location = e_gadcon_location_new("Desktop", E_GADCON_SITE_DESKTOP, 
+				    _e_gadman_client_add, NULL, 
+				    _e_gadman_client_remove, NULL);
    e_gadcon_location_set_icon_name(location, "preferences-desktop");
    e_gadcon_location_register(location);
 
@@ -140,7 +140,7 @@ gadman_populate_class(void *data, E_Gadcon *gc, const E_Gadcon_Client_Class *cc)
 
    EINA_LIST_FOREACH(gc->cf->clients, l, cf_gcc)
      {
-        if (cf_gcc->name && cc->name && !strcmp(cf_gcc->name, cc->name) && (gc->cf->zone == gc->zone->id))
+        if (cf_gcc->name && cc->name && !strcmp(cf_gcc->name, cc->name) && (gc->cf->zone == gc->zone->num))
 	  {
 	     EINA_LIST_FOREACH(Man->gadgets[layer], ll, gcc) 
 	       {
@@ -188,7 +188,6 @@ gadman_gadget_place(E_Config_Gadcon_Client *cf, Gadman_Layer_Type layer, E_Zone 
    /* init Gadcon_Client */
    gcc = cc->func.init(gc, cf->name, cf->id, cc->default_style);
    if (!gcc) return NULL;
-   e_object_del_func_set(E_OBJECT(gcc), E_OBJECT_CLEANUP_FUNC(gadman_gadget_del));
    gcc->cf = cf;
    gcc->client_class = cc;
 
@@ -255,7 +254,7 @@ _gadman_gadget_add(const E_Gadcon_Client_Class *cc, Gadman_Layer_Type layer, E_C
          }
        else
          {
-           cf->style = strdup(src_cf->style);
+           cf->style = eina_stringshare_add(src_cf->style);
            cf->geom.pos_x = src_cf->geom.pos_x;
            cf->geom.pos_y = src_cf->geom.pos_y;
            cf->geom.size_w = src_cf->geom.size_w;
@@ -496,8 +495,7 @@ _gadman_gadcon_new(const char* name, Gadman_Layer_Type layer, E_Zone *zone, E_Ga
      {
         if (!Man->top_ee)
 	  {
-	     Man->top_ee = e_canvas_new(e_config->evas_engine_popups,
-					Man->container->win, 0, 0, 0, 0, 1, 1,
+	     Man->top_ee = e_canvas_new(Man->container->win, 0, 0, 0, 0, 1, 1,
 					&(Man->top_win));
 	  }
 
@@ -562,7 +560,7 @@ _gadman_gadcon_new(const char* name, Gadman_Layer_Type layer, E_Zone *zone, E_Ga
    gc->cf = NULL;
    EINA_LIST_FOREACH(e_config->gadcons, l, cg)
      {
-        if ((!strcmp(cg->name, name)) && (cg->zone == zone->id))
+        if ((!strcmp(cg->name, name)) && (cg->zone == zone->num))
           {
              gc->cf = cg;
              break;
@@ -575,7 +573,7 @@ _gadman_gadcon_new(const char* name, Gadman_Layer_Type layer, E_Zone *zone, E_Ga
         gc->cf = E_NEW(E_Config_Gadcon, 1);
         gc->cf->name = eina_stringshare_add(name);
         gc->cf->id = gc->id;
-        gc->cf->zone = zone->id;
+        gc->cf->zone = zone->num;
         gc->cf->clients = NULL;
         e_config->gadcons = eina_list_append(e_config->gadcons, gc->cf);
         e_config_save_queue();
@@ -868,7 +866,7 @@ _get_bind_text(const char* action)
           }
         return strdup(b);
      }
-   return "(You must define a binding)";
+   return strdup("(You must define a binding)");
 }
 
 /* Callbacks */
@@ -1110,7 +1108,7 @@ on_top(void *data, Evas_Object *o __UNUSED__, const char *em __UNUSED__, const c
 
         if (h < current->min.h)
 	  {
-	     my -=current->min.h - h;
+	     my -= current->min.h - h;
 	     h = current->min.h;
 	  }
         /* don't go out of the screen */

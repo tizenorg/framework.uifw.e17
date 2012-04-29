@@ -17,10 +17,23 @@ static E_Backlight_Mode bl_mode = E_BACKLIGHT_MODE_NORMAL;
 static int sysmode = MODE_NONE;
 static Ecore_Animator *bl_anim = NULL;
 
+static Ecore_Event_Handler *_e_backlight_handler_config_mode = NULL;
+static Ecore_Event_Handler *_e_backlight_handler_border_fullscreen = NULL;
+static Ecore_Event_Handler *_e_backlight_handler_border_unfullscreen = NULL;
+static Ecore_Event_Handler *_e_backlight_handler_border_remove = NULL;
+static Ecore_Event_Handler *_e_backlight_handler_border_iconify = NULL;
+static Ecore_Event_Handler *_e_backlight_handler_border_uniconify = NULL;
+static Ecore_Event_Handler *_e_backlight_handler_border_desk_set = NULL;
+static Ecore_Event_Handler *_e_backlight_handler_desk_show = NULL;
+
+static Ecore_Timer *_e_backlight_timer = NULL;
+
 static void _e_backlight_update(E_Zone *zone);
 static void _e_backlight_set(E_Zone *zone, double val);
 static Eina_Bool _bl_anim(void *data, double pos);
 static Eina_Bool bl_avail = EINA_FALSE;
+static Eina_Bool _e_backlight_handler(void *d, int type, void *ev);
+static Eina_Bool _e_backlight_timer_cb(void *d);
 #ifdef HAVE_EEZE
 static const char *bl_sysval = NULL;
 static Ecore_Event_Handler *bl_sys_exit_handler = NULL;
@@ -40,13 +53,43 @@ e_backlight_init(void)
 #ifdef HAVE_EEZE
    eeze_init();
 #endif
-   bl_avail = ecore_x_randr_output_backlight_available();
+// why did someone do this? this makes it ONLY work if xrandr has bl support.
+// WRONG!   
+//   bl_avail = ecore_x_randr_output_backlight_available();
+   bl_avail = EINA_TRUE;
 
-   if (bl_avail == EINA_TRUE)
+   _e_backlight_handler_config_mode = ecore_event_handler_add
+     (E_EVENT_CONFIG_MODE_CHANGED, _e_backlight_handler, NULL);
+
+   _e_backlight_handler_border_fullscreen = ecore_event_handler_add
+     (E_EVENT_BORDER_FULLSCREEN, _e_backlight_handler, NULL);
+
+   _e_backlight_handler_border_unfullscreen = ecore_event_handler_add
+     (E_EVENT_BORDER_UNFULLSCREEN, _e_backlight_handler, NULL);
+
+   _e_backlight_handler_border_remove = ecore_event_handler_add
+     (E_EVENT_BORDER_REMOVE, _e_backlight_handler, NULL);
+
+   _e_backlight_handler_border_iconify = ecore_event_handler_add
+     (E_EVENT_BORDER_ICONIFY, _e_backlight_handler, NULL);
+
+   _e_backlight_handler_border_uniconify = ecore_event_handler_add
+     (E_EVENT_BORDER_UNICONIFY, _e_backlight_handler, NULL);
+
+   _e_backlight_handler_border_desk_set = ecore_event_handler_add
+     (E_EVENT_BORDER_DESK_SET, _e_backlight_handler, NULL);
+
+   _e_backlight_handler_desk_show = ecore_event_handler_add
+     (E_EVENT_DESK_SHOW, _e_backlight_handler, NULL);
+
+   if (bl_avail)
      {
         e_backlight_update();
-        e_backlight_level_set(NULL, 0.0, 0.0);
-        e_backlight_level_set(NULL, e_config->backlight.normal, 1.0);
+        if (!getenv("E_RESTART"))
+          {
+             e_backlight_level_set(NULL, 0.0, 0.0);
+             e_backlight_level_set(NULL, e_config->backlight.normal, 1.0);
+          }
      }
    return 1;
 }
@@ -65,6 +108,53 @@ e_backlight_shutdown(void)
    bl_sys_pending_set = EINA_FALSE;
    eeze_shutdown();
 #endif
+   if (_e_backlight_handler_config_mode)
+     {
+        ecore_event_handler_del(_e_backlight_handler_config_mode);
+        _e_backlight_handler_config_mode = NULL;
+     }
+
+   if (_e_backlight_handler_border_fullscreen)
+     {
+        ecore_event_handler_del(_e_backlight_handler_border_fullscreen);
+        _e_backlight_handler_border_fullscreen = NULL;
+     }
+
+   if (_e_backlight_handler_border_unfullscreen)
+     {
+        ecore_event_handler_del(_e_backlight_handler_border_unfullscreen);
+        _e_backlight_handler_border_unfullscreen = NULL;
+     }
+
+   if (_e_backlight_handler_border_remove)
+     {
+        ecore_event_handler_del(_e_backlight_handler_border_remove);
+        _e_backlight_handler_border_remove = NULL;
+     }
+
+   if (_e_backlight_handler_border_iconify)
+     {
+        ecore_event_handler_del(_e_backlight_handler_border_iconify);
+        _e_backlight_handler_border_iconify = NULL;
+     }
+
+   if (_e_backlight_handler_border_uniconify)
+     {
+        ecore_event_handler_del(_e_backlight_handler_border_uniconify);
+        _e_backlight_handler_border_uniconify = NULL;
+     }
+
+   if (_e_backlight_handler_border_desk_set)
+     {
+        ecore_event_handler_del(_e_backlight_handler_border_desk_set);
+        _e_backlight_handler_border_desk_set = NULL;
+     }
+
+   if (_e_backlight_handler_desk_show)
+     {
+        ecore_event_handler_del(_e_backlight_handler_desk_show);
+        _e_backlight_handler_desk_show = NULL;
+     }
    return 1;
 }
 
@@ -83,19 +173,43 @@ e_backlight_update(void)
    E_Container *con;
    E_Zone *zone;
 
-   if (bl_avail == EINA_TRUE)
+   if (bl_avail == EINA_FALSE) return;
+
+   EINA_LIST_FOREACH(e_manager_list(), m, man)
      {
-        EINA_LIST_FOREACH(e_manager_list(), m, man)
+        EINA_LIST_FOREACH(man->containers, c, con)
           {
-             EINA_LIST_FOREACH(man->containers, c, con)
+             EINA_LIST_FOREACH(con->zones, z, zone)
                {
-                  EINA_LIST_FOREACH(con->zones, z, zone)
-                    {
-                       _e_backlight_update(zone);
-                    }
+                  _e_backlight_update(zone);
                }
           }
      }
+
+   /* idle dimming disabled: clear timer */
+   if (!e_config->backlight.idle_dim)
+     {
+        if (_e_backlight_timer)
+          ecore_timer_del(_e_backlight_timer);
+        _e_backlight_timer = NULL;
+        return;
+     }
+   /* dimming enabled, timer active: update interval and reset */
+   if (_e_backlight_timer)
+     {
+        if (e_config->backlight.timer != ecore_timer_interval_get(_e_backlight_timer))
+          ecore_timer_interval_set(_e_backlight_timer, e_config->backlight.timer);
+        ecore_timer_reset(_e_backlight_timer);
+        return;
+     }
+   /* dimming enabled, timer inactive: */
+
+   /* timer is 0 seconds: return */
+   if (!e_config->backlight.timer) return;
+   /* current mode is dimmed: undim */
+   if (bl_mode == E_BACKLIGHT_MODE_DIM)
+     e_backlight_mode_set(NULL, E_BACKLIGHT_MODE_NORMAL);
+   _e_backlight_timer = ecore_timer_add(e_config->backlight.timer, _e_backlight_timer_cb, NULL);
 }
 
 EAPI void
@@ -161,6 +275,21 @@ e_backlight_mode_get(E_Zone *zone __UNUSED__)
 
 /* local subsystem functions */
 
+static Eina_Bool
+_e_backlight_handler(void *d __UNUSED__, int type __UNUSED__, void *ev __UNUSED__)
+{
+   e_backlight_update();
+   return ECORE_CALLBACK_PASS_ON;
+}
+
+static Eina_Bool
+_e_backlight_timer_cb(void *d __UNUSED__)
+{
+   e_backlight_mode_set(NULL, E_BACKLIGHT_MODE_DIM);
+   _e_backlight_timer = NULL;
+   return EINA_FALSE;
+}
+
 static void
 _e_backlight_update(E_Zone *zone)
 {
@@ -172,7 +301,7 @@ _e_backlight_update(E_Zone *zone)
    root = zone->container->manager->root;
    // try randr
    out = ecore_x_randr_window_outputs_get(root, &num);
-   if ((out) && (num > 0))
+   if ((out) && (num > 0) && (ecore_x_randr_output_backlight_available()))
       x_bl = ecore_x_randr_output_backlight_level_get(root, out[0]);
    if (out) free(out);
    if (x_bl >= 0.0)
@@ -247,9 +376,38 @@ _bl_sys_find(void)
    const char *f;
 
    devs = eeze_udev_find_by_filter("backlight", NULL, NULL);
-   if (!devs) return;
+   if (!devs)
+     {
+        /* FIXME: need to make this more precise so we don't set keyboard LEDs or something */
+        devs = eeze_udev_find_by_filter("leds", NULL, NULL);
+        if (!devs) return;
+     }
+   if (eina_list_count(devs) > 1)
+     {
+        const char *s = NULL;
+        Eina_List *l;
+        Eina_Bool use = EINA_FALSE;
+
+        /* prefer backlights of type "firmware" where available */
+        EINA_LIST_FOREACH(devs, l, f)
+          {
+             s = eeze_udev_syspath_get_sysattr(f, "type");
+             use = (s && (!strcmp(s, "firmware")));
+             eina_stringshare_del(s);
+             if (!use) continue;
+             l->data = NULL;
+             eina_stringshare_del(bl_sysval);
+             bl_sysval = f;
+             EINA_LIST_FREE(devs, f)
+               eina_stringshare_del(f);
+             return;
+          }
+     }
    EINA_LIST_FREE(devs, f)
-     bl_sysval = f;
+     {
+        eina_stringshare_replace(&bl_sysval, NULL);
+        bl_sysval = f;
+     }
 }
 
 static void

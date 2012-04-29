@@ -1,5 +1,5 @@
 group "E_Config" struct {
-  value "config_version" int: 65847;
+  value "config_version" int: 65863;
   value "show_splash" int: 0;
   value "init_default_theme" string: "default.edj";
   value "desktop_default_name" string: "Desktop %i, %i";
@@ -17,19 +17,8 @@ group "E_Config" struct {
   value "edje_collection_cache" int: 30;
   value "zone_desks_x_count" int: 1;
   value "zone_desks_y_count" int: 1;
-  value "use_virtual_roots" int: 0;
   value "show_desktop_icons" int: 1;
   value "edge_flip_dragging" int: 0;
-  value "evas_engine_default" int: 1;
-  value "evas_engine_container" int: 0;
-  value "evas_engine_init" int: 0;
-  value "evas_engine_menus" int: 0;
-  value "evas_engine_borders" int: 0;
-  value "evas_engine_errors" int: 0;
-  value "evas_engine_popups" int: 0;
-  value "evas_engine_drag" int: 0;
-  value "evas_engine_win" int: 0;
-  value "evas_engine_zone" int: 0;
   value "use_composite" int: 0;
   group "modules" list {
     group "E_Config_Module" struct {
@@ -484,12 +473,6 @@ group "E_Config" struct {
   value "desk_flip_animate_time" double: 0.5000000000000000000000000;
   value "wallpaper_import_last_dev" string: "/tmp";
   value "wallpaper_import_last_path" string: "/";
-  value "wallpaper_grad_c1_r" int: 88;
-  value "wallpaper_grad_c1_g" int: 208;
-  value "wallpaper_grad_c1_b" int: 88;
-  value "wallpaper_grad_c2_r" int: 127;
-  value "wallpaper_grad_c2_g" int: 127;
-  value "wallpaper_grad_c2_b" int: 127;
   value "theme_default_border_style" string: "default";
   value "desk_auto_switch" int: 0;
   value "thumb_nice" int: 0;
@@ -536,4 +519,6 @@ group "E_Config" struct {
   value "device_auto_open" int: 0;
   value "xsettings.match_e17_theme" uchar: 1;
   value "xsettings.match_e17_icon_theme" uchar: 1;
+  value "update.check" uchar: 0;
+  value "update.later" uchar: 0;
 }

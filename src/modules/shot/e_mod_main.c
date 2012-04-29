@@ -200,7 +200,6 @@ _file_select_ok_cb(void *data __UNUSED__, E_Dialog *dia)
    const char *file;
 
    file = e_widget_fsel_selection_path_get(o_fsel);
-   printf("SAVE: %s\n", file);
    if (file) _save_to(file);
    if (dia) e_util_defer_object_del(E_OBJECT(dia));
    if (win)
@@ -230,7 +229,9 @@ _win_save_cb(void *data __UNUSED__, void *data2 __UNUSED__)
    
    dia = e_dialog_new(scon, "E", "_e_shot_fsel");
    e_dialog_title_set(dia, _("Select screenshot save location"));
-   o = e_widget_fsel_add(dia->win->evas, "~/", "/", "shot.jpg", NULL,
+   o = e_widget_fsel_add(dia->win->evas, "desktop", "/", 
+                         (quality == 100) ? "shot.png" : "shot.jpg", 
+                         NULL,
                          NULL, NULL,
                          NULL, NULL, 1);
    e_widget_fsel_window_object_set(o, E_OBJECT(dia->win));
@@ -452,6 +453,10 @@ _win_share_cb(void *data __UNUSED__, void *data2 __UNUSED__)
           (ECORE_CON_EVENT_URL_COMPLETE, _upload_complete_cb, NULL));
    
    url_up = ecore_con_url_new("http://www.enlightenment.org/shot.php");
+   // why use http 1.1? proxies like squid don't handle 1.1 posts with expect
+   // like curl uses by default, so go to 1.0 and this all works dandily
+   // out of the box
+   ecore_con_url_http_version_set(url_up, ECORE_CON_URL_HTTP_VERSION_1_0);
    ecore_con_url_post(url_up, fdata, fsize, "application/x-e-shot");
    
    dia = e_dialog_new(scon, "E", "_e_shot_share");

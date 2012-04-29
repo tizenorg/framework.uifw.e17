@@ -108,9 +108,9 @@ _e_zone_black_new(E_Zone *zone)
    char name[256];
 
    if (zone->black_ecore_evas) return;
-   zone->black_ecore_evas =
-     e_canvas_new(e_config->evas_engine_zone, zone->container->win,
-                  zone->x, zone->y, 1, 1, 1, 1, &(zone->black_win));
+   zone->black_ecore_evas = e_canvas_new(zone->container->win,
+                                         zone->x, zone->y, 1, 1, 1, 1,
+                                         &(zone->black_win));
    e_canvas_add(zone->black_ecore_evas);
    ecore_evas_layer_set(zone->black_ecore_evas, 6);
    zone->black_evas = ecore_evas_get(zone->black_ecore_evas);
@@ -186,6 +186,8 @@ e_zone_new(E_Container *con,
    zone->num = num;
    zone->id = id;
    e_zone_useful_geometry_dirty(zone);
+   
+   printf("@@@@@@@@@@ e_zone_new: %i %i | %i %i %ix%i = %p\n", num, id, x, y, w, h, zone);
 
    zone->handlers =
      eina_list_append(zone->handlers,
@@ -1431,6 +1433,7 @@ _e_zone_free(E_Zone *zone)
    E_Container *con;
    int x, y;
 
+   printf("@@@@@@@@@@ e_zone_free: %i %i | %i %i %ix%i = %p\n", zone->num, zone->id, zone->x, zone->y, zone->w, zone->h, zone);
    /* Delete the edge windows if they exist */
    if (zone->edge.top) ecore_x_window_free(zone->edge.top);
    if (zone->edge.bottom) ecore_x_window_free(zone->edge.bottom);
@@ -1785,7 +1788,6 @@ _e_zone_object_del_attach(void *o)
    E_Zone *zone;
    E_Event_Zone_Del *ev;
 
-   if (e_object_is_del(E_OBJECT(o))) return;
    zone = o;
    ev = E_NEW(E_Event_Zone_Del, 1);
    ev->zone = zone;

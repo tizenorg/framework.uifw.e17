@@ -3,7 +3,7 @@
 m4_define([v_maj], [0])
 m4_define([v_min], [16])
 m4_define([v_mic], [999])
-m4_define([v_rev], m4_esyscmd([(svnversion "${SVN_REPO_PATH:-.}" | grep -v export || echo 0) | awk -F : '{printf("%s\n", $1);}' | tr -d ' :MSP\n']))
+m4_define([v_rev], m4_esyscmd([(svnversion "${SVN_REPO_PATH:-.}" | grep -v '\(export\|Unversioned directory\)' || echo 0) | awk -F : '{printf("%s\n", $1);}' | tr -d ' :MSP\n']))
 m4_if(v_rev, [0], [m4_define([v_rev], m4_esyscmd([git log 2> /dev/null | (grep -m1 git-svn-id || echo 0) | sed -e 's/.*@\([0-9]*\).*/\1/' | tr -d '\n']))])
 ##--   When released, remove the dnl on the below line
 dnl m4_undefine([v_rev])
@@ -77,7 +77,7 @@ EFL_CHECK_PATH_MAX
 AC_CHECK_FUNCS(setenv)
 AC_CHECK_FUNCS(unsetenv)
 
-AC_CHECK_HEADERS(X11/extensions/shape.h,, AC_MSG_ERROR([Cannot find X11/extensions/shape.h. Make sure your CFLAGS environment variable contains include lines for the location of this file]))
+dnl AC_CHECK_HEADERS(X11/extensions/shape.h,, AC_MSG_ERROR([Cannot find X11/extensions/shape.h. Make sure your CFLAGS environment variable contains include lines for the location of this file]))
 
 AC_CHECK_HEADERS(fnmatch.h,, AC_MSG_ERROR([Cannot find fnmatch.h. Make sure your CFLAGS environment variable contains include lines for the location of this file]))
 
@@ -258,14 +258,20 @@ AM_GNU_GETTEXT_VERSION([0.17])
 m4_ifdef([AM_GNU_GETTEXT], [
 AM_GNU_GETTEXT([external])
 po_makefile_in=po/Makefile.in
-AM_CONDITIONAL([HAVE_PO], [true])
+have_po="yes"
 ],[
-AM_CONDITIONAL([HAVE_PO], [false])
+have_po="no"
 ])
 AC_SUBST(LTLIBINTL)
 if test "x$LIBINTL" = "x"; then
   LIBINTL="$INTLLIBS"
 fi
+
+if test "x${POSUB}" = "x" ; then
+   have_po="no"
+fi
+
+AM_CONDITIONAL([HAVE_PO], [test "x${have_po}" = "xyes"])
 
 AC_CHECK_LIB(dl, dlopen, dlopen_libs=-ldl)
 AC_SUBST(dlopen_libs)
@@ -296,27 +302,36 @@ if test "[${e_cv_enable_files}]" = yes; then
 fi
 AC_MSG_RESULT([$e_cv_enable_files])
 
-AC_MSG_CHECKING([which device backend to use])
 AC_ARG_ENABLE([device-hal],
   AS_HELP_STRING([--enable-device-hal],[enable hal device backend @<:@default=disabled@:>@]),
-  [e_cv_want_device_hal=$enableval]
-  AC_CACHE_VAL([e_cv_want_device_hal], [e_cv_want_device_hal=no]))
+  [e_cv_want_device_hal=$enableval],
+  [e_cv_want_device_hal=no])
+
+AC_MSG_CHECKING([whether the HAL device backend is enabled])
+AC_MSG_RESULT([${e_cv_want_device_hal}])
 
 AC_ARG_ENABLE([device-udev],
   AS_HELP_STRING([--enable-device-udev],[enable udev device backend @<:@default=enabled@:>@]),
   [e_cv_want_device_udev=$enableval],
-  AC_CACHE_VAL([e_cv_want_device_udev], [e_cv_want_device_udev=yes]))
+  [e_cv_want_device_udev=yes])
+
+AC_MSG_CHECKING([whether the UDEV device backend is enabled])
+AC_MSG_RESULT([${e_cv_want_device_udev}])
 
 if test "x$e_cv_want_device_udev" != "xno";then
-  PKG_CHECK_EXISTS([eeze >= 1.0.0],
+  PKG_CHECK_MODULES([EEZE], [eeze >= 1.0.0 ecore >= 1.0.999 eina >= 1.0.999],
     [
       device_backend=eeze
       AC_DEFINE_UNQUOTED([HAVE_EEZE],[1],[enable udev support])
-    ],[device_backend=ehal])
+    ],
+    [device_backend=ehal])
 else
   device_backend=ehal
 fi
+
+AC_MSG_CHECKING([which device backend to use])
 AC_MSG_RESULT($device_backend)
+
 AM_CONDITIONAL([HAVE_EEZE], [test "x${device_backend}" = "xeeze"])
 test "x${device_backend}" = "xeeze" || AC_DEFINE_UNQUOTED([HAVE_HAL],[1],[enable HAL support])
 
@@ -328,7 +343,10 @@ udisks_mount="eukit >= 1.0.0"
 AC_ARG_ENABLE([mount-hal],
   AS_HELP_STRING([--enable-mount-hal],[enable hal mounting support @<:@default=enabled@:>@]),
   [e_cv_want_mount_hal=$enableval],
-  AC_CACHE_VAL([e_cv_want_mount_hal], [e_cv_want_mount_hal=yes]))
+  [e_cv_want_mount_hal=yes])
+
+AC_MSG_CHECKING([whether the HAL mounting support is enabled])
+AC_MSG_RESULT([${e_cv_want_mount_hal}])
 
 # added by doyoun.kang 110121
 e_cv_want_mount_hal=no
@@ -347,7 +365,11 @@ fi
 AC_ARG_ENABLE([mount-udisks],
   AS_HELP_STRING([--enable-mount-udisks],[enable udisks mounting support @<:@default=enabled@:>@]),
   [e_cv_want_mount_udisks=$enableval],
-  AC_CACHE_VAL([e_cv_want_mount_udisks], [e_cv_want_mount_udisks=yes]))
+  [e_cv_want_mount_udisks=yes])
+
+AC_MSG_CHECKING([whether the UDISKS mounting support is enabled])
+AC_MSG_RESULT([${e_cv_want_mount_udisks}])
+
 if test "x$e_cv_want_mount_udisks" != "xno";then
   PKG_CHECK_EXISTS([eukit >= 1.0.0],
     [],[
@@ -370,14 +392,21 @@ fi
 AC_ARG_ENABLE([mount-eeze],
   AS_HELP_STRING([--enable-mount-eeze],[enable eeze mounting support @<:@default=enabled@:>@]),
   [e_cv_want_mount_eeze=$enableval],
-  AC_CACHE_VAL([e_cv_want_mount_eeze], [e_cv_want_mount_eeze=yes]))
+  [e_cv_want_mount_eeze=yes])
+
+AC_MSG_CHECKING([whether the Eeze mounting support is enabled])
+AC_MSG_RESULT([${e_cv_want_mount_eeze}])
 
 eeze_mount=
 EEZE_MOUNT_CONFIG=0
 if test "x$e_cv_want_mount_eeze" != "xno" ; then
+      CPPFLAGS_save="$CPPFLAGS"
+      LIBS_save="$LIBS"
+      CPPFLAGS="$EEZE_CFLAGS $CPPFLAGS"
+      LIBS="$EEZE_LIBS $LIBS"
       AC_CHECK_LIB([eeze], [eeze_disk_function],
         [
-           eeze_mount="eeze >= 1.0.0 ecore-con >= 1.0.0"
+           eeze_mount="eeze >= 1.0.999 ecore-con >= 1.0.999"
            EEZE_MOUNT_CONFIG=1
            AC_DEFINE_UNQUOTED([HAVE_EEZE_MOUNT], [1], [enable eeze mounting])
            AC_MSG_NOTICE([eeze mounting enabled])
@@ -387,6 +416,8 @@ if test "x$e_cv_want_mount_eeze" != "xno" ; then
            e_cv_want_mount_eeze=no
         ]
       )
+      CPPFLAGS="$CPPFLAGS_save"
+      LIBS="$LIBS_save"
 else
   AC_MSG_NOTICE([eeze mounting disabled])
 fi
@@ -406,117 +437,126 @@ EFL_CHECK_DOXYGEN([build_doc="yes"], [build_doc="no"])
 
 # explicit libs for each binary to reduce linkage requirements
 PKG_CHECK_MODULES(E_REMOTE, [
-  ecore >= 1.0.0
-  ecore-ipc >= 1.0.0
+  ecore >= 1.0.999
+  ecore-ipc >= 1.0.999
   eet >= 1.4.0
-  eina >= 1.0.0
+  eina >= 1.0.999
 ])
 
 PKG_CHECK_MODULES(E_START, [
-  eina >= 1.0.0
+  eina >= 1.0.999
 ])
 
 PKG_CHECK_MODULES(E_IMC, [
-  ecore-file >= 1.0.0
+  ecore-file >= 1.0.999
   eet >= 1.4.0
-  eina >= 1.0.0
+  eina >= 1.0.999
 ])
 
 PKG_CHECK_MODULES(E_THUMB, [
-  eina >= 1.0.0
-  evas >= 1.0.0
-  ecore >= 1.0.0
-  ecore-evas >= 1.0.0
-  edje >= 1.0.0
-  ecore-file >= 1.0.0
-  ecore-ipc >= 1.0.0
+  eina >= 1.0.999
+  evas >= 1.0.999
+  ecore >= 1.0.999
+  ecore-evas >= 1.0.999
+  edje >= 1.0.999
+  ecore-file >= 1.0.999
+  ecore-ipc >= 1.0.999
   eet >= 1.4.0
-  efreet >= 1.0.0
+  efreet >= 1.0.999
 ])
 
 efm_requires="\
-ecore >= 1.0.0 \
-ecore-file >= 1.0.0 \
-ecore-ipc >= 1.0.0 \
+ecore >= 1.0.999 \
+ecore-file >= 1.0.999 \
+ecore-ipc >= 1.0.999 \
 eet >= 1.4.0 \
-efreet >= 1.0.0 \
-eina >= 1.0.0"
-efm_requires+=" $eeze_mount $dbus_mount $hal_mount $udisks_mount"
+efreet >= 1.0.999 \
+edbus >= 1.0.999 \
+eina >= 1.0.999"
+efm_requires="$efm_requires $eeze_mount $dbus_mount $hal_mount $udisks_mount"
 
 PKG_CHECK_MODULES(E_FM, [$efm_requires])
 
 PKG_CHECK_MODULES(E_FM_OP, [
-  ecore >= 1.0.0
-  ecore-file >= 1.0.0
-  eina >= 1.0.0
+  ecore >= 1.0.999
+  ecore-file >= 1.0.999
+  eina >= 1.0.999
 ])
 
 PKG_CHECK_MODULES(E_FM_OPEN, [
-  ecore >= 1.0.0
-  ecore-ipc >= 1.0.0
-  ecore-con >= 1.0.0
+  ecore >= 1.0.999
+  ecore-ipc >= 1.0.999
+  ecore-con >= 1.0.999
   eet >= 1.4.0
-  eina >= 1.0.0
+  eina >= 1.0.999
 ])
 
 PKG_CHECK_MODULES(E_SYS, [
-  eina >= 1.0.0
+  eina >= 1.0.999
 ])
 
 PKG_CHECK_MODULES(E_INIT, [
-  evas >= 1.0.0
-  ecore >= 1.0.0
-  ecore-evas >= 1.0.0
-  ecore-x >= 1.0.0
-  edje >= 1.0.0
-  ecore-ipc >= 1.0.0
-  eina >= 1.0.0
+  evas >= 1.0.999
+  ecore >= 1.0.999
+  ecore-evas >= 1.0.999
+  ecore-x >= 1.0.999
+  edje >= 1.0.999
+  ecore-ipc >= 1.0.999
+  eina >= 1.0.999
 ])
 
+#PKG_CHECK_MODULES(E_ALERT, [
+#  xcb
+#  xcb-shape
+#  eina >= 1.0.999
+#  ecore >= 1.0.999
+#  ecore-ipc >= 1.0.999
+#])
+
 PKG_CHECK_MODULES(E, [
-  evas >= 1.0.0
-  ecore >= 1.0.0
-  ecore-x >= 1.0.0
-  ecore-evas >= 1.0.0
-  ecore-input >= 1.0.0
-  ecore-input-evas >= 1.0.0
-  ecore-con >= 1.0.0
-  ecore-ipc >= 1.0.0
-  ecore-file >= 1.0.0
+  evas >= 1.0.999
+  ecore >= 1.0.999
+  ecore-x >= 1.0.999
+  ecore-evas >= 1.0.999
+  ecore-input >= 1.0.999
+  ecore-input-evas >= 1.0.999
+  ecore-con >= 1.0.999
+  ecore-ipc >= 1.0.999
+  ecore-file >= 1.0.999
   eet >= 1.4.0
-  edje >= 1.0.0
-  efreet >= 1.0.0
-  efreet-mime >= 1.0.0
-  efreet-trash >= 1.0.0
-  eina >= 1.0.0
+  edje >= 1.0.999
+  efreet >= 1.0.999
+  efreet-mime >= 1.0.999
+  efreet-trash >= 1.0.999
+  eina >= 1.0.999
   dbus-1
-  edbus >= 1.0.0
+  edbus >= 1.0.999
   $hal_mount
   $eeze_mount
   $udisks_mount
   $device_backend
 ])
 requirements_e="\
-evas >= 1.0.0 \
-ecore >= 1.0.0 \
-ecore-x >= 1.0.0 \
-ecore-evas >= 1.0.0 \
-ecore-con >= 1.0.0 \
-ecore-ipc >= 1.0.0 \
-ecore-file >= 1.0.0 \
+evas >= 1.0.999 \
+ecore >= 1.0.999 \
+ecore-x >= 1.0.999 \
+ecore-evas >= 1.0.999 \
+ecore-con >= 1.0.999 \
+ecore-ipc >= 1.0.999 \
+ecore-file >= 1.0.999 \
 eet >= 1.4.0 \
-edje >= 1.0.0 \
-efreet >= 1.0.0 \
-efreet-mime >= 1.0.0 \
-eina >= 1.0.0 \
+edje >= 1.0.999 \
+efreet >= 1.0.999 \
+efreet-mime >= 1.0.999 \
+eina >= 1.0.999 \
 dbus-1 \
-edbus >= 1.0.0 \
+edbus >= 1.0.999 \
 $hal_mount \
 $udisks_mount \
 $eeze_mount \
 $device_backend"
 
-AC_E_CHECK_PKG(ECORE_IMF, [ ecore-imf >= 1.0.0 ecore-imf-evas >= 1.0.0 ], [], [:])
+AC_E_CHECK_PKG(ECORE_IMF, [ ecore-imf >= 1.0.999 ecore-imf-evas >= 1.0.999 ], [], [:])
 
 e_libs=$E_LIBS" "$LIBINTL" "$fnmatch_libs" "$ECORE_IMF_LIBS" "$execinfo_libs
 e_cflags="-DUSE_E_CONFIG_H "$E_CFLAGS" "$ECORE_IMF_CFLAGS
@@ -595,7 +635,7 @@ AC_DEFINE(E_INTERNAL, 1, "This define can be used to wrap internal E stuff, as c
 AM_CONDITIONAL(HAVE_BATTERY, false)
 define([CHECK_MODULE_BATTERY],
 [
-  AC_E_CHECK_PKG(BATTERY, [ ecore >= 1.0.0 ecore-file >= 1.0.0 ecore-con >= 1.0.0 eina >= 1.0.0 ], [], [BATTERY=false])
+  AC_E_CHECK_PKG(BATTERY, [ ecore >= 1.0.999 ecore-file >= 1.0.999 ecore-con >= 1.0.999 eina >= 1.0.999 ], [], [BATTERY=false])
 ])
 
 have_openbsd="no"
@@ -615,7 +655,7 @@ AM_CONDITIONAL([HAVE_OPENBSD], [test "x${have_openbsd}" = "xyes"])
 AM_CONDITIONAL(HAVE_TEMPERATURE, false)
 define([CHECK_MODULE_TEMPERATURE],
 [
-  AC_E_CHECK_PKG(TEMPERATURE, [ ecore >= 1.0.0 ecore-file >= 1.0.0 eina >= 1.0.0 ], [], [TEMPERATURE=false])
+  AC_E_CHECK_PKG(TEMPERATURE, [ ecore >= 1.0.999 ecore-file >= 1.0.999 eina >= 1.0.999 ], [], [TEMPERATURE=false])
 ])
 
 have_exchange=no
@@ -644,7 +684,7 @@ AC_ARG_ENABLE([enotify],
   AC_CACHE_VAL([e_cv_want_enotify], [e_cv_want_enotify=yes])
 )
 if test "x$e_cv_want_enotify" != "xno" ; then
-  AC_E_CHECK_PKG(ENOTIFY, [ edbus >= 1.0.0 enotify >= 1.0.0 ], 
+  AC_E_CHECK_PKG(ENOTIFY, [ edbus >= 1.0.999 enotify >= 1.0.999 ], 
   [
     AC_DEFINE_UNQUOTED([HAVE_ENOTIFY], [1], [enable enotify])
   ], 
@@ -659,6 +699,13 @@ fi
 AC_SUBST([ENOTIFY_CFLAGS])
 AC_SUBST([ENOTIFY_LIBS])
 
+AM_CONDITIONAL(HAVE_NOTIFICATION, false)
+define([CHECK_MODULE_NOTIFICATION],
+[
+  if test "x$e_cv_want_enotify" = "xno" ; then
+    NOTIFICATION=false
+  fi
+])
 
 AM_CONDITIONAL(HAVE_ALSA, false)
 define([CHECK_MODULE_MIXER],
@@ -691,7 +738,7 @@ AC_SUBST(SOUND_LIBS)
 AM_CONDITIONAL(HAVE_ECONNMAN, false)
 define([CHECK_MODULE_CONNMAN],
 [
-  AC_E_CHECK_PKG(ECONNMAN, [ edbus >= 1.0.0 econnman >= 1.0.0 ], [], [CONNMAN=false])
+  AC_E_CHECK_PKG(ECONNMAN, [ edbus >= 1.0.999 econnman-0.7x >= 1.0.999 ], [], [CONNMAN=false])
 ])
 AC_SUBST(ECONNMAN_CFLAGS)
 AC_SUBST(ECONNMAN_LIBS)
@@ -699,7 +746,7 @@ AC_SUBST(ECONNMAN_LIBS)
 AM_CONDITIONAL(HAVE_EBLUEZ, false)
 define([CHECK_MODULE_BLUEZ],
 [
-  AC_E_CHECK_PKG(EBLUEZ, [ edbus >= 1.0.0 ebluez >= 1.0.0 ], [], [BLUEZ=false])
+  AC_E_CHECK_PKG(EBLUEZ, [ edbus >= 1.0.999 ebluez >= 1.0.999 ], [], [BLUEZ=false])
 ])
 AC_SUBST(EBLUEZ_CFLAGS)
 AC_SUBST(EBLUEZ_LIBS)
@@ -707,10 +754,32 @@ AC_SUBST(EBLUEZ_LIBS)
 AM_CONDITIONAL(HAVE_EOFONO, false)
 define([CHECK_MODULE_OFONO],
 [
-  AC_E_CHECK_PKG(EOFONO, [ edbus >= 1.0.0 eofono >= 1.0.0 ], [], [OFONO=false])
+  AC_E_CHECK_PKG(EOFONO, [ edbus >= 1.0.999 eofono >= 1.0.999 ], [], [OFONO=false])
 ])
 AC_SUBST(EOFONO_CFLAGS)
 AC_SUBST(EOFONO_LIBS)
+
+have_wayland_clients=no
+AC_ARG_ENABLE([wayland-clients],
+  AS_HELP_STRING([--enable-wayland-clients],[enable wayland clients in composite module @<:@default=disabled@:>@]),
+  [e_cv_want_wayland_clients=$enableval],
+  [e_cv_want_wayland_clients=no])
+
+AC_MSG_CHECKING([whether wayland client support is enabled])
+AC_MSG_RESULT([${e_cv_want_wayland_clients}])
+
+if test "x$e_cv_want_wayland_clients" != "xno";then
+  PKG_CHECK_MODULES([WAYLAND], [wayland-server egl >= 7.10 glesv2 gl pixman-1 xcb-image],
+    [
+      have_wayland_clients=yes
+      AC_DEFINE_UNQUOTED([HAVE_WAYLAND_CLIENTS],[1],[enable wayland client support])
+    ],
+    [have_wayland_clients=no])
+else
+  have_wayland_clients=no
+fi
+
+AM_CONDITIONAL([HAVE_WAYLAND_CLIENTS], [test "x${have_wayland_clients}" = "xyes"])
 
 
 AC_E_OPTIONAL_MODULE([ibar], true)
@@ -950,10 +1019,10 @@ SUMMARY_EOF
 echo
 cat << DEVICE_EOF
 Preferred Backends:
- * device..........: $device_backend
- * hal_mount...........: $((test x$e_cv_want_mount_hal != xno) && echo enabled)
- * udisks_mount........: $((test x$e_cv_want_mount_udisks != xno) && echo enabled)
- * eeze_mount..........: $((test x$e_cv_want_mount_eeze != xno) && echo enabled)
+ * device..............: $device_backend
+ * hal_mount...........: $e_cv_want_mount_hal
+ * udisks_mount........: $e_cv_want_mount_udisks
+ * eeze_mount..........: $e_cv_want_mount_eeze
 DEVICE_EOF
 echo
 

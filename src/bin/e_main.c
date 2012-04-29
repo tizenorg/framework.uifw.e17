@@ -271,17 +271,6 @@ main(int argc, char **argv)
      }
    TS("Ecore Event Handlers Done");
 
-#ifdef HAVE_ECORE_IMF
-   TS("Ecore_IMF Init");
-   if (!ecore_imf_init()) 
-     {
-        e_error_message_show(_("Enlightenment cannot initialize Ecore_IMF!\n"));
-        _e_main_shutdown(-1);
-     }
-   TS("Ecore_IMF Init Done");
-   _e_main_shutdown_push(ecore_imf_shutdown);
-#endif
-
    TS("Ecore_File Init");
    if (!ecore_file_init()) 
      {
@@ -321,6 +310,17 @@ main(int argc, char **argv)
    _e_main_shutdown_push(_e_main_x_shutdown);
 
    ecore_x_io_error_handler_set(_e_main_cb_x_fatal, NULL);
+
+#ifdef HAVE_ECORE_IMF
+   TS("Ecore_IMF Init");
+   if (!ecore_imf_init()) 
+     {
+        e_error_message_show(_("Enlightenment cannot initialize Ecore_IMF!\n"));
+        _e_main_shutdown(-1);
+     }
+   TS("Ecore_IMF Init Done");
+   _e_main_shutdown_push(ecore_imf_shutdown);
+#endif
 
    TS("Ecore_Evas Init");
    if (!ecore_evas_init()) 
@@ -395,15 +395,6 @@ main(int argc, char **argv)
    TS("E_Xinerama Init Done");
    _e_main_shutdown_push(e_xinerama_shutdown);
 
-   TS("E_Randr Init");
-   if (!e_randr_init()) 
-     {
-        e_error_message_show(_("Enlightenment cannot initialize E_Randr!\n"));
-     }
-   else 
-     _e_main_shutdown_push(e_randr_shutdown);
-   TS("E_Randr Init Done");
-
    TS("E_Hints Init");
    e_hints_init();
    TS("E_Hints Init Done");
@@ -442,6 +433,15 @@ main(int argc, char **argv)
    _e_main_shutdown_push(e_config_shutdown);
 
    _fix_user_default_edj();
+
+   TS("E_Randr Init");
+   if (!e_randr_init())
+     {
+        e_error_message_show(_("Enlightenment cannot initialize E_Randr!\n"));
+     }
+   else
+     _e_main_shutdown_push(e_randr_shutdown);
+   TS("E_Randr Init Done");
 
    TS("E_Env Init");
    if (!e_env_init())
@@ -863,7 +863,7 @@ main(int argc, char **argv)
         e_error_message_show(_("Enlightenment cannot initialize the Icon Cache system.\n"));
         _e_main_shutdown(-1);
      }
-   TS("E_Thumb Init Done");
+   TS("E_Icon Init Done");
    _e_main_shutdown_push(e_icon_shutdown);
 
    TS("E_XSettings Init");
@@ -874,6 +874,15 @@ main(int argc, char **argv)
      }
    TS("E_XSettings Init Done");
    _e_main_shutdown_push(e_xsettings_shutdown);
+
+   TS("E_Update Init");
+   if (!e_update_init()) 
+     {
+        e_error_message_show(_("Enlightenment cannot initialize the Update system.\n"));
+        _e_main_shutdown(-1);
+     }
+   TS("E_Update Init Done");
+   _e_main_shutdown_push(e_update_shutdown);
 
    if (!after_restart) 
      {

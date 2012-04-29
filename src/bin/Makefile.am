@@ -149,6 +149,7 @@ e_theme_about.h \
 e_theme.h \
 e_thumb.h \
 e_toolbar.h \
+e_update.h \
 e_user.h \
 e_utils.h \
 e_widget_aspect.h \
@@ -274,6 +275,13 @@ e_popup.c \
 e_powersave.c \
 e_prefix.c \
 e_randr.c \
+e_randr_serialization.c \
+e_randr_11.c \
+e_randr_11_serialization.c \
+e_randr_12.c \
+e_randr_12_output.c \
+e_randr_12_crtc.c \
+e_randr_12_serialization.c \
 e_remember.c \
 e_resist.c \
 e_scale.c \
@@ -295,6 +303,7 @@ e_theme_about.c \
 e_theme.c \
 e_thumb.c \
 e_toolbar.c \
+e_update.c \
 e_user.c \
 e_utils.c \
 e_widget_aspect.c \
@@ -403,3 +412,6 @@ install-data-hook:
 endif
 installed_headersdir = $(prefix)/include/enlightenment
 installed_headers_DATA = $(ENLIGHTENMENTHEADERS)
+
+EXTRA_DIST = \
+	     e_randr_private.h

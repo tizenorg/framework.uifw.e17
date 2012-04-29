@@ -38,7 +38,7 @@ collections {
 
    //The graphical representation of a single monitor, including its decorations
    group {
-      name: "e/conf/randr/dialog/subdialog/arrangement/output";
+      name: "e/conf/randr/dialog/widget/arrangement/output";
 
       styles {
          style {
@@ -81,6 +81,30 @@ collections {
                   to: "display";
                   //relative: 0.97 0.657804;
                   relative: 0.975 0.66;
+               }
+            }
+
+            description {
+               state: "disabled" 0.0;
+               inherit: "default" 0.0;
+               color: 128 128 128 255;
+            }
+         }
+
+         part {
+            name: "state_layer";
+            type: RECT; // Overlay for gray-out in case of disabled outputs
+
+            description {
+               state: "default" 0.0;
+               color: 255 255 255 0;
+               rel1 {
+                  to: "e.swallow.content";
+                  relative: 0.0 0.0;
+               }
+               rel2 {
+                  to: "e.swallow.content";
+                  relative: 1.0 1.0;
                }
             }
 
@@ -424,7 +448,7 @@ collections {
                signal: "disabled";
                source: "e";
                action: STATE_SET "disabled" 0.0;
-               target: "e.swallow.content";
+               target: "state_layer";
             }
 
             program {
@@ -432,7 +456,7 @@ collections {
                signal: "enabled";
                source: "e";
                action: STATE_SET "default" 0.0;
-               target: "e.swallow.content";
+               target: "state_layer";
             }
 
             program {
@@ -447,7 +471,7 @@ collections {
    //representation is dragged. Its size matches the size of the monitor
    //dragged.
    group{
-      name: "e/conf/randr/dialog/subdialog/arrangement/suggestion";
+      name: "e/conf/randr/dialog/widget/arrangement/suggestion";
       data {
          item: "distance_min" "20";
       }
@@ -528,7 +552,7 @@ collections {
    /************Subdialog - Policies**************/
    /**********************************************/
    group{
-      name: "e/conf/randr/dialog/subdialog/policies";
+      name: "e/conf/randr/dialog/widget/policies";
       parts {
          part {
             name: "current_displays_setup/clipper";
@@ -804,7 +828,7 @@ collections {
 
    // Text objects for rotation and reflection
    group {
-      name: "e/conf/randr/dialog/subdialog/orientation";
+      name: "e/conf/randr/dialog/widget/orientation";
 
       parts {
          part {

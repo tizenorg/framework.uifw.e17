@@ -16,9 +16,11 @@ INCLUDES               = -I. \
                          -I$(top_srcdir)/src/bin \
                          -I$(top_builddir)/src/bin \
                          -I$(top_srcdir)/src/modules \
-                         @e_cflags@
+                         @e_cflags@ @WAYLAND_CFLAGS@
+
 pkgdir                 = $(libdir)/enlightenment/modules/$(MODULE)/$(MODULE_ARCH)
 pkg_LTLIBRARIES        = module.la
+
 module_la_SOURCES      = e_mod_main.c \
                          e_mod_main.h \
 			 e_mod_config.c \
@@ -29,8 +31,26 @@ module_la_SOURCES      = e_mod_main.c \
                          e_mod_comp_update.h \
                          e_mod_comp_cfdata.c \
                          e_mod_comp_cfdata.h
-                         
-module_la_LIBADD       = @e_libs@ @dlopen_libs@
+if HAVE_WAYLAND_CLIENTS
+module_la_SOURCES += e_mod_comp_wl.h \
+                     e_mod_comp_wl.c \
+                     e_mod_comp_wl_comp.h \
+                     e_mod_comp_wl_comp.c \
+                     e_mod_comp_wl_shm.h \
+                     e_mod_comp_wl_shm.c \
+                     e_mod_comp_wl_output.h \
+                     e_mod_comp_wl_output.c \
+                     e_mod_comp_wl_input.h \
+                     e_mod_comp_wl_input.c \
+                     e_mod_comp_wl_shell.h \
+                     e_mod_comp_wl_shell.c \
+                     e_mod_comp_wl_surface.h \
+                     e_mod_comp_wl_surface.c \
+                     e_mod_comp_wl_buffer.h \
+                     e_mod_comp_wl_buffer.c
+endif
+
+module_la_LIBADD       = @e_libs@ @dlopen_libs@ @WAYLAND_LIBS@
 module_la_LDFLAGS      = -module -avoid-version
 module_la_DEPENDENCIES = $(top_builddir)/config.h
 

@@ -178,10 +178,12 @@ _notification_popup_merge(E_Notification *n)
 
    len = strlen(body_old);
    len += strlen(body_new);
-   len += 4; /* "<ps>" */
+   len += 4; /* \xE2\x80\xA9 or <PS> */
    if (len < 65536) body_final = alloca(len + 1);
    else body_final = malloc(len + 1);
-   snprintf(body_final, len + 1, "%s<ps>%s", body_old, body_new);
+   /* Hack to allow e to include markup */
+   snprintf(body_final, len + 1, "%s<ps/>%s", body_old, body_new);
+
    /* printf("set body %s\n", body_final); */
 
    e_notification_body_set(n, body_final);
@@ -256,7 +258,7 @@ _notification_popup_new(E_Notification *n)
    char buf[PATH_MAX];
    const Eina_List *l, *screens;
    E_Screen *scr;
-   E_Zone *zone;
+   E_Zone *zone = NULL;
 
    if (popups_displayed > POPUP_LIMIT) return 0;
    popup = E_NEW(Popup_Data, 1);
@@ -278,9 +280,9 @@ _notification_popup_new(E_Notification *n)
         EINA_SAFETY_ON_NULL_GOTO(scr, error);
         EINA_LIST_FOREACH(con->zones, l, zone)
           if ((int)zone->num == scr->screen) break;
-        if ((int)zone->num != scr->screen) goto error;
+        if (zone && ((int)zone->num != scr->screen)) goto error;
      }
-   else
+   if (!zone)
      zone = e_zone_current_get(con);
    popup->zone = zone;
 
@@ -579,6 +581,17 @@ _notification_format_message(Popup_Data *popup)
    Evas_Object *o = popup->theme;
    const char *title = e_notification_summary_get(popup->notif);
    const char *b = e_notification_body_get(popup->notif);
-   edje_object_part_text_set(o, "notification.textblock.message", b);
    edje_object_part_text_set(o, "notification.text.title", title);
+
+   /* FIXME: Filter to only include allowed markup? */
+     {
+        /* We need to replace \n with <br>. FIXME: We need to handle all the
+         * newline kinds, and paragraph separator. ATM this will suffice. */
+        Eina_Strbuf *buf = eina_strbuf_new();
+        eina_strbuf_append(buf, b);
+        eina_strbuf_replace_all(buf, "\n", "<br/>");
+        edje_object_part_text_set(o, "notification.textblock.message",
+              eina_strbuf_string_get(buf));
+        eina_strbuf_free(buf);
+     }
 }

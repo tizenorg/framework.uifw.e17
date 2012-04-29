@@ -1,7 +1,7 @@
 Name:       e17
 Summary:    The Enlightenment window manager
-Version:    1.0.0.001+svn.65871slp2
-Release:    1.1
+Version:    1.0.0.001+svn.68441slp2
+Release:    1
 Group:      System/GUI/Other
 License:    BSD
 URL:        http://www.enlightenment.org/
@@ -70,12 +70,11 @@ The Enlightenment window manager (data)
 
 %build
 
-export CFLAGS+=" -fvisibility=hidden -fPIC -DDO_NOT_USE_SIG_HANDLER"
+export CFLAGS+=" -fvisibility=hidden -fPIC "
 export LDFLAGS+=" -fvisibility=hidden -Wl,--hash-style=both -Wl,--as-needed"
 
 %autogen --disable-static
 LIBS='-ledbus' ./configure --prefix=/usr --disable-static \
-    --enable-extra-features \
     --disable-clock \
     --disable-temperature \
     --disable-mixer \
@@ -161,31 +160,46 @@ LIBS='-ledbus' ./configure --prefix=/usr --disable-static \
     --disable-illume-softkey \
     --disable-comp \
     --disable-illume2 \
-    --disable-notification \
     --disable-conf_randr \
     --disable-tasks \
-    --disable-backlight
-#    --disable-backlight \ 
-#    --disable-shot
+    --disable-backlight \
+    --disable-shot \
+    --disable-notification \
+    --enable-extra-features
 
 make %{?jobs:-j%jobs}
 
 %install
 rm -rf %{buildroot}
 %make_install
-#make install
 
 %files 
 %defattr(-,root,root,-)
-/usr/etc/*
-/usr/bin/*
-/usr/lib/enlightenment/*
+/usr/bin/enlightenment
+/usr/bin/enlightenment_imc
+/usr/bin/enlightenment_remote
+/usr/bin/enlightenment_start
+/usr/lib/enlightenment/preload/*
+/usr/etc/enlightenment/sysactions.conf
 
 %files devel
 %defattr(-,root,root,-)
 /usr/lib/pkgconfig/enlightenment.pc
-/usr/include/*
+/usr/include/enlightenment/*.h
 
 %files data 
 %defattr(-,root,root,-)
-/usr/share/*
+/usr/share/enlightenment/data/themes
+
+%exclude /usr/etc/xdg/*
+%exclude /usr/lib/enlightenment/utils/*
+%exclude /usr/share/enlightenment/AUTHORS
+%exclude /usr/share/enlightenment/COPYING
+%exclude /usr/share/enlightenment/data/backgrounds/*
+%exclude /usr/share/enlightenment/data/config/*
+%exclude /usr/share/enlightenment/data/icons/*
+%exclude /usr/share/enlightenment/data/images/*
+%exclude /usr/share/enlightenment/data/input_methods/*
+%exclude /usr/share/locale/*
+%exclude /usr/share/xsessions/*
+

@@ -44,6 +44,9 @@ struct _Config
    int                  time_full;
    int                  have_battery;
    int                  have_power;
+#ifdef HAVE_ENOTIFY
+   int              desktop_notifications;
+#endif
 #ifdef HAVE_EEZE
    Eeze_Udev_Watch     *acwatch;
    Eeze_Udev_Watch     *batwatch;
@@ -149,5 +152,17 @@ E_Config_Dialog *e_int_config_battery_module(E_Container *con, const char *param
     
 void _battery_config_updated(void);
 extern Config *battery_config;
+
+/**
+ * @addtogroup Optional_Gadgets
+ * @{
+ *
+ * @defgroup Module_Battery Battery
+ *
+ * Shows battery level and current status, may do actions given some
+ * thresholds.
+ *
+ * @}
+ */
 
 #endif

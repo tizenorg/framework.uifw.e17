@@ -67,22 +67,14 @@ e_container_new(E_Manager *man)
    con->manager->containers = eina_list_append(con->manager->containers, con);
    con->w = con->manager->w;
    con->h = con->manager->h;
-   if (e_config->use_virtual_roots)
-     {
-	con->win = ecore_x_window_override_new(con->manager->win, con->x, con->y, con->w, con->h);
-	ecore_x_icccm_title_set(con->win, "Enlightenment Container");
-	ecore_x_netwm_name_set(con->win, "Enlightenment Container");
-	ecore_x_window_raise(con->win);
-     }
-   else
-     con->win = con->manager->win;
+   con->win = con->manager->win;
 
    if (!e_config->null_container_win)
-      con->bg_ecore_evas = e_canvas_new(e_config->evas_engine_container, con->win,
+      con->bg_ecore_evas = e_canvas_new(con->win,
                                         0, 0, con->w, con->h, 1, 1,
                                         &(con->bg_win));
    else
-      con->bg_ecore_evas = e_canvas_new(e_config->evas_engine_container, con->win,
+      con->bg_ecore_evas = e_canvas_new(con->win,
                                         0, 0, 1, 1, 1, 1,
                                         &(con->bg_win));
    e_canvas_add(con->bg_ecore_evas);
@@ -845,7 +837,7 @@ _e_container_border_list_jump(E_Border_List *list, int dir)
    E_Border *bd;
    
    if ((list->pos < 0) || 
-       (list->pos >= (int)eina_array_count_get(&(list->client_array))))
+       (list->pos >= (int)eina_array_count(&(list->client_array))))
       return NULL;
    bd = eina_array_data_get(&(list->client_array), list->pos);
    list->pos += dir;
@@ -868,7 +860,7 @@ e_container_border_list_last(E_Container *con)
    E_Border_List *list = NULL;
 
    list = _e_container_border_list_new(con);
-   list->pos = eina_array_count_get(&(list->client_array)) - 1;
+   list->pos = eina_array_count(&(list->client_array)) - 1;
    return list;
 }
 
@@ -1140,20 +1132,26 @@ _e_container_resize_handle(E_Container *con)
      {
 	EINA_LIST_FOREACH(con->zones, l, zone)
 	  zones = eina_list_append(zones, zone);
+        con->zones = NULL;
 	EINA_LIST_FOREACH(screens, l, scr)
 	  {
+             printf("@@@ SCREENS: %i %i | %i %i %ix%i\n", scr->screen, scr->escreen, scr->x, scr->y, scr->w, scr->h);
 	     zone = e_container_zone_id_get(con, scr->escreen);
 	     if (zone)
 	       {
+                  printf("@@@ FOUND ZONE %i %i\n", zone->num, zone->id);
 		  e_zone_move_resize(zone, scr->x, scr->y, scr->w, scr->h);
 		  e_shelf_zone_move_resize_handle(zone);	
 		  zones = eina_list_remove(zones, zone);
+                  con->zones = eina_list_append(con->zones, zone);
+                  zone->num = scr->screen;
 	       }
 	     else
 	       {
 		  Eina_List *ll;
   		  E_Config_Shelf *cf_es;
 
+                  printf("@@@ container resize handle\n");
 		  zone = e_zone_new(con, scr->screen, scr->escreen, scr->x, scr->y, scr->w, scr->h);
 		  /* find any shelves configured for this zone and add them in */
 		  EINA_LIST_FOREACH(e_config->shelves, ll, cf_es)

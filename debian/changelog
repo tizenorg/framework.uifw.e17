@@ -1,3 +1,39 @@
+e17 (1:1.0.0.001+svn.68441slp2+build04) unstable; urgency=low
+
+  * [E_Zone] There is a bug doesn't send E_EVENT_ZONE_DEL event when the zone
+             is removed. This bug is fixed.
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build04
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Wed, 28 Mar 2012 15:57:05 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build03) unstable; urgency=low
+
+  * Add code to check configuration(geometry_auto_move) when repositioning 
+    new border's geometry
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build03
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Sun, 25 Mar 2012 12:36:01 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build02) unstable; urgency=low
+
+  * Bug fix - Set focus to the top window when e gets active window request
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build02
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Mon, 05 Mar 2012 10:49:22 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build01) unstable; urgency=low
+
+  * E17 upgrade (svn rev.68441)
+    - SLP uses X lib not XCB 
+    - SLP doesn't make enlightenment_alert binary (Because it uses XCB only)
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build01
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Fri, 02 Mar 2012 20:03:11 +0900
+
 e17 (1:1.0.0.001+svn.65871slp2+build09) unstable; urgency=low
 
   * Add Feature - app-in-app window resize
