@@ -6,6 +6,7 @@ Group:      System/GUI/Other
 License:    BSD
 URL:        http://www.enlightenment.org/
 Source0:    %{name}-%{version}.tar.gz
+Source1001: packaging/e17.manifest 
 BuildRequires:  pkgconfig(alsa)
 BuildRequires:  pkgconfig(ecore)
 BuildRequires:  pkgconfig(ecore-con)
@@ -69,6 +70,7 @@ The Enlightenment window manager (data)
 
 
 %build
+cp %{SOURCE1001} .
 
 export CFLAGS+=" -fvisibility=hidden -fPIC "
 export LDFLAGS+=" -fvisibility=hidden -Wl,--hash-style=both -Wl,--as-needed"
@@ -174,6 +176,7 @@ rm -rf %{buildroot}
 %make_install
 
 %files 
+%manifest e17.manifest
 %defattr(-,root,root,-)
 /usr/bin/enlightenment
 /usr/bin/enlightenment_imc
@@ -183,11 +186,13 @@ rm -rf %{buildroot}
 /usr/etc/enlightenment/sysactions.conf
 
 %files devel
+%manifest e17.manifest
 %defattr(-,root,root,-)
 /usr/lib/pkgconfig/enlightenment.pc
 /usr/include/enlightenment/*.h
 
 %files data 
+%manifest e17.manifest
 %defattr(-,root,root,-)
 /usr/share/enlightenment/data/themes
 
