@@ -6,7 +6,8 @@ Group:      System/GUI/Other
 License:    BSD
 URL:        http://www.enlightenment.org/
 Source0:    %{name}-%{version}.tar.gz
-Source1001: packaging/e17.manifest 
+Source1001: packaging/e17.manifest
+Source2:    packaging/e17.service
 BuildRequires:  pkgconfig(alsa)
 BuildRequires:  pkgconfig(ecore)
 BuildRequires:  pkgconfig(ecore-con)
@@ -71,7 +72,6 @@ The Enlightenment window manager (data)
 
 %build
 cp %{SOURCE1001} .
-
 export CFLAGS+=" -fvisibility=hidden -fPIC "
 export LDFLAGS+=" -fvisibility=hidden -Wl,--hash-style=both -Wl,--as-needed"
 
@@ -175,25 +175,32 @@ make %{?jobs:-j%jobs}
 rm -rf %{buildroot}
 %make_install
 
+#systemd setup
+mkdir -p %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants
+install -m 0644 %SOURCE2 %{buildroot}%{_libdir}/systemd/user/
+ln -s ../e17.service %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants/e17.service
+
 %files 
-%manifest e17.manifest
 %defattr(-,root,root,-)
+%manifest e17.manifest
 /usr/bin/enlightenment
 /usr/bin/enlightenment_imc
 /usr/bin/enlightenment_remote
 /usr/bin/enlightenment_start
 /usr/lib/enlightenment/preload/*
-/usr/etc/enlightenment/sysactions.conf
+%config /usr/etc/enlightenment/sysactions.conf
+/usr/lib/systemd/user/e17.service
+/usr/lib/systemd/user/core-efl.target.wants/e17.service
 
 %files devel
-%manifest e17.manifest
 %defattr(-,root,root,-)
+%manifest e17.manifest
 /usr/lib/pkgconfig/enlightenment.pc
 /usr/include/enlightenment/*.h
 
 %files data 
-%manifest e17.manifest
 %defattr(-,root,root,-)
+%manifest e17.manifest
 /usr/share/enlightenment/data/themes
 
 %exclude /usr/etc/xdg/*

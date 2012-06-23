@@ -1,0 +1,2 @@
+* Fri Jun 22 2012 Brad Peters <brad.t.peters@intel.com> - 1.0.0
+- Eliminate double spec files, merge in systemd unit setup
