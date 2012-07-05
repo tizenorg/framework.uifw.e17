@@ -210,7 +210,12 @@ ln -s ../e17.service %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants/e
 %exclude /usr/share/enlightenment/data/backgrounds/*
 %exclude /usr/share/enlightenment/data/config/*
 %exclude /usr/share/enlightenment/data/icons/*
-%exclude /usr/share/enlightenment/data/images/*
+%exclude /usr/share/enlightenment/data/images/enlightenment.png
+%exclude /usr/share/enlightenment/data/images/lang-*.png
+/usr/share/enlightenment/data/images/test.edj
+/usr/share/enlightenment/data/images/test.png
+/usr/share/enlightenment/data/images/test.svg
+/usr/share/enlightenment/data/images/test.jpg
 %exclude /usr/share/enlightenment/data/input_methods/*
 %exclude /usr/share/locale/*
 %exclude /usr/share/xsessions/*

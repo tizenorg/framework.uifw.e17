@@ -1,2 +1,23 @@
-* Fri Jun 22 2012 Brad Peters <brad.t.peters@intel.com> - 1.0.0
-- Eliminate double spec files, merge in systemd unit setup
+* Thu Jul 05 2012 William Douglas <william.douglas@intel.com> b44f88d
+- Keep the jpg and svg test files.
+
+* Fri Jun 22 2012 Brad Peters <brad.t.peters@intel.com> 018dce0
+- Staging systemd unti files
+
+* Tue May 29 2012 Ryan Ware <ryan.r.ware@intel.com> 6597ead
+- Add default Smack manifest for e17.spec
+
+* Sun Apr 29 2012 Kim Kibum <kb0929.kim@samsung.com> ac8fa49
+- upload tizen1.0 source
+
+* Tue Mar 13 2012 Yan Yin <yan.yin@intel.com> 71de741
+- update for beta universally
+
+* Thu Feb 16 2012 Gwanglim Lee <gl77.lee@samsung.com> 6957803
+- update for beta release
+
+* Fri Jan 06 2012 Kibum Kim <kb0929.kim@samsung.com> bafc539
+- Git init
+[ Eunkyoung Kim ]
+- Initial empty repository
+
