@@ -1637,3 +1637,24 @@ e_util_fullscreen_any(void)
      }
    return EINA_FALSE;
 }
+
+#if _F_USE_EXTN_DIALOG_
+/**
+ * Using external elementary dialog util instead of e_dialog to display error or warning
+ * messages. It is a temporary solution for supporting consistent UX theme. The external
+ * dialog is a simple EFL application which is based on elementary. Thus window manager
+ * can display message using elementary UX theme, along with other system popup.
+ */
+EAPI void
+e_util_extn_dialog_show(const char *title,
+                        const char *txt)
+{
+   Ecore_Exe *exe;
+   char cmd[4096];
+
+   /* external_dialog_name, icccm_name, icccm_class, popup_title, popup_contents */
+   snprintf(cmd, sizeof(cmd), "/usr/bin/extndialog E _extn_dialog \'%s\' \'%s\'", title, txt);
+   exe = ecore_exe_run(cmd, NULL);
+   if (exe) ecore_exe_free(exe);
+}
+#endif

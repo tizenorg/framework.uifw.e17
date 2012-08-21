@@ -40,6 +40,7 @@ static E_Config_DD *_e_config_bindings_acpi_edd = NULL;
 static E_Config_DD *_e_config_path_append_edd = NULL;
 static E_Config_DD *_e_config_desktop_bg_edd = NULL;
 static E_Config_DD *_e_config_desktop_name_edd = NULL;
+static E_Config_DD *_e_config_desktop_window_profile_edd = NULL;
 static E_Config_DD *_e_config_remember_edd = NULL;
 static E_Config_DD *_e_config_color_class_edd = NULL;
 static E_Config_DD *_e_config_gadcon_edd = NULL;
@@ -275,6 +276,17 @@ e_config_init(void)
    E_CONFIG_VAL(D, T, desk_x, INT);
    E_CONFIG_VAL(D, T, desk_y, INT);
    E_CONFIG_VAL(D, T, name, STR);
+
+   _e_config_desktop_window_profile_edd = E_CONFIG_DD_NEW("E_Config_Desktop_Window_Profile", E_Config_Desktop_Window_Profile);
+#undef T
+#undef D
+#define T E_Config_Desktop_Window_Profile
+#define D _e_config_desktop_window_profile_edd
+   E_CONFIG_VAL(D, T, container, INT);
+   E_CONFIG_VAL(D, T, zone, INT);
+   E_CONFIG_VAL(D, T, desk_x, INT);
+   E_CONFIG_VAL(D, T, desk_y, INT);
+   E_CONFIG_VAL(D, T, profile, STR);
 
    _e_config_path_append_edd = E_CONFIG_DD_NEW("E_Path_Dir", E_Path_Dir);
 #undef T
@@ -625,8 +637,10 @@ e_config_init(void)
    E_CONFIG_VAL(D, T, init_default_theme, STR); /**/
    E_CONFIG_VAL(D, T, desktop_default_background, STR); /**/
    E_CONFIG_VAL(D, T, desktop_default_name, STR); /**/
+   E_CONFIG_VAL(D, T, desktop_default_window_profile, STR); /**/
    E_CONFIG_LIST(D, T, desktop_backgrounds, _e_config_desktop_bg_edd); /**/
    E_CONFIG_LIST(D, T, desktop_names, _e_config_desktop_name_edd); /**/
+   E_CONFIG_LIST(D, T, desktop_window_profiles, _e_config_desktop_window_profile_edd); /**/
    E_CONFIG_VAL(D, T, menus_scroll_speed, DOUBLE); /**/
    E_CONFIG_VAL(D, T, menus_fast_mouse_move_threshhold, DOUBLE); /**/
    E_CONFIG_VAL(D, T, menus_click_drag_timeout, DOUBLE); /**/
@@ -925,6 +939,7 @@ e_config_shutdown(void)
    E_CONFIG_DD_FREE(_e_config_path_append_edd);
    E_CONFIG_DD_FREE(_e_config_desktop_bg_edd);
    E_CONFIG_DD_FREE(_e_config_desktop_name_edd);
+   E_CONFIG_DD_FREE(_e_config_desktop_window_profile_edd);
    E_CONFIG_DD_FREE(_e_config_remember_edd);
    E_CONFIG_DD_FREE(_e_config_gadcon_edd);
    E_CONFIG_DD_FREE(_e_config_gadcon_client_edd);
@@ -1559,6 +1574,20 @@ e_config_domain_system_load(const char *domain, E_Config_DD *edd)
 static void
 _e_config_mv_error(const char *from, const char *to)
 {
+#if _F_USE_EXTN_DIALOG_
+   char buf[8192];
+   snprintf(buf, sizeof(buf),
+            _("Enlightenment has had an error while moving config files<br>"
+              "from:<br>"
+              "%s<br>"
+              "<br>"
+              "to:<br>"
+              "%s<br>"
+              "<br>"
+              "The rest of the write has been aborted for safety.<br>"),
+            from, to);
+   e_util_extn_dialog_show(_("Enlightenment Settings Write Problems"), buf);
+#else
    if (!_e_config_error_dialog)
      {
         E_Dialog *dia;
@@ -1591,6 +1620,7 @@ _e_config_mv_error(const char *from, const char *to)
              _e_config_error_dialog = dia;
           }
      }
+#endif
 }
 
 EAPI int
@@ -2010,6 +2040,7 @@ _e_config_free(E_Config *ecf)
    if (ecf->init_default_theme) eina_stringshare_del(ecf->init_default_theme);
    if (ecf->desktop_default_background) eina_stringshare_del(ecf->desktop_default_background);
    if (ecf->desktop_default_name) eina_stringshare_del(ecf->desktop_default_name);
+   if (ecf->desktop_default_window_profile) eina_stringshare_del(ecf->desktop_default_window_profile);
    if (ecf->language) eina_stringshare_del(ecf->language);
    if (ecf->transition_start) eina_stringshare_del(ecf->transition_start);
    if (ecf->transition_desk) eina_stringshare_del(ecf->transition_desk);
@@ -2132,6 +2163,20 @@ _e_config_eet_close_handle(Eet_File *ef, char *file)
      {
 	/* delete any partially-written file */
 	ecore_file_unlink(file);
+#if _F_USE_EXTN_DIALOG_
+        char buf[8192];
+        snprintf(buf, sizeof(buf),
+                 _("Enlightenment has had an error while writing<br>"
+                   "its config file.<br>"
+                   "%s<br>"
+                   "<br>"
+                   "The file where the error occurred was:<br>"
+                   "%s<br>"
+                   "<br>"
+                   "This file has been deleted to avoid corrupt data.<br>"),
+                 erstr, file);
+        e_util_extn_dialog_show(_("Enlightenment Settings Write Problems"), buf);
+#else
         /* only show dialog for first error - further ones are likely */
         /* more of the same error */
 	if (!_e_config_error_dialog)
@@ -2166,6 +2211,7 @@ _e_config_eet_close_handle(Eet_File *ef, char *file)
 		  _e_config_error_dialog = dia;
 	       }
 	  }
+#endif
 	return 0;
      }
    return 1;

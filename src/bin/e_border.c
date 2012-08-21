@@ -124,6 +124,9 @@ static Eina_Bool _e_border_cb_grab_replay(void *data,
                                           void *event);
 static void _e_border_cb_drag_finished(E_Drag *drag,
                                        int     dropped);
+static Eina_Bool _e_border_cb_desk_window_profile_change(void *data,
+                                                         int   ev_type,
+                                                         void *ev);
 
 static void      _e_border_eval(E_Border *bd);
 static void      _e_border_eval0(E_Border *bd);
@@ -299,6 +302,7 @@ e_border_init(void)
    handlers = eina_list_append(handlers, ecore_event_handler_add(EFREET_EVENT_DESKTOP_CACHE_UPDATE, _e_border_cb_efreet_cache_update, NULL));
    handlers = eina_list_append(handlers, ecore_event_handler_add(EFREET_EVENT_ICON_CACHE_UPDATE, _e_border_cb_efreet_cache_update, NULL));
    handlers = eina_list_append(handlers, ecore_event_handler_add(E_EVENT_CONFIG_ICON_THEME, _e_border_cb_config_icon_theme, NULL));
+   handlers = eina_list_append(handlers, ecore_event_handler_add(E_EVENT_DESK_WINDOW_PROFILE_CHANGE, _e_border_cb_desk_window_profile_change, NULL));
 
    if (!borders_hash) borders_hash = eina_hash_string_superfast_new(NULL);
 
@@ -600,6 +604,9 @@ e_border_new(E_Container   *con,
                     video_parent = EINA_TRUE;
                   else if (atoms[i] == ECORE_X_ATOM_E_VIDEO_POSITION)
                     video_position = EINA_TRUE;
+     /* loop to check for window profile list atom */
+                  else if (atoms[i] == ECORE_X_ATOM_E_PROFILE_LIST)
+                    bd->client.e.fetch.profile_list = 1;
               }
             if (video_position && video_parent)
               {
@@ -675,6 +682,12 @@ e_border_new(E_Container   *con,
    desk[0] = deskx;
    desk[1] = desky;
    ecore_x_window_prop_card32_set(win, E_ATOM_DESK, desk, 2);
+   if (strcmp(bd->desk->window_profile,
+              e_config->desktop_default_window_profile) != 0)
+     {
+        ecore_x_e_window_profile_set(bd->client.win,
+                                     bd->desk->window_profile);
+     }
 
    focus_stack = eina_list_append(focus_stack, bd);
 
@@ -4371,6 +4384,7 @@ e_border_resize_limit(E_Border *bd,
 static void
 _e_border_free(E_Border *bd)
 {
+   const char *str;
    if (bd->client.e.state.video_parent)
      {
         Eina_List *l;
@@ -4533,6 +4547,14 @@ _e_border_free(E_Border *bd)
    if (bd->internal_icon) eina_stringshare_del(bd->internal_icon);
    if (bd->internal_icon_key) eina_stringshare_del(bd->internal_icon_key);
    if (bd->icon_object) evas_object_del(bd->icon_object);
+   EINA_LIST_FREE(bd->client.e.state.profiles, str)
+     {
+        if (str) eina_stringshare_del(str);
+     }
+   bd->client.e.state.profiles = NULL;
+   if (bd->client.e.state.profile)
+     eina_stringshare_del(bd->client.e.state.profile);
+   bd->client.e.state.profile = NULL;
    evas_object_del(bd->bg_object);
    e_canvas_del(bd->bg_ecore_evas);
    ecore_evas_free(bd->bg_ecore_evas);
@@ -5364,6 +5386,11 @@ _e_border_cb_window_property(void *data  __UNUSED__,
    else if (e->atom == ECORE_X_ATOM_E_VIDEO_PARENT)
      {
         bd->client.e.fetch.video_parent = 1;
+        bd->changed = 1;
+     }
+   else if (e->atom == ECORE_X_ATOM_E_PROFILE_LIST)
+     {
+        bd->client.e.fetch.profile_list = 1;
         bd->changed = 1;
      }
 
@@ -6407,6 +6434,27 @@ _e_border_cb_drag_finished(E_Drag     *drag,
 }
 
 static Eina_Bool
+_e_border_cb_desk_window_profile_change(void *data  __UNUSED__,
+                                        int ev_type __UNUSED__,
+                                        void       *ev)
+{
+   E_Event_Desk_Window_Profile_Change *e;
+   Eina_List *l;
+   E_Border *bd;
+
+   e = ev;
+   EINA_LIST_FOREACH(borders, l, bd)
+     {
+        if ((bd) && (!e_object_is_del(E_OBJECT(bd))))
+          {
+             bd->client.e.fetch.profile_list = 1;
+             bd->changed = 1;
+          }
+     }
+   return ECORE_CALLBACK_PASS_ON;
+}
+
+static Eina_Bool
 _e_border_post_move_resize_job(void *data)
 {
    E_Border *bd;
@@ -6500,6 +6548,7 @@ _e_border_eval0(E_Border *bd)
 {
    int change_urgent = 0;
    int rem_change = 0;
+   Eina_Bool need_desk_set = EINA_FALSE;
 
    if (e_object_is_del(E_OBJECT(bd)))
      {
@@ -6625,6 +6674,52 @@ _e_border_eval0(E_Border *bd)
         e_hints_window_e_state_get(bd);
         bd->client.e.fetch.state = 0;
         rem_change = 1;
+     }
+   if (bd->client.e.fetch.profile_list)
+     {
+        const char **profiles = NULL;
+        const char *str;
+        int num, i;
+
+        if (bd->client.e.state.profile)
+          eina_stringshare_del(bd->client.e.state.profile);
+        EINA_LIST_FREE(bd->client.e.state.profiles, str)
+          {
+             if (str) eina_stringshare_del(str);
+          }
+        bd->client.e.state.profile = NULL;
+        bd->client.e.state.profiles = NULL;
+        bd->client.e.state.profile_list = 0;
+
+        if (ecore_x_e_window_profile_list_get(bd->client.win,
+                                              &profiles, &num))
+          {
+             bd->client.e.state.profile_list = 1;
+             for (i = 0; i < num; i++)
+               {
+                  str = eina_stringshare_add(profiles[i]);
+                  bd->client.e.state.profiles = eina_list_append(bd->client.e.state.profiles, str);
+               }
+
+             /* We should set desk to contain given border after creating E_BORDER_ADD event.
+              * If not, e will have an E_BORDER_SHOW event before E_BORDER_ADD event.
+              */
+             need_desk_set = EINA_TRUE;
+          }
+        else
+          {
+             if (strcmp(bd->desk->window_profile,
+                        e_config->desktop_default_window_profile) != 0)
+               {
+                  ecore_x_e_window_profile_set(bd->client.win,
+                                               bd->desk->window_profile);
+               }
+          }
+
+        if (profiles)
+          free(profiles);
+
+        bd->client.e.fetch.profile_list = 0;
      }
    if (bd->client.netwm.fetch.type)
      {
@@ -7236,6 +7331,29 @@ _e_border_eval0(E_Border *bd)
           bd->client.border.changed = 1;
      }
 
+   if (need_desk_set)
+     {
+        E_Container *con = bd->zone->container;
+        E_Desk *desk = NULL;
+        Eina_List *l;
+        const char *str;
+        EINA_LIST_FOREACH(bd->client.e.state.profiles, l, str)
+          {
+             desk = e_container_desk_window_profile_get(con, str);
+             if (desk)
+               {
+                  if (bd->desk != desk)
+                    {
+                       bd->client.e.state.profile = eina_stringshare_add(str);
+                       if (bd->zone != desk->zone)
+                         e_border_zone_set(bd, desk->zone);
+                       e_border_desk_set(bd, desk);
+                    }
+                  break;
+               }
+          }
+     }
+
    /* PRE_POST_FETCH calls e_remember apply for new client */
    _e_border_hook_call(E_BORDER_HOOK_EVAL_PRE_POST_FETCH, bd);
    _e_border_hook_call(E_BORDER_HOOK_EVAL_POST_FETCH, bd);
@@ -7460,7 +7578,6 @@ _e_border_eval0(E_Border *bd)
 static void
 _e_border_latest_stacked_focus (E_Border* bd)
 {
-   Eina_List *l = NULL;
    E_Border *temp_bd;
    int root_w, root_h;
 
@@ -7473,6 +7590,7 @@ _e_border_latest_stacked_focus (E_Border* bd)
      {
         if ((temp_bd->x >= root_w) || (temp_bd->y >= root_h)) continue;
         if (((temp_bd->x + temp_bd->w) <= 0) || ((temp_bd->y + temp_bd->h) <= 0)) continue;
+        if (temp_bd->client.illume.win_state.state == ECORE_X_ILLUME_WINDOW_STATE_FLOATING) continue;
 
         if ((!temp_bd->iconic) && (temp_bd->visible) && (temp_bd->desk == bd->desk) &&
            (temp_bd->client.icccm.accepts_focus || temp_bd->client.icccm.take_focus) &&
@@ -7501,7 +7619,6 @@ _e_border_latest_stacked_focus (E_Border* bd)
 static void
 _e_border_check_stack (E_Border *bd)
 {
-   Eina_List* l = NULL;
    E_Border* temp_bd = NULL;;
    E_Border* top_bd = NULL;
    int passed_focus = 0;
@@ -7515,6 +7632,7 @@ _e_border_check_stack (E_Border *bd)
      {
         if ((temp_bd->x >= root_w) || (temp_bd->y >= root_h)) continue;
         if (((temp_bd->x + temp_bd->w) <= 0) || ((temp_bd->y + temp_bd->h) <= 0)) continue;
+        if (temp_bd->client.illume.win_state.state == ECORE_X_ILLUME_WINDOW_STATE_FLOATING) continue;
 
         if ((!temp_bd->iconic) && (temp_bd->visible) && (temp_bd->desk == bd->desk) &&
            (temp_bd->client.icccm.accepts_focus || temp_bd->client.icccm.take_focus) &&
@@ -7570,9 +7688,8 @@ _e_border_check_stack (E_Border *bd)
 }
 
 static void
-_e_border_focus_top_stack_set (E_Border* bd)
+_e_border_focus_top_stack_set(E_Border* bd)
 {
-   Eina_List *l = NULL;
    E_Border *temp_bd;
    int root_w, root_h;
 
@@ -7585,6 +7702,7 @@ _e_border_focus_top_stack_set (E_Border* bd)
      {
         if ((temp_bd->x >= root_w) || (temp_bd->y >= root_h)) continue;
         if (((temp_bd->x + temp_bd->w) <= 0) || ((temp_bd->y + temp_bd->h) <= 0)) continue;
+        if (temp_bd->client.illume.win_state.state == ECORE_X_ILLUME_WINDOW_STATE_FLOATING) continue;
 
         if ((!temp_bd->iconic) && (temp_bd->visible) && (temp_bd->desk == bd->desk) &&
            (temp_bd->client.icccm.accepts_focus || temp_bd->client.icccm.take_focus) &&

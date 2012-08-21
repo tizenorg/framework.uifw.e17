@@ -1,6 +1,7 @@
+#sbs-git:slp/pkgs/e/e17 e17 1.0.0.001+svn.68441slp2+build21
 Name:       e17
 Summary:    The Enlightenment window manager
-Version:    1.0.0.001+svn.68441slp2
+Version:    1.0.0.001+svn.68441slp2+build21
 Release:    1
 Group:      System/GUI/Other
 License:    BSD
@@ -75,16 +76,13 @@ export LDFLAGS+=" -fvisibility=hidden -Wl,--hash-style=both -Wl,--as-needed"
 
 %autogen --disable-static
 LIBS='-ledbus' ./configure --prefix=/usr --disable-static \
-    --disable-clock \
     --disable-temperature \
     --disable-mixer \
     --disable-everything \
-    --disable-ibar \
     --disable-dropshadow \
     --disable-pager \
     --disable-battery \
     --disable-cpufreq \
-    --disable-ibox \
     --disable-start \
     --disable-exebuf \
     --disable-winlist \
@@ -94,7 +92,6 @@ LIBS='-ledbus' ./configure --prefix=/usr --disable-static \
     --disable-conf \
     --disable-conf-wallpaper \
     --disable-conf-wallpaper2 \
-    --disable-conf-theme \
     --disable-conf-colors \
     --disable-conf-fonts \
     --disable-conf-borders \
@@ -107,7 +104,6 @@ LIBS='-ledbus' ./configure --prefix=/usr --disable-static \
     --disable-conf-profiles \
     --disable-msgbus-lang \
     --disable-conf-engine \
-    --disable-conf-applications \
     --disable-conf-desks \
     --disable-conf-desk \
     --disable-conf-display \
@@ -134,7 +130,6 @@ LIBS='-ledbus' ./configure --prefix=/usr --disable-static \
     --disable-conf-mime \
     --disable-conf-interaction \
     --disable-conf-scale \
-    --disable-gadman \
     --disable-mixel \
     --disable-connman \
     --disable-illume \
@@ -179,6 +174,7 @@ rm -rf %{buildroot}
 /usr/bin/enlightenment_imc
 /usr/bin/enlightenment_remote
 /usr/bin/enlightenment_start
+/usr/lib/enlightenment/modules
 /usr/lib/enlightenment/preload/*
 /usr/etc/enlightenment/sysactions.conf
 

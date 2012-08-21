@@ -7,4 +7,6 @@ wm=enlightenment_start
 #update-alternatives  --install /usr/bin/x-window-manager x-window-manager \
 #    /usr/bin/$wm 90
 
+find /usr/lib/enlightenment/modules -name *.la -exec rm -f {} \;
+
 #DEBHELPER#

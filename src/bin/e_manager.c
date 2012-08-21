@@ -673,6 +673,30 @@ e_manager_comp_src_move_unlock(E_Manager *man, E_Manager_Comp_Source *src)
 }
 #endif
 
+#ifdef _F_COMP_COMPOSITE_MODE_
+EAPI void
+e_manager_comp_composite_mode_set(E_Manager *man, E_Zone *zone, Eina_Bool set)
+{
+   E_OBJECT_CHECK(man);
+   E_OBJECT_CHECK(zone);
+   E_OBJECT_TYPE_CHECK(man, E_MANAGER_TYPE);
+   E_OBJECT_TYPE_CHECK(zone, E_ZONE_TYPE);
+   if (!man->comp) return;
+   man->comp->func.composite_mode_set(man->comp->data, man, zone, set);
+}
+
+EAPI Eina_Bool
+e_manager_comp_composite_mode_get(E_Manager *man, E_Zone *zone)
+{
+   E_OBJECT_CHECK_RETURN(man, EINA_FALSE);
+   E_OBJECT_CHECK_RETURN(zone, EINA_FALSE);
+   E_OBJECT_TYPE_CHECK_RETURN(man, E_MANAGER_TYPE, EINA_FALSE);
+   E_OBJECT_TYPE_CHECK_RETURN(zone, E_ZONE_TYPE, EINA_FALSE);
+   if (!man->comp) return EINA_FALSE;
+   return man->comp->func.composite_mode_get(man->comp->data, man, zone);
+}
+#endif /* _F_COMP_COMPOSITE_MODE_ */
+
 EAPI void
 e_manager_comp_event_resize_send(E_Manager *man)
 {
@@ -1039,9 +1063,7 @@ _e_manager_windows_group_raise (E_Border* bd)
         leader_win = bd->client.icccm.client_leader;
         if (leader_win)
           {
-             Eina_List* border_list;
              Eina_List* restack_list;
-             Eina_List *l;   
              E_Border *temp_bd;
              E_Border *top_bd;
              E_Border_List *bl;
@@ -1199,13 +1221,16 @@ _e_manager_cb_client_message(void *data __UNUSED__, int ev_type __UNUSED__, void
                          e_border_focus_set(bd, 1, 1);
                        else
                          {
-                            Eina_List* l = NULL;
                             E_Border* temp_bd = NULL;
                             E_Border_List *bl;
 
                             bl = e_container_border_list_last(bd->zone->container);
                             while ((temp_bd = e_container_border_list_prev(bl)))
                               {
+                                 if ((temp_bd->x >= bd->zone->w) || (temp_bd->y >= bd->zone->h)) continue;
+                                 if (((temp_bd->x + temp_bd->w) <= 0) || ((temp_bd->y + temp_bd->h) <= 0)) continue;
+                                 if (temp_bd->client.illume.win_state.state == ECORE_X_ILLUME_WINDOW_STATE_FLOATING) continue;
+
                                  if ((!temp_bd->iconic) && (temp_bd->visible) && (temp_bd->desk == bd->desk) &&
                                      (temp_bd->client.icccm.accepts_focus || temp_bd->client.icccm.take_focus) &&
                                      (temp_bd->client.netwm.type != ECORE_X_WINDOW_TYPE_DOCK) &&

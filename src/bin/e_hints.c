@@ -1421,6 +1421,13 @@ e_hints_window_desktop_set(E_Border *bd)
      deskpos[1] = bd->desk->y;
      ecore_x_window_prop_card32_set(bd->client.win, E_ATOM_DESK, deskpos, 2);
 
+     if (strcmp(bd->desk->window_profile,
+                e_config->desktop_default_window_profile) != 0)
+       {
+          ecore_x_e_window_profile_set(bd->client.win,
+                                       bd->desk->window_profile);
+       }
+
 #if 0
      ecore_x_netwm_desktop_set(bd->client.win, current);
 #endif

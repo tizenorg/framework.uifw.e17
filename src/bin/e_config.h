@@ -2,25 +2,26 @@
 
 #define E_CONFIG_LIMIT(v, min, max) {if (v > max) v = max; else if (v < min) v = min;}
 
-typedef struct _E_Config                    E_Config;
-typedef struct _E_Config_Module             E_Config_Module;
-typedef struct _E_Config_Theme              E_Config_Theme;
-typedef struct _E_Config_Binding_Mouse      E_Config_Binding_Mouse;
-typedef struct _E_Config_Binding_Key        E_Config_Binding_Key;
-typedef struct _E_Config_Binding_Edge       E_Config_Binding_Edge;
-typedef struct _E_Config_Binding_Signal     E_Config_Binding_Signal;
-typedef struct _E_Config_Binding_Wheel      E_Config_Binding_Wheel;
-typedef struct _E_Config_Binding_Acpi       E_Config_Binding_Acpi;
-typedef struct _E_Config_Desktop_Background E_Config_Desktop_Background;
-typedef struct _E_Config_Desktop_Name       E_Config_Desktop_Name;
-typedef struct _E_Config_Gadcon             E_Config_Gadcon;
-typedef struct _E_Config_Gadcon_Client      E_Config_Gadcon_Client;
-typedef struct _E_Config_Shelf              E_Config_Shelf;
-typedef struct _E_Config_Shelf_Desk         E_Config_Shelf_Desk;
-typedef struct _E_Config_Mime_Icon          E_Config_Mime_Icon;
-typedef struct _E_Config_Syscon_Action      E_Config_Syscon_Action;
-typedef struct _E_Config_Env_Var            E_Config_Env_Var;
-typedef struct _E_Event_Config_Icon_Theme   E_Event_Config_Icon_Theme;
+typedef struct _E_Config                        E_Config;
+typedef struct _E_Config_Module                 E_Config_Module;
+typedef struct _E_Config_Theme                  E_Config_Theme;
+typedef struct _E_Config_Binding_Mouse          E_Config_Binding_Mouse;
+typedef struct _E_Config_Binding_Key            E_Config_Binding_Key;
+typedef struct _E_Config_Binding_Edge           E_Config_Binding_Edge;
+typedef struct _E_Config_Binding_Signal         E_Config_Binding_Signal;
+typedef struct _E_Config_Binding_Wheel          E_Config_Binding_Wheel;
+typedef struct _E_Config_Binding_Acpi           E_Config_Binding_Acpi;
+typedef struct _E_Config_Desktop_Background     E_Config_Desktop_Background;
+typedef struct _E_Config_Desktop_Name           E_Config_Desktop_Name;
+typedef struct _E_Config_Desktop_Window_Profile E_Config_Desktop_Window_Profile;
+typedef struct _E_Config_Gadcon                 E_Config_Gadcon;
+typedef struct _E_Config_Gadcon_Client          E_Config_Gadcon_Client;
+typedef struct _E_Config_Shelf                  E_Config_Shelf;
+typedef struct _E_Config_Shelf_Desk             E_Config_Shelf_Desk;
+typedef struct _E_Config_Mime_Icon              E_Config_Mime_Icon;
+typedef struct _E_Config_Syscon_Action          E_Config_Syscon_Action;
+typedef struct _E_Config_Env_Var                E_Config_Env_Var;
+typedef struct _E_Event_Config_Icon_Theme       E_Event_Config_Icon_Theme;
 
 #else
 #ifndef E_CONFIG_H
@@ -44,7 +45,9 @@ struct _E_Config
    const char *desktop_default_background; // GUI
    Eina_List  *desktop_backgrounds; // GUI
    const char *desktop_default_name;
+   const char *desktop_default_window_profile;
    Eina_List  *desktop_names; // GUI
+   Eina_List  *desktop_window_profiles; // GUI
    double      menus_scroll_speed; // GUI
    double      menus_fast_mouse_move_threshhold; // GUI
    double      menus_click_drag_timeout; // GUI
@@ -447,6 +450,15 @@ struct _E_Config_Desktop_Name
    int            desk_x;
    int            desk_y;
    const char    *name;
+};
+
+struct _E_Config_Desktop_Window_Profile
+{
+   int            container;
+   int            zone;
+   int            desk_x;
+   int            desk_y;
+   const char    *profile;
 };
 
 struct _E_Config_Gadcon

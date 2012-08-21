@@ -103,5 +103,9 @@ EAPI int e_util_container_desk_count_get(E_Container *con);
 EAPI Eina_Bool e_util_fullscreen_curreny_any(void);
 EAPI Eina_Bool e_util_fullscreen_any(void);
 
+#if _F_USE_EXTN_DIALOG_
+EAPI void         e_util_extn_dialog_show(const char *title, const char *txt);
+#endif
+
 #endif
 #endif

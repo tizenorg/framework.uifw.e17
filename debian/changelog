@@ -1,3 +1,189 @@
+e17 (1:1.0.0.001+svn.68441slp2+build23) unstable; urgency=low
+
+  * Change auto-focus policy
+    - Skip the app-in-app mode window while finding next focused window
+    [OBS] e17-1.0.0.001+svn.68441slp2+build23-slp.1.1
+  * Git: framework/uifw/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build23
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Sun, 19 Aug 2012 15:27:29 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build22) unstable; urgency=low
+
+  * [E_Gadcon] Add code to remove E_Gadcon from the custom_populate_request list
+               when the E_Gadcon is removed
+    [OBS] e17-1.0.0.001+svn.68441slp2+build22-slp.1.1
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build22
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Wed, 08 Aug 2012 23:21:15 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build21) unstable; urgency=low
+
+  * [E_Border] Changed _e_border_eval0 to show border on the proper E_Desk.
+       Border which specifies E_PROFILE_LIST shouldn't appear on the screen
+       due to incorrect border events at _e_border_eval0. Thus it has been
+       changed to set desk after creating E_BORDER_ADD event.
+        - Previous Incorrect Border Events: BORDER_SHOW -> BORDER_ADD
+        - Changed Border Events: BORDER_ADD -> BORDER_SHOW
+    [OBS] e17-1.0.0.001+svn.68441slp2+build21-slp.1.1
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build21
+
+ -- Gwanglim <gl77.lee@samsung.com>  Sun, 05 Aug 2012 18:06:14 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build20) unstable; urgency=low
+
+  * [E_Util] add feature - external elementary dialog show
+      Using external elementary dialog util instead of e_dialog to display error
+      or warning messages. It is a temporary solution for supporting consistent
+      UX theme. The external dialog is a simple EFL application which is based on
+      elementary. Thus window manager can display message using elementary UX theme,
+      along with other system popup.
+    [OBS] e17-1.0.0.001+svn.68441slp2+build20-slp.1.1
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build20
+
+ -- Gwanglim Lee <gl77.lee@samsung.com>  Tue, 24 Jul 2012 23:06:28 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build19) unstable; urgency=low
+
+  * [E_Manager] add feature - composite mode set / get
+    [OBS] e17-1.0.0.001+svn.68441slp2+build19-slp.1.1
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build19
+
+ -- Gwanglim Lee <gl77.lee@samsung.com>  Wed, 18 Jul 2012 15:22:50 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build18) unstable; urgency=low
+
+  * [Theme] Change samsung.edc theme file according to UX guide
+    [OBS] e17-1.0.0.001+svn.68441slp2+build18-slp.1.1
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build18
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Tue, 17 Jul 2012 21:18:07 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build17) unstable; urgency=low
+
+  * [gadman] bug fix - calculate gadget's relative geometry using zone's geometry
+    [OBS] e17-1.0.0.001+svn.68441slp2+build17-slp.1.1
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build17
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Thu, 12 Jul 2012 17:19:22 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build16) unstable; urgency=low
+
+  * [ibar] add feature - lock to move icon
+    [OBS] e17-1.0.0.001+svn.68441slp2+build16-slp.1.1
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build16
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Sat, 30 Jun 2012 13:40:39 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build15) unstable; urgency=low
+
+  * 1. Install clock module
+    2. Added per-window profile to support multi-head display
+    3. Remove _F_SUPPORT_DESKTOP_MODE_ environment variable feature
+    4. Apply new UX theme
+    [OBS] e17-1.0.0.001+svn.68441slp2+build15-slp.1.1
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build15
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Wed, 20 Jun 2012 20:14:21 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build14) unstable; urgency=low
+
+  * [gadman] Add code to handle gadget list when a zone is added or deleted
+    [theme ] Add script to handle gadgets in samsung.edj theme
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build14
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Wed, 13 Jun 2012 20:41:12 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build13) unstable; urgency=low
+
+  * [ibar] change ELM_SCALE environment value to "extension"
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build13
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Mon, 4 Jun 2012 14:26:26 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build12) unstable; urgency=low
+
+  * [ibar] Add code to set ELM_SCALE environment value for desktop mode
+    [featuring] Add feature - _F_SUPPORT_DESKTOP_MODE_ : support desktop mode
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build12
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Thu, 24 May 2012 15:20:20 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build11) unstable; urgency=low
+
+  * Change debian/e17.postinst file
+    - Remove libtool files
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build11
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Fri, 18 May 2012 13:39:42 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build10) unstable; urgency=low
+
+  * [Theme] change the samsung.edc theme file to support various border type
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build10
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Sun, 13 May 2012 17:37:08 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build09) unstable; urgency=low
+
+  * Change environment to support desktop mode
+    - change debian/rules and debian/e17.install to install some modules
+      (ibar, ibox, gadman, conf_applications, conf_theme)
+    - change the samsung.edc theme file
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build09
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Wed, 09 May 2012 10:14:39 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build08) unstable; urgency=low
+
+  * Bug fix - Checking the geometry of a window while the e finding the next 
+              focused window when it gets active request message
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build08
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Fri, 04 May 2012 18:01:34 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build07) unstable; urgency=low
+
+  * Rollback e_container.c file to rev.70439
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build07
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Wed, 25 Apr 2012 17:49:37 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build06) unstable; urgency=low
+
+  * Patch e_container.c file(rev.70442) - this contains below change
+    - if screens dynamically come and go ONLy free zones we no longer need
+      and ONLy new zones we now do need, dont free all and new existing set
+      + new ones.
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build06
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Wed, 25 Apr 2012 08:14:22 +0900
+
+e17 (1:1.0.0.001+svn.68441slp2+build05) unstable; urgency=low
+
+  * Update COPYING file
+  * Git: slp/pkgs/e/e17
+  * Tag: e17_1.0.0.001+svn.68441slp2+build05
+
+ -- Doyoun Kang <doyoun.kang@samsung.com>  Mon, 09 Apr 2012 15:45:11 +0900
+
 e17 (1:1.0.0.001+svn.68441slp2+build04) unstable; urgency=low
 
   * [E_Zone] There is a bug doesn't send E_EVENT_ZONE_DEL event when the zone

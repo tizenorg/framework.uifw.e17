@@ -56,6 +56,10 @@ struct _E_Manager_Comp
     Eina_Bool          (*src_move_lock)        (void *data, E_Manager *man, E_Manager_Comp_Source *src);
     Eina_Bool          (*src_move_unlock)      (void *data, E_Manager *man, E_Manager_Comp_Source *src);
 #endif
+#ifdef _F_COMP_COMPOSITE_MODE_
+    void               (*composite_mode_set)   (void *data, E_Manager *man, E_Zone *zone, Eina_Bool set);
+    Eina_Bool          (*composite_mode_get)   (void *data, E_Manager *man, E_Zone *zone);
+#endif
   } func;
   void                   *data;
 };
@@ -150,6 +154,15 @@ EAPI Eina_Bool        e_manager_comp_src_input_region_set(E_Manager *man, E_Mana
 #ifdef _F_COMP_MOVE_LOCK_
 EAPI Eina_Bool        e_manager_comp_src_move_lock(E_Manager *man, E_Manager_Comp_Source *src);
 EAPI Eina_Bool        e_manager_comp_src_move_unlock(E_Manager *man, E_Manager_Comp_Source *src);
+#endif
+#ifdef _F_COMP_COMPOSITE_MODE_
+// set the composite rendering state of a zone.
+// if set is EINA_TRUE, then composite module will be running with composite rendering mode.
+// if set is EINA_FALSE, then composite module may be running with nocomposite mode on given zone.
+EAPI void             e_manager_comp_composite_mode_set(E_Manager *man, E_Zone *zone, Eina_Bool set);
+// get the composite rendering state of a zone.
+// if return value is EINA_TRUE, zone is rendered with composite mode.
+EAPI Eina_Bool        e_manager_comp_composite_mode_get(E_Manager *man, E_Zone *zone);
 #endif
 #endif
 #endif

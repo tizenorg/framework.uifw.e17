@@ -578,6 +578,11 @@ e_extra_features+="-D_F_COMP_SCREEN_LOCK_ "
 e_extra_features+="-D_F_COMP_INPUT_REGION_SET_ "
 # enable window move lock / unlock
 e_extra_features+="-D_F_COMP_MOVE_LOCK_ "
+# enable composite mode set / get
+e_extra_features+="-D_F_COMP_COMPOSITE_MODE_ "
+# using external elementary dialog util instead of e_dialog to display error message
+e_extra_features+="-D_F_USE_EXTN_DIALOG_ "
+
 
 have_extra_features=no
 AC_ARG_ENABLE(extra_features,

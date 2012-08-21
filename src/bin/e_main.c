@@ -134,7 +134,9 @@ main(int argc, char **argv)
    Eina_Bool after_restart = EINA_FALSE;
    double t = 0.0, tstart = 0.0;
    char *s = NULL, buff[32];
+#ifndef _F_DO_NOT_USE_SIG_HANDLER_
    struct sigaction action;
+#endif
 #ifdef TS_DO
    t0 = t1 = t2 = ecore_time_unix_get();
 #endif

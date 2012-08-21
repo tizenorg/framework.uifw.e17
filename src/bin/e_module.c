@@ -501,6 +501,16 @@ _e_module_free(E_Module *m)
    free(m);
 }
 
+#if _F_USE_EXTN_DIALOG_
+static void
+_e_module_dialog_disable_show(const char *title,
+                              const char *body,
+                              E_Module *m __UNUSED__)
+{
+   printf("MODULE ERR:\n%s\n", body);
+   e_util_extn_dialog_show(title, body);
+}
+#else
 static void
 _e_module_dialog_disable_show(const char *title, const char *body, E_Module *m)
 {
@@ -523,6 +533,7 @@ _e_module_dialog_disable_show(const char *title, const char *body, E_Module *m)
    e_win_centered_set(dia->win, 1);
    e_dialog_show(dia);
 }
+#endif
 
 static void
 _e_module_cb_dialog_disable(void *data, E_Dialog *dia)
