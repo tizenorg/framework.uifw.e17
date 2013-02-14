@@ -1,0 +1,13 @@
+
+#
+# Starts the enlightenment wm/compositor
+#
+
+[Unit]
+Description=Enlightenment WM/Compositor
+Before=core-efl.target
+
+[Service]
+EnvironmentFile=-/etc/sysconfig/e17
+ExecStart=/usr/bin/enlightenment_start -profile samsung $OPTIONS
+

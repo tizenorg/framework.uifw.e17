@@ -1,0 +1,14 @@
+
+#
+# Starts the enlightenment wm/compositor
+#
+
+[Unit]
+Description=Enlightenment WM/Compositor
+#Before=core-efl.target
+After=e17_early.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'while test ! -e /tmp/.wm_ready; do sleep 0.1; done;'
+
