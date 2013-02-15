@@ -1,0 +1,14 @@
+<manifest>
+   <define>
+      <domain name="e17" policy="restricted" plist="e17-misc,e17-data,e17-extra-modules" />
+      <request>
+         <smack request="dbus" type="rwx"/>
+      </request>
+      <permit>
+         <smack permit="dbus" type="rwx"/>
+      </permit>
+   </define>
+   <request>
+      <domain name="e17" />
+   </request>
+</manifest>

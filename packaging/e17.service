@@ -1,0 +1,18 @@
+
+#
+# Starts the enlightenment wm/compositor
+#
+
+[Unit]
+Description=Enlightenment WM/Compositor
+Before=core-efl.target
+
+[Service]
+Type=notify
+NotifyAccess=all
+EnvironmentFile=-/etc/sysconfig/e17
+ExecStart=/bin/sh -c '(while test ! -e /tmp/.wm_ready; do sleep 0.1; done; systemd-notify --ready)& exec /usr/bin/enlightenment_start -profile samsung $OPTIONS'
+
+[Install]
+WantedBy=tizen-mobile.target
+
