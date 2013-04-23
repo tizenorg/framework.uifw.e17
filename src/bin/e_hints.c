@@ -576,8 +576,10 @@ e_hints_window_init(E_Border *bd)
         else
           e_hints_window_visible_set(bd);
      }
+#ifndef _F_USE_EXTENDED_ICONIFY_
    else if ((bd->parent) && (e_config->transient.iconify) && (bd->parent->iconic))
      e_border_iconify(bd);
+#endif
    /* If a window isn't iconic, and is one the current desk,
     * show it! */
    else if (bd->desk == e_desk_current_get(bd->zone))

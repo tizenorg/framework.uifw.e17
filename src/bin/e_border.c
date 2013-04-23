@@ -5771,7 +5771,11 @@ _e_border_cb_window_hide(void *data  __UNUSED__,
         return ECORE_CALLBACK_PASS_ON;
      }
    /* Don't delete hidden or iconified windows */
+#ifdef _F_USE_EXTENDED_ICONIFY_
+   if (bd->await_hide_event > 0)
+#else
    if ((bd->iconic) || (bd->await_hide_event > 0))
+#endif
      {
 //        printf("  Don't delete hidden or iconified windows\n");
 //        printf("  bd->iconic = %i, bd->visible = %i, bd->new_client = %i, bd->await_hide_event = %i\n",
@@ -5790,6 +5794,13 @@ _e_border_cb_window_hide(void *data  __UNUSED__,
    else
      {
 //             printf("  hide2\n");
+#ifdef _F_USE_EXTENDED_ICONIFY_
+        if (bd->iconic)
+          {
+             bd->iconic = 0;
+             bd->visible = 1;
+          }
+#endif
         e_border_hide(bd, 0);
         e_object_del(E_OBJECT(bd));
      }
