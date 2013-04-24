@@ -8033,6 +8033,8 @@ _e_border_rotation_check(E_Border *bd)
 
    if (bd->client.e.state.rot.curr != ang)
      {
+        Eina_Bool is_screen_locked = EINA_FALSE;
+
         if ((rot.vkbd != bd) && (rot.vkbd_prediction != bd) &&
             /* check whether virtual keyboard is visible on the zone */
             (_e_border_rotation_zone_vkbd_check(bd->zone)) &&
@@ -8045,6 +8047,7 @@ _e_border_rotation_check(E_Border *bd)
           {
              ELB(ELBT_ROT, "DO VKBD ROT", bd->client.win);
              e_manager_comp_screen_lock(e_manager_current_get());
+             is_screen_locked = EINA_TRUE;
 
              if (rot.prepare_timer) ecore_timer_del(rot.prepare_timer);
              rot.prepare_timer = NULL;
@@ -8097,6 +8100,9 @@ _e_border_rotation_check(E_Border *bd)
         info = E_NEW(E_Border_Rotation_Info, 1);
         if (info)
           {
+             if (!is_screen_locked)
+               e_manager_comp_screen_lock(e_manager_current_get());
+
              info->bd = bd;
              info->ang = ang;
              info->x = x; info->y = y;
