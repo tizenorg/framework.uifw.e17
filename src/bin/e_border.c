@@ -6774,7 +6774,7 @@ _e_border_cb_client_message(void *data  __UNUSED__,
 
         if (e_config->wm_win_rotation)
           {
-             if ((int)e->data.l[1] == bd->zone->rot.curr)
+             if ((int)e->data.l[1] == bd->client.e.state.rot.curr)
                _e_border_rotation_list_remove(bd);
           }
      }
