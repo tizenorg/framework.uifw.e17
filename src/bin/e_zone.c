@@ -1427,7 +1427,8 @@ e_zone_rotation_set(E_Zone *zone,
 
    ELBF(ELBT_ROT, 0, zone->num, "SET ROT a%d", rot);
 
-   if (zone->rot.wait_for_done)
+   if ((zone->rot.wait_for_done) ||
+       (zone->rot.block_count > 0))
      {
         zone->rot.next = rot;
         zone->rot.pending = EINA_TRUE;
@@ -1455,6 +1456,41 @@ e_zone_rotation_get(E_Zone *zone)
    return zone->rot.curr;
 }
 
+EAPI Eina_Bool
+e_zone_rotation_block_set(E_Zone *zone, const char *name_hint, Eina_Bool set)
+{
+   E_Event_Zone_Rotation_Change *ev;
+
+   E_OBJECT_CHECK_RETURN(zone, EINA_FALSE);
+   E_OBJECT_TYPE_CHECK_RETURN(zone, E_ZONE_TYPE, EINA_FALSE);
+
+   if (set) zone->rot.block_count++;
+   else     zone->rot.block_count--;
+
+   ELBF(ELBT_ROT, 0, zone->num, "[%s ROT] count: %d, from %s",
+        set ? "PAUSE" : "RESUME", zone->rot.block_count, name_hint);
+
+   if (zone->rot.block_count <= 0)
+     {
+        zone->rot.block_count = 0;
+        if (zone->rot.pending)
+          {
+             zone->rot.prev = zone->rot.curr;
+             zone->rot.curr = zone->rot.next;
+             zone->rot.pending = EINA_FALSE;
+
+             ev = E_NEW(E_Event_Zone_Rotation_Change, 1);
+             ev->zone = zone;
+             e_object_ref(E_OBJECT(ev->zone));
+             ecore_event_add(E_EVENT_ZONE_ROTATION_CHANGE, ev, _e_zone_event_rotation_change_free, NULL);
+
+             ELBF(ELBT_ROT, 0, zone->num, "CHANGE ROT(pending) a%d", zone->rot.curr);
+          }
+     }
+
+   return EINA_TRUE;
+}
+
 EAPI void
 e_zone_rotation_update_done(E_Zone *zone)
 {
@@ -1467,7 +1503,8 @@ e_zone_rotation_update_done(E_Zone *zone)
    ELBF(ELBT_ROT, 0, zone->num, "DONE ROT a%d", zone->rot.curr);
 
    zone->rot.wait_for_done = EINA_FALSE;
-   if (zone->rot.pending)
+   if ((zone->rot.pending) &&
+       (zone->rot.block_count == 0))
      {
         zone->rot.prev = zone->rot.curr;
         zone->rot.curr = zone->rot.next;

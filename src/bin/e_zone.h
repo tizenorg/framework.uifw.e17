@@ -92,6 +92,7 @@ struct _E_Zone
    struct
    {
       int       prev, curr, next;
+      int       block_count;
       Eina_Bool wait_for_done : 1;
       Eina_Bool pending : 1;
    } rot;
@@ -178,6 +179,7 @@ EAPI void      e_zone_useful_geometry_get(E_Zone *zone, int *x, int *y, int *w, 
 #ifdef _F_ZONE_WINDOW_ROTATION_
 EAPI void      e_zone_rotation_set(E_Zone *zone, int rot);
 EAPI int       e_zone_rotation_get(E_Zone *zone);
+EAPI Eina_Bool e_zone_rotation_block_set(E_Zone *zone, const char *name_hint, Eina_Bool set);
 EAPI void      e_zone_rotation_update_done(E_Zone *zone);
 EAPI void      e_zone_rotation_update_cancel(E_Zone *zone);
 #endif
