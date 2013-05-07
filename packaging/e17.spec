@@ -211,7 +211,7 @@ ln -s ../e17_early.service %{buildroot}%{_libdir}/systemd/user/core-efl.target.w
 %manifest e17-data.manifest
 %defattr(-,root,root,-)
 /usr/share/enlightenment/data/themes
-/etc/smack/accesses2.d/e17.rule
+/etc/smack/accesses.d/e17.rule
 
 %exclude /usr/etc/xdg/*
 %exclude /usr/lib/enlightenment/utils/*
