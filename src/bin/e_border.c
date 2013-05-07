@@ -170,6 +170,7 @@ static Eina_Bool _e_border_rotation_check(E_Border *bd);
 static Eina_Bool _e_border_rotation_zone_check(E_Zone *zone);
 static Eina_Bool _e_border_rotation_border_check(E_Border *bd, int ang);
 static Eina_Bool _e_border_rotation_zone_vkbd_check(E_Zone *zone);
+static Eina_Bool _e_border_rotation_zone_prediction_check(E_Zone *zone);
 static Eina_Bool _e_border_rotation_vkbd_transient_for_check(E_Border *bd);
 static Eina_Bool _e_border_rotation_transient_for_check(E_Border *bd, int ang);
 static Eina_Bool _e_border_cb_window_configure(void *data,
@@ -8249,6 +8250,27 @@ _e_border_rotation_zone_vkbd_check(E_Zone *zone)
    return EINA_FALSE;
 }
 
+/* check whether prediction keyboard is visible on the zone */
+static Eina_Bool
+_e_border_rotation_zone_prediction_check(E_Zone *zone)
+{
+   if (!e_config->wm_win_rotation) return EINA_FALSE;
+
+   if ((rot.vkbd_ctrl_win) &&
+       (rot.vkbd_prediction) &&
+       (!e_object_is_del(E_OBJECT(rot.vkbd_prediction))) &&
+       (rot.vkbd_prediction->visible) &&
+       (rot.vkbd_prediction->zone == zone) &&
+       (E_INTERSECTS(zone->x, zone->y,
+                     zone->w, zone->h,
+                     rot.vkbd_prediction->x, rot.vkbd_prediction->y,
+                     rot.vkbd_prediction->w, rot.vkbd_prediction->h)))
+     {
+        return EINA_TRUE;
+     }
+   return EINA_FALSE;
+}
+
 /* check whether border is parent of the virtual keyboard */
 static Eina_Bool
 _e_border_rotation_vkbd_transient_for_check(E_Border *bd)
@@ -8267,6 +8289,7 @@ _e_border_rotation_vkbd_transient_for_check(E_Border *bd)
         if ((rot.vkbd_prediction) && (!e_object_is_del(E_OBJECT(rot.vkbd_prediction))) &&
             (rot.vkbd_prediction != bd))
           {
+             /* bug! but i can't fix it */
              if (rot.vkbd_prediction == bd)
                return EINA_TRUE;
           }
@@ -8408,6 +8431,57 @@ _e_border_rotation_list_add(E_Zone *zone, Eina_Bool without_vkbd)
                     bd->client.e.state.rot.pending_change_request = 1;
 
                   wait = EINA_TRUE;
+               }
+
+             /* support for rotating prediction window without virtual keyboard */
+             if (without_vkbd)
+               {
+                  if ((rot.vkbd != bd) && (rot.vkbd_prediction != bd) &&
+                      /* check whether prediction is visible on the zone */
+                      (_e_border_rotation_zone_prediction_check(bd->zone)) &&
+                      /* check whether prediction window belongs to this border (transient_for) */
+                      (rot.vkbd_prediction->parent == bd) &&
+                      /* check rotation of prediction window */
+                      (rot.vkbd_prediction->client.e.state.rot.curr != bd->client.e.state.rot.curr) &&
+                      (!rot.wait_prepare_done))
+                    {
+                       E_Border *pbd = rot.vkbd_prediction;
+                       ang = bd->client.e.state.rot.curr;
+
+                       ELBF(ELBT_ROT, 0, pbd->client.win, "ADD ROT_LIST curr:%d != ang:%d (PREDICTION)",
+                            pbd->client.e.state.rot.curr, ang);
+
+                       pbd->client.e.state.rot.prev = pbd->client.e.state.rot.curr;
+                       pbd->client.e.state.rot.curr = ang;
+                       pbd->client.e.state.rot.wait_for_done = 1;
+
+                       info = E_NEW(E_Border_Rotation_Info, 1);
+                       if (info)
+                         {
+                            info->bd = pbd;
+                            info->ang = ang;
+                            info->x = pbd->x; info->y = pbd->y;
+                            info->w = pbd->w; info->h = pbd->h;
+                            info->win_resize = EINA_FALSE;
+                            nl = eina_list_append(nl, info);
+                         }
+
+                       int x, y, w, h;
+                       Eina_Bool move = EINA_TRUE;
+                       Eina_Bool hint = EINA_FALSE;
+                       hint = _e_border_rotation_geom_get(pbd, zone, zone->rot.curr, &x, &y, &w, &h, &move);
+                       if (hint)
+                         _e_border_move_resize_internal(pbd, x, y, w, h, EINA_TRUE, move);
+
+                       if (info)
+                         {
+                            info->x = x; info->y = y;
+                            info->w = w; info->h = h;
+                            info->win_resize = EINA_TRUE;
+                         }
+
+                       pbd->client.e.state.rot.pending_change_request = 1;
+                    }
                }
           }
      }
