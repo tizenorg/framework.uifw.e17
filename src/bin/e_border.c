@@ -5764,7 +5764,16 @@ _e_border_cb_window_hide(void *data  __UNUSED__,
      }
    if (!bd) bd = e_border_find_by_client_window(e->win);
 //   printf("  bd = %p\n", bd);
-   if (!bd) return ECORE_CALLBACK_PASS_ON;
+   if (!bd)
+     {
+        if (ecore_x_window_visible_get(e->win))
+          {
+             ELB(ELBT_BD, "FORCE UNMAP client window", e->win);
+             ecore_x_window_hide(e->win);
+          }
+        return ECORE_CALLBACK_PASS_ON;
+     }
+
 //   printf("  bd->ignore_first_unmap = %i\n", bd->ignore_first_unmap);
    if (bd->ignore_first_unmap > 0)
      {
