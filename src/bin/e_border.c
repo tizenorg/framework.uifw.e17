@@ -7872,8 +7872,10 @@ _e_border_rotation_get(E_Border *bd,
                        int       base_ang)
 {
    int ang = -1;
+   int current_ang = bd->client.e.state.rot.curr;
    unsigned int i;
    Eina_Bool found = EINA_FALSE;
+   Eina_Bool found_curr_ang = EINA_FALSE;
 
    if (!e_config->wm_win_rotation) return ang;
    if (!bd->client.e.state.rot.app_set) return ang;
@@ -7894,6 +7896,8 @@ _e_border_rotation_get(E_Border *bd,
                   found = EINA_TRUE;
                   break;
                }
+             if (bd->client.e.state.rot.available_rots[i] == current_ang)
+               found_curr_ang = EINA_TRUE;
           }
 
         /* do nothing. this window wants to maintain current state.
@@ -7903,7 +7907,7 @@ _e_border_rotation_get(E_Border *bd,
          */
         if (!found)
           {
-             if (bd->client.e.state.rot.curr != -1)
+             if ((bd->client.e.state.rot.curr != -1) && (found_curr_ang))
                ang = bd->client.e.state.rot.curr;
              else
                ang = bd->client.e.state.rot.available_rots[0];
