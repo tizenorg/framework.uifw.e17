@@ -1499,7 +1499,8 @@ e_border_hide(E_Border *bd,
 
    if (!bd->need_reparent)
      {
-        if (bd->focused)
+        if ((bd->focused) ||
+            (e_grabinput_last_focus_win_get() == bd->client.win))
           {
              e_border_focus_set(bd, 0, 1);
              if (manage != 2)
