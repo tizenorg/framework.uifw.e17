@@ -111,7 +111,10 @@ typedef enum _E_Border_Hook_Point
    E_BORDER_HOOK_RESIZE_UPDATE,
    E_BORDER_HOOK_RESIZE_END,
 #ifdef _F_BORDER_HOOK_PATCH_
-   E_BORDER_HOOK_DEL_BORDER
+   E_BORDER_HOOK_DEL_BORDER,
+#endif
+#ifdef _F_ZONE_WINDOW_ROTATION_
+   E_BORDER_HOOK_ROTATION_LIST_ADD,
 #endif
 } E_Border_Hook_Point;
 
@@ -124,6 +127,12 @@ typedef enum _E_Virtual_Keyboard_Window_Type
    E_VIRTUAL_KEYBOARD_WINDOW_TYPE_MAGNIFIER = 3,
    E_VIRTUAL_KEYBOARD_WINDOW_TYPE_POPUP = 4,
 } E_Virtual_Keyboard_Window_Type;
+
+typedef enum _E_Border_Rotation_Type
+{
+   E_BORDER_ROTATION_TYPE_NORMAL = 0,
+   E_BORDER_ROTATION_TYPE_DEPENDENT = 1
+} E_Border_Rotation_Type;
 #endif
 
 typedef struct _E_Border                     E_Border;
@@ -430,6 +439,7 @@ struct _E_Border
 #ifdef _F_ZONE_WINDOW_ROTATION_
             struct
             {
+               E_Border_Rotation_Type type;
                int           prev, curr;
                struct
                {
@@ -868,6 +878,13 @@ EAPI void           e_border_tmp_input_hidden_push(E_Border *bd);
 EAPI void           e_border_tmp_input_hidden_pop(E_Border *bd);
 
 EAPI void           e_border_activate(E_Border *bd, Eina_Bool just_do_it);
+
+#ifdef _F_ZONE_WINDOW_ROTATION_
+EAPI Eina_Bool      e_border_rotation_list_add(Eina_List *list);
+EAPI Eina_Bool      e_border_rotation_list_add_change_req(E_Zone *zone, Eina_List *list);
+EAPI void           e_border_rotation_list_clear(E_Zone *zone, Eina_Bool send_request);
+#endif
+
 
 extern EAPI int E_EVENT_BORDER_RESIZE;
 extern EAPI int E_EVENT_BORDER_MOVE;
