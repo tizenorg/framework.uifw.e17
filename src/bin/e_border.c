@@ -8531,9 +8531,9 @@ e_border_rotation_list_add(Eina_List *list)
 
         info->bd = bd;
         info->ang = bd->client.e.state.rot.curr;
+        info->win_resize = _e_border_rotation_pre_resize(bd);
         info->x = bd->x; info->y = bd->y;
         info->w = bd->w; info->h = bd->h;
-        info->win_resize = _e_border_rotation_pre_resize(bd);
         if (info->win_resize) bd->client.e.state.rot.pending_change_request = 1;
         rot.list = eina_list_append(rot.list, info);
      }
