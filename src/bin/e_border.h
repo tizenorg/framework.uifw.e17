@@ -150,7 +150,10 @@ typedef struct _E_Event_Border_Simple        E_Event_Border_Property;
 typedef struct _E_Event_Border_Simple        E_Event_Border_Fullscreen;
 typedef struct _E_Event_Border_Simple        E_Event_Border_Unfullscreen;
 #ifdef _F_ZONE_WINDOW_ROTATION_
-typedef struct _E_Event_Border_Simple        E_Event_Border_Rotation;
+typedef struct _E_Event_Border_Simple        E_Event_Border_Rotation; /* deprecated */
+typedef struct _E_Event_Border_Simple        E_Event_Border_Rotation_Change_Begin;
+typedef struct _E_Event_Border_Simple        E_Event_Border_Rotation_Change_Cancel;
+typedef struct _E_Event_Border_Simple        E_Event_Border_Rotation_Change_End;
 #endif
 typedef void                               (*E_Border_Move_Intercept_Cb)(E_Border *, int x, int y);
 #else
@@ -417,6 +420,8 @@ struct _E_Border
                unsigned char support : 1;
                unsigned char render_done : 1;
                Ecore_Timer *wait_timer;
+               Eina_List *req_list;
+               E_Border *ancestor;
             } deiconify_approve;
 #endif
 #ifdef _F_USE_DESK_WINDOW_PROFILE_
@@ -885,7 +890,10 @@ extern EAPI int E_EVENT_BORDER_PROPERTY;
 extern EAPI int E_EVENT_BORDER_FULLSCREEN;
 extern EAPI int E_EVENT_BORDER_UNFULLSCREEN;
 #ifdef _F_ZONE_WINDOW_ROTATION_
-extern EAPI int E_EVENT_BORDER_ROTATION;
+extern EAPI int E_EVENT_BORDER_ROTATION; /* deprecated */
+extern EAPI int E_EVENT_BORDER_ROTATION_CHANGE_BEGIN;
+extern EAPI int E_EVENT_BORDER_ROTATION_CHANGE_CANCEL;
+extern EAPI int E_EVENT_BORDER_ROTATION_CHANGE_END;
 #endif
 
 #endif

@@ -65,8 +65,12 @@ static E_Zone_Edge _e_zone_detect_edge(E_Zone        *zone,
 static void        _e_zone_edge_move_resize(E_Zone *zone);
 static void        _e_zone_border_geometry_update(E_Zone *zone);
 #ifdef _F_ZONE_WINDOW_ROTATION_
-static void        _e_zone_event_rotation_change_free(void *data,
-                                                      void *ev);
+static void        _e_zone_event_rotation_change_begin_free(void *data,
+                                                            void *ev);
+static void        _e_zone_event_rotation_change_cancel_free(void *data,
+                                                             void *ev);
+static void        _e_zone_event_rotation_change_end_free(void *data,
+                                                          void *ev);
 #endif
 
 EAPI int E_EVENT_ZONE_DESK_COUNT_SET = 0;
@@ -78,7 +82,10 @@ EAPI int E_EVENT_ZONE_EDGE_IN = 0;
 EAPI int E_EVENT_ZONE_EDGE_OUT = 0;
 EAPI int E_EVENT_ZONE_EDGE_MOVE = 0;
 #ifdef _F_ZONE_WINDOW_ROTATION_
-EAPI int E_EVENT_ZONE_ROTATION_CHANGE = 0;
+EAPI int E_EVENT_ZONE_ROTATION_CHANGE = 0; /* deprecated */
+EAPI int E_EVENT_ZONE_ROTATION_CHANGE_BEGIN = 0;
+EAPI int E_EVENT_ZONE_ROTATION_CHANGE_CANCEL = 0;
+EAPI int E_EVENT_ZONE_ROTATION_CHANGE_END = 0;
 #endif
 
 #define E_ZONE_FLIP_LEFT(zone)  (((e_config->desk_flip_wrap && ((zone)->desk_x_count > 1)) || ((zone)->desk_x_current > 0)) && (zone)->edge.left)
@@ -100,7 +107,10 @@ e_zone_init(void)
    E_EVENT_ZONE_EDGE_OUT = ecore_event_type_new();
    E_EVENT_ZONE_EDGE_MOVE = ecore_event_type_new();
 #ifdef _F_ZONE_WINDOW_ROTATION_
-   E_EVENT_ZONE_ROTATION_CHANGE = ecore_event_type_new();
+   E_EVENT_ZONE_ROTATION_CHANGE = ecore_event_type_new(); /* deprecated */
+   E_EVENT_ZONE_ROTATION_CHANGE_BEGIN = ecore_event_type_new();
+   E_EVENT_ZONE_ROTATION_CHANGE_CANCEL = ecore_event_type_new();
+   E_EVENT_ZONE_ROTATION_CHANGE_END = ecore_event_type_new();
 #endif
    return 1;
 }
@@ -1419,7 +1429,7 @@ EAPI void
 e_zone_rotation_set(E_Zone *zone,
                     int     rot)
 {
-   E_Event_Zone_Rotation_Change *ev;
+   E_Event_Zone_Rotation_Change_Begin *ev;
 
    E_OBJECT_CHECK(zone);
    E_OBJECT_TYPE_CHECK(zone, E_ZONE_TYPE);
@@ -1440,10 +1450,14 @@ e_zone_rotation_set(E_Zone *zone,
    zone->rot.curr = rot;
    zone->rot.wait_for_done = EINA_TRUE;
 
-   ev = E_NEW(E_Event_Zone_Rotation_Change, 1);
-   ev->zone = zone;
-   e_object_ref(E_OBJECT(ev->zone));
-   ecore_event_add(E_EVENT_ZONE_ROTATION_CHANGE, ev, _e_zone_event_rotation_change_free, NULL);
+   ev = E_NEW(E_Event_Zone_Rotation_Change_Begin, 1);
+   if (ev)
+     {
+        ev->zone = zone;
+        e_object_ref(E_OBJECT(ev->zone));
+        ecore_event_add(E_EVENT_ZONE_ROTATION_CHANGE_BEGIN,
+                        ev, _e_zone_event_rotation_change_begin_free, NULL);
+     }
 
    ELBF(ELBT_ROT, 0, zone->num, "CHANGE ROT a%d", zone->rot.curr);
 }
@@ -1459,7 +1473,7 @@ e_zone_rotation_get(E_Zone *zone)
 EAPI Eina_Bool
 e_zone_rotation_block_set(E_Zone *zone, const char *name_hint, Eina_Bool set)
 {
-   E_Event_Zone_Rotation_Change *ev;
+   E_Event_Zone_Rotation_Change_Begin *ev;
 
    E_OBJECT_CHECK_RETURN(zone, EINA_FALSE);
    E_OBJECT_TYPE_CHECK_RETURN(zone, E_ZONE_TYPE, EINA_FALSE);
@@ -1479,10 +1493,14 @@ e_zone_rotation_block_set(E_Zone *zone, const char *name_hint, Eina_Bool set)
              zone->rot.curr = zone->rot.next;
              zone->rot.pending = EINA_FALSE;
 
-             ev = E_NEW(E_Event_Zone_Rotation_Change, 1);
-             ev->zone = zone;
-             e_object_ref(E_OBJECT(ev->zone));
-             ecore_event_add(E_EVENT_ZONE_ROTATION_CHANGE, ev, _e_zone_event_rotation_change_free, NULL);
+             ev = E_NEW(E_Event_Zone_Rotation_Change_Begin, 1);
+             if (ev)
+               {
+                  ev->zone = zone;
+                  e_object_ref(E_OBJECT(ev->zone));
+                  ecore_event_add(E_EVENT_ZONE_ROTATION_CHANGE_BEGIN,
+                                  ev, _e_zone_event_rotation_change_begin_free, NULL);
+               }
 
              ELBF(ELBT_ROT, 0, zone->num, "CHANGE ROT(pending) a%d", zone->rot.curr);
           }
@@ -1494,13 +1512,22 @@ e_zone_rotation_block_set(E_Zone *zone, const char *name_hint, Eina_Bool set)
 EAPI void
 e_zone_rotation_update_done(E_Zone *zone)
 {
-   E_Event_Zone_Rotation_Change *ev;
+   E_Event_Zone_Rotation_Change_End *ev;
 
    E_OBJECT_CHECK(zone);
    E_OBJECT_TYPE_CHECK(zone, E_ZONE_TYPE);
    if (!e_config->wm_win_rotation) return;
 
    ELBF(ELBT_ROT, 0, zone->num, "DONE ROT a%d", zone->rot.curr);
+
+   ev = E_NEW(E_Event_Zone_Rotation_Change_End, 1);
+   if (ev)
+     {
+        ev->zone = zone;
+        e_object_ref(E_OBJECT(ev->zone));
+        ecore_event_add(E_EVENT_ZONE_ROTATION_CHANGE_END,
+                        ev, _e_zone_event_rotation_change_end_free, NULL);
+     }
 
    zone->rot.wait_for_done = EINA_FALSE;
    if ((zone->rot.pending) &&
@@ -1510,10 +1537,15 @@ e_zone_rotation_update_done(E_Zone *zone)
         zone->rot.curr = zone->rot.next;
         zone->rot.pending = EINA_FALSE;
 
-        ev = E_NEW(E_Event_Zone_Rotation_Change, 1);
-        ev->zone = zone;
-        e_object_ref(E_OBJECT(ev->zone));
-        ecore_event_add(E_EVENT_ZONE_ROTATION_CHANGE, ev, _e_zone_event_rotation_change_free, NULL);
+        E_Event_Zone_Rotation_Change_Begin *ev2;
+        ev2 = E_NEW(E_Event_Zone_Rotation_Change_Begin, 1);
+        if (ev2)
+          {
+             ev2->zone = zone;
+             e_object_ref(E_OBJECT(ev2->zone));
+             ecore_event_add(E_EVENT_ZONE_ROTATION_CHANGE_BEGIN,
+                             ev2, _e_zone_event_rotation_change_begin_free, NULL);
+          }
 
         ELBF(ELBT_ROT, 0, zone->num, "CHANGE ROT(pending) a%d", zone->rot.curr);
      }
@@ -1522,6 +1554,8 @@ e_zone_rotation_update_done(E_Zone *zone)
 EAPI void
 e_zone_rotation_update_cancel(E_Zone *zone)
 {
+   E_Event_Zone_Rotation_Change_Cancel *ev;
+
    E_OBJECT_CHECK(zone);
    E_OBJECT_TYPE_CHECK(zone, E_ZONE_TYPE);
    if (!e_config->wm_win_rotation) return;
@@ -1535,6 +1569,15 @@ e_zone_rotation_update_cancel(E_Zone *zone)
      }
 
    ELBF(ELBT_ROT, 0, zone->num, "CANCEL ROT a%d", zone->rot.curr);
+
+   ev = E_NEW(E_Event_Zone_Rotation_Change_Cancel, 1);
+   if (ev)
+     {
+        ev->zone = zone;
+        e_object_ref(E_OBJECT(ev->zone));
+        ecore_event_add(E_EVENT_ZONE_ROTATION_CHANGE_CANCEL,
+                        ev, _e_zone_event_rotation_change_cancel_free, NULL);
+     }
 }
 #endif
 
@@ -2012,10 +2055,28 @@ _e_zone_border_geometry_update(E_Zone *zone)
 
 #ifdef _F_ZONE_WINDOW_ROTATION_
 static void
-_e_zone_event_rotation_change_free(void *data __UNUSED__,
-                                   void      *ev)
+_e_zone_event_rotation_change_begin_free(void *data __UNUSED__,
+                                         void      *ev)
 {
-   E_Event_Zone_Rotation_Change *e = ev;
+   E_Event_Zone_Rotation_Change_Begin *e = ev;
+   e_object_unref(E_OBJECT(e->zone));
+   E_FREE(e);
+}
+
+static void
+_e_zone_event_rotation_change_cancel_free(void *data __UNUSED__,
+                                          void      *ev)
+{
+   E_Event_Zone_Rotation_Change_Cancel *e = ev;
+   e_object_unref(E_OBJECT(e->zone));
+   E_FREE(e);
+}
+
+static void
+_e_zone_event_rotation_change_end_free(void *data __UNUSED__,
+                                       void      *ev)
+{
+   E_Event_Zone_Rotation_Change_End *e = ev;
    e_object_unref(E_OBJECT(e->zone));
    E_FREE(e);
 }

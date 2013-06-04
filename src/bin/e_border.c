@@ -149,9 +149,9 @@ static Eina_Bool _e_border_cb_desk_window_profile_change(void *data,
                                                          void *ev);
 #endif
 #ifdef _F_ZONE_WINDOW_ROTATION_
-static Eina_Bool _e_border_cb_zone_rotation_change(void *data,
-                                                   int   ev_type,
-                                                   void *ev);
+static Eina_Bool _e_border_cb_zone_rotation_change_begin(void *data,
+                                                         int   ev_type,
+                                                         void *ev);
 static Eina_Bool _e_border_rotation_change_prepare_timeout(void *data);
 static void      _e_border_rotation_change_request(E_Zone *zone);
 static Eina_Bool _e_border_rotation_change_done_timeout(void *data);
@@ -170,7 +170,6 @@ static Eina_Bool _e_border_rotation_check(E_Border *bd);
 static Eina_Bool _e_border_rotation_zone_check(E_Zone *zone);
 static Eina_Bool _e_border_rotation_border_check(E_Border *bd, int ang);
 static Eina_Bool _e_border_rotation_zone_vkbd_check(E_Zone *zone);
-static Eina_Bool _e_border_rotation_zone_prediction_check(E_Zone *zone);
 static Eina_Bool _e_border_rotation_vkbd_transient_for_check(E_Border *bd);
 static Eina_Bool _e_border_rotation_transient_for_check(E_Border *bd, int ang);
 static Eina_Bool _e_border_cb_window_configure(void *data,
@@ -240,8 +239,13 @@ static void      _e_border_event_border_fullscreen_free(void *data,
 static void      _e_border_event_border_unfullscreen_free(void *data,
                                                           void *ev);
 #ifdef _F_ZONE_WINDOW_ROTATION_
-static void      _e_border_event_border_rotation_free(void *data,
-                                                      void *ev);
+static void      _e_border_event_border_rotation_change_begin_free(void *data,
+                                                                   void *ev);
+static void      _e_border_event_border_rotation_change_cancel_free(void *data,
+                                                                    void *ev);
+static void      _e_border_event_border_rotation_change_end_free(void *data,
+                                                                 void *ev);
+static void      _e_border_event_border_rotation_change_begin_send(E_Border *bd);
 #endif
 
 static void      _e_border_zone_update(E_Border *bd);
@@ -392,7 +396,10 @@ EAPI int E_EVENT_BORDER_PROPERTY = 0;
 EAPI int E_EVENT_BORDER_FULLSCREEN = 0;
 EAPI int E_EVENT_BORDER_UNFULLSCREEN = 0;
 #ifdef _F_ZONE_WINDOW_ROTATION_
-EAPI int E_EVENT_BORDER_ROTATION = 0;
+EAPI int E_EVENT_BORDER_ROTATION = 0; /* deprecated */
+EAPI int E_EVENT_BORDER_ROTATION_CHANGE_BEGIN = 0;
+EAPI int E_EVENT_BORDER_ROTATION_CHANGE_CANCEL = 0;
+EAPI int E_EVENT_BORDER_ROTATION_CHANGE_END = 0;
 #endif
 
 #define GRAV_SET(bd, grav)                                \
@@ -470,7 +477,7 @@ e_border_init(void)
    handlers = eina_list_append(handlers, ecore_event_handler_add(E_EVENT_DESK_WINDOW_PROFILE_CHANGE, _e_border_cb_desk_window_profile_change, NULL));
 #endif
 #ifdef _F_ZONE_WINDOW_ROTATION_
-   handlers = eina_list_append(handlers, ecore_event_handler_add(E_EVENT_ZONE_ROTATION_CHANGE, _e_border_cb_zone_rotation_change, NULL));
+   handlers = eina_list_append(handlers, ecore_event_handler_add(E_EVENT_ZONE_ROTATION_CHANGE_BEGIN, _e_border_cb_zone_rotation_change_begin, NULL));
 #endif
 
    if (!borders_hash) borders_hash = eina_hash_string_superfast_new(NULL);
@@ -496,7 +503,10 @@ e_border_init(void)
    E_EVENT_BORDER_FULLSCREEN = ecore_event_type_new();
    E_EVENT_BORDER_UNFULLSCREEN = ecore_event_type_new();
 #ifdef _F_ZONE_WINDOW_ROTATION_
-   E_EVENT_BORDER_ROTATION = ecore_event_type_new();
+   E_EVENT_BORDER_ROTATION = ecore_event_type_new(); /* deprecated */
+   E_EVENT_BORDER_ROTATION_CHANGE_BEGIN = ecore_event_type_new();
+   E_EVENT_BORDER_ROTATION_CHANGE_CANCEL = ecore_event_type_new();
+   E_EVENT_BORDER_ROTATION_CHANGE_END = ecore_event_type_new();
 #endif
 
 //   e_init_undone();
@@ -1316,7 +1326,13 @@ _e_border_vkbd_hide(E_Border *bd)
    rot.vkbd_hide_timer = NULL;
    if ((bd) && ((E_OBJECT(bd)->type) == (E_BORDER_TYPE)))
      {
+        ELB(ELBT_BD, "HIDE VKBD", bd->client.win);
         e_border_hide(bd, 0);
+        if (!e_object_is_del(E_OBJECT(bd)))
+          {
+             ELB(ELBT_BD, "DEL VKBD", bd->client.win);
+             e_object_del(E_OBJECT(bd));
+          }
         rot.vkbd_hide_timer = ecore_timer_add(0.03f, _e_border_vkbd_hide_timeout, bd);
      }
 }
@@ -1399,7 +1415,21 @@ e_border_show(E_Border *bd)
         (bd->client.e.state.rot.app_set)))
      {
         ELB(ELBT_ROT, "CHECK", bd->client.win);
-        _e_border_rotation_check(bd);
+        Eina_Bool _rot = _e_border_rotation_check(bd);
+        /* check whether rotation is available for sub borders such as prediction and magnifier */
+        if (_rot)
+          {
+             Eina_List *ll;
+             E_Border *_child;
+             Eina_List *_list = _e_border_sub_borders_new(bd);
+             EINA_LIST_FOREACH(_list, ll, _child)
+               {
+                  if ((_child->client.e.state.rot.support) ||
+                      (_child->client.e.state.rot.app_set))
+                    _e_border_rotation_check(_child);
+               }
+             eina_list_free(_list);
+          }
      }
 #endif
 }
@@ -1564,6 +1594,10 @@ e_border_hide(E_Border *bd,
 send_event:
    if (!stopping)
      {
+#ifdef _F_ZONE_WINDOW_ROTATION_
+        _e_border_rotation_list_remove(bd);
+#endif
+
         E_Event_Border_Hide *ev;
 
         ev = E_NEW(E_Event_Border_Hide, 1);
@@ -3678,16 +3712,107 @@ static Eina_Bool
 _e_border_uniconify_timeout(void *data)
 {
    E_Border *bd;
+   E_Border *child_bd;
+
    bd = data;
 
    if (!e_object_is_del(E_OBJECT(bd)))
      {
+        ELB(ELBT_BD, "TIMEOUT UNICONIFY_APPROVE", bd->client.win);
         bd->client.e.state.deiconify_approve.render_done = 1;
-        e_border_uniconify(bd);
+        if (bd->client.e.state.deiconify_approve.req_list)
+          {
+             EINA_LIST_FREE(bd->client.e.state.deiconify_approve.req_list, child_bd)
+               {
+                  child_bd->client.e.state.deiconify_approve.render_done = 1;
+                  child_bd->client.e.state.deiconify_approve.ancestor = NULL;
+               }
+          }
+        bd->client.e.state.deiconify_approve.req_list = NULL;
         bd->client.e.state.deiconify_approve.wait_timer = NULL;
+        e_border_uniconify(bd);
      }
 
    return ECORE_CALLBACK_CANCEL;
+}
+
+static void
+_e_border_deiconify_approve_send(E_Border *bd, E_Border *bd_ancestor)
+{
+   if (!bd || !bd_ancestor) return;
+
+   if (e_config->deiconify_approve)
+     {
+        if (e_config->transient.iconify)
+          {
+             Eina_List *l;
+             E_Border *child;
+             Eina_List *list = _e_border_sub_borders_new(bd);
+             EINA_LIST_FOREACH(list, l, child)
+               {
+#ifdef _F_ZONE_WINDOW_ROTATION_
+                  if ((e_config->wm_win_rotation) &&
+                      ((child->client.e.state.rot.support) ||
+                       (child->client.e.state.rot.app_set)))
+                    {
+                       ELB(ELBT_ROT, "CHECK_DEICONIFY CHILD", child->client.win);
+                       _e_border_rotation_check(child);
+                    }
+#endif
+                  _e_border_deiconify_approve_send(child, bd_ancestor);
+                  if (child->client.e.state.deiconify_approve.support)
+                    {
+                       ELBF(ELBT_BD, 0, child->client.win,
+                            "SEND DEICONIFY_APPROVE. ancestor:%x", bd_ancestor->client.win);
+
+                       ecore_x_client_message32_send(child->client.win,
+                                                     ECORE_X_ATOM_E_DEICONIFY_APPROVE,
+                                                     ECORE_X_EVENT_MASK_WINDOW_CONFIGURE,
+                                                     child->client.win, 0, 0, 0, 0);
+                       child->client.e.state.deiconify_approve.ancestor = bd_ancestor;
+                       bd_ancestor->client.e.state.deiconify_approve.req_list = eina_list_append(bd_ancestor->client.e.state.deiconify_approve.req_list, child);
+                    }
+               }
+             eina_list_free(list);
+          }
+     }
+}
+
+static void
+_e_border_deiconify_approve_send_all_transient(E_Border *bd)
+{
+   E_Border *bd_ancestor;
+   bd_ancestor = bd;
+
+   if (e_config->deiconify_approve)
+     {
+#ifdef _F_ZONE_WINDOW_ROTATION_
+        if ((e_config->wm_win_rotation) &&
+            ((bd->client.e.state.rot.support) ||
+             (bd->client.e.state.rot.app_set)))
+          {
+             ELB(ELBT_ROT, "CHECK_DEICONIFY", bd->client.win);
+             _e_border_rotation_check(bd);
+          }
+#endif
+
+        if (e_config->transient.iconify)
+          {
+             _e_border_deiconify_approve_send(bd, bd_ancestor);
+          }
+
+        if (bd->client.e.state.deiconify_approve.support)
+          {
+             ELBF(ELBT_BD, 0, bd->client.win,
+                  "SEND DEICONIFY_APPROVE.. ancestor:%x", bd_ancestor->client.win);
+
+             ecore_x_client_message32_send(bd->client.win,
+                                           ECORE_X_ATOM_E_DEICONIFY_APPROVE,
+                                           ECORE_X_EVENT_MASK_WINDOW_CONFIGURE,
+                                           bd->client.win, 0, 0, 0, 0);
+             bd->client.e.state.deiconify_approve.wait_timer = ecore_timer_add(e_config->deiconify_timeout, _e_border_uniconify_timeout, bd);
+          }
+     }
 }
 #endif
 
@@ -3706,18 +3831,18 @@ e_border_uniconify(E_Border *bd)
      {
         if (bd->client.e.state.deiconify_approve.support)
           {
-             if (bd->client.e.state.deiconify_approve.wait_timer) return;
+             if (bd->client.e.state.deiconify_approve.wait_timer)
+               {
+                  ELB(ELBT_BD, "DEICONIFY_APPROVE WAIT_TIMER is already running", bd->client.win);
+                  return;
+               }
              if (bd->client.e.state.deiconify_approve.render_done == 0)
                {
-                  ecore_x_client_message32_send(bd->client.win,
-                                                ECORE_X_ATOM_E_DEICONIFY_APPROVE,
-                                                ECORE_X_EVENT_MASK_WINDOW_CONFIGURE,
-                                                bd->client.win, 0, 0, 0, 0);
-                  bd->client.e.state.deiconify_approve.wait_timer = ecore_timer_add(e_config->deiconify_timeout, _e_border_uniconify_timeout, bd);
+                  ELB(ELBT_BD, "DEICONIFY_APPROVE to all transient", bd->client.win);
+                  _e_border_deiconify_approve_send_all_transient(bd);
                   return;
                }
           }
-
         bd->client.e.state.deiconify_approve.render_done = 0;
      }
 #endif
@@ -5641,14 +5766,6 @@ _e_border_del(E_Border *bd)
         ecore_event_add(E_EVENT_BORDER_REMOVE, ev, _e_border_event_border_remove_free, NULL);
      }
 
-#ifdef _F_DEICONIFY_APPROVE_
-   if (bd->client.e.state.deiconify_approve.wait_timer)
-     {
-        ecore_timer_del(bd->client.e.state.deiconify_approve.wait_timer);
-        bd->client.e.state.deiconify_approve.wait_timer = NULL;
-     }
-#endif
-
    if (bd->parent)
      {
         bd->parent->transients = eina_list_remove(bd->parent->transients, bd);
@@ -5666,6 +5783,45 @@ _e_border_del(E_Border *bd)
      {
         child->parent = NULL;
      }
+
+#ifdef _F_DEICONIFY_APPROVE_
+   bd->client.e.state.deiconify_approve.render_done = 0;
+
+   E_Border *ancestor_bd;
+   ancestor_bd = bd->client.e.state.deiconify_approve.ancestor;
+   if ((ancestor_bd) &&
+       (!e_object_is_del(E_OBJECT(ancestor_bd))))
+     {
+        ancestor_bd->client.e.state.deiconify_approve.req_list = eina_list_remove(ancestor_bd->client.e.state.deiconify_approve.req_list, bd);
+        bd->client.e.state.deiconify_approve.ancestor = NULL;
+
+        if ((ancestor_bd->client.e.state.deiconify_approve.req_list == NULL) &&
+            (ancestor_bd->client.e.state.deiconify_approve.render_done))
+          {
+             if (ancestor_bd->client.e.state.deiconify_approve.wait_timer)
+               {
+                  ecore_timer_del(ancestor_bd->client.e.state.deiconify_approve.wait_timer);
+                  ancestor_bd->client.e.state.deiconify_approve.wait_timer = NULL;
+                  e_border_uniconify(ancestor_bd);
+               }
+          }
+     }
+
+   if (bd->client.e.state.deiconify_approve.wait_timer)
+     {
+        ecore_timer_del(bd->client.e.state.deiconify_approve.wait_timer);
+        bd->client.e.state.deiconify_approve.wait_timer = NULL;
+     }
+
+   if (bd->client.e.state.deiconify_approve.req_list)
+     {
+        EINA_LIST_FREE(bd->client.e.state.deiconify_approve.req_list, child)
+          {
+             child->client.e.state.deiconify_approve.render_done = 0;
+             child->client.e.state.deiconify_approve.ancestor = NULL;
+          }
+     }
+#endif
 
    if (bd->leader)
      {
@@ -5735,6 +5891,27 @@ _e_border_cb_window_destroy(void *data  __UNUSED__,
    e = ev;
    bd = e_border_find_by_client_window(e->win);
    if (!bd) return ECORE_CALLBACK_PASS_ON;
+   ELB(ELBT_BD, "X_WIN_DEL", bd->client.win);
+#ifdef _F_ZONE_WINDOW_ROTATION_
+   if (e_config->wm_win_rotation)
+     {
+        if (bd->client.vkbd.win_type == E_VIRTUAL_KEYBOARD_WINDOW_TYPE_KEYPAD)
+          {
+             ELB(ELBT_BD, "X_DEL_NOTIFY", bd->client.win);
+             if (!rot.vkbd_hide_prepare_timer)
+               {
+                  ELB(ELBT_BD, "HIDE VKBD", bd->client.win);
+                  e_border_hide(bd, 0);
+                  if (!rot.vkbd_hide_prepare_timer)
+                    {
+                       ELB(ELBT_BD, "DEL VKBD", bd->client.win);
+                       e_object_del(E_OBJECT(bd));
+                    }
+               }
+             return ECORE_CALLBACK_PASS_ON;
+          }
+     }
+#endif
    e_border_hide(bd, 0);
    e_object_del(E_OBJECT(bd));
    return ECORE_CALLBACK_PASS_ON;
@@ -5810,6 +5987,27 @@ _e_border_cb_window_hide(void *data  __UNUSED__,
           {
              bd->iconic = 0;
              bd->visible = 1;
+          }
+#endif
+
+#ifdef _F_ZONE_WINDOW_ROTATION_
+        if (e_config->wm_win_rotation)
+          {
+             if (bd->client.vkbd.win_type == E_VIRTUAL_KEYBOARD_WINDOW_TYPE_KEYPAD)
+               {
+                  ELB(ELBT_BD, "X_UNMAP_NOTIFY", bd->client.win);
+                  if (!rot.vkbd_hide_prepare_timer)
+                    {
+                       ELB(ELBT_BD, "HIDE VKBD", bd->client.win);
+                       e_border_hide(bd, 0);
+                       if (!rot.vkbd_hide_prepare_timer)
+                         {
+                            ELB(ELBT_BD, "DEL VKBD", bd->client.win);
+                            e_object_del(E_OBJECT(bd));
+                         }
+                    }
+                  return ECORE_CALLBACK_PASS_ON;
+               }
           }
 #endif
         e_border_hide(bd, 0);
@@ -6732,13 +6930,38 @@ _e_border_cb_client_message(void *data  __UNUSED__,
              if (bd->client.e.state.deiconify_approve.support)
                {
                   if (e->data.l[1] != 1) return ECORE_CALLBACK_PASS_ON;
-                  if (bd->client.e.state.deiconify_approve.wait_timer)
-                    {
-                       ecore_timer_del(bd->client.e.state.deiconify_approve.wait_timer);
-                       bd->client.e.state.deiconify_approve.wait_timer = NULL;
-                    }
                   bd->client.e.state.deiconify_approve.render_done = 1;
-                  e_border_uniconify(bd);
+
+                  E_Border *ancestor_bd;
+                  ancestor_bd = bd->client.e.state.deiconify_approve.ancestor;
+                  if (ancestor_bd)
+                    {
+                       ancestor_bd->client.e.state.deiconify_approve.req_list = eina_list_remove(ancestor_bd->client.e.state.deiconify_approve.req_list, bd);
+                       bd->client.e.state.deiconify_approve.ancestor = NULL;
+                    }
+                  else
+                    {
+                       ancestor_bd = bd;
+                    }
+
+                  ELBF(ELBT_BD, 0, bd->client.win,
+                       "RECEIVE DEICONIFY_APPROVE.. ancestor:%x", ancestor_bd->client.win);
+
+                  if ((ancestor_bd->client.e.state.deiconify_approve.req_list == NULL) &&
+                      (ancestor_bd->client.e.state.deiconify_approve.render_done))
+                    {
+                       if (ancestor_bd->client.e.state.deiconify_approve.wait_timer)
+                         {
+                            ecore_timer_del(ancestor_bd->client.e.state.deiconify_approve.wait_timer);
+                            ancestor_bd->client.e.state.deiconify_approve.wait_timer = NULL;
+                            e_border_uniconify(ancestor_bd);
+                         }
+                       else
+                         {
+                            ELB(ELBT_BD, "Unset DEICONIFY_APPROVE render_done", ancestor_bd->client.win);
+                            ancestor_bd->client.e.state.deiconify_approve.render_done = 0;
+                         }
+                    }
                }
           }
         return ECORE_CALLBACK_PASS_ON;
@@ -7664,11 +7887,11 @@ _e_border_cb_desk_window_profile_change(void *data  __UNUSED__,
 
 #ifdef _F_ZONE_WINDOW_ROTATION_
 static Eina_Bool
-_e_border_cb_zone_rotation_change(void *data  __UNUSED__,
-                                  int ev_type __UNUSED__,
-                                  void       *ev)
+_e_border_cb_zone_rotation_change_begin(void *data  __UNUSED__,
+                                        int ev_type __UNUSED__,
+                                        void       *ev)
 {
-   E_Event_Zone_Rotation_Change *e = ev;
+   E_Event_Zone_Rotation_Change_Begin *e = ev;
    Eina_Bool res = EINA_FALSE;
 
    if (!e_config->wm_win_rotation) return ECORE_CALLBACK_PASS_ON;
@@ -7758,6 +7981,8 @@ _e_border_rotation_change_request(E_Zone *zone __UNUSED__)
 
    EINA_LIST_FOREACH(rot.list, l, info)
      {
+        _e_border_event_border_rotation_change_begin_send(info->bd);
+
         ELBF(ELBT_ROT, 1, info->bd->client.win,
              "SEND ROT_CHANGE_PREPARE a%d res%d %dx%d",
              info->ang, info->win_resize, info->w, info->h);
@@ -7786,6 +8011,7 @@ _e_border_rotation_list_remove(E_Border *bd)
 {
    Eina_List *l = NULL;
    E_Border_Rotation_Info *info = NULL;
+   E_Event_Border_Rotation_Change_End *ev = NULL;
    if (!e_config->wm_win_rotation) return;
 
    EINA_LIST_FOREACH(rot.list, l, info)
@@ -7800,6 +8026,23 @@ _e_border_rotation_list_remove(E_Border *bd)
    if (bd->client.e.state.rot.wait_for_done)
      {
         bd->client.e.state.rot.wait_for_done = 0;
+
+        /* if we make the border event in the _e_border_free function,
+         * then we may meet a crash problem, only work this at least e_border_hide.
+         */
+        if (!e_object_is_del(E_OBJECT(bd)))
+          {
+             ev = E_NEW(E_Event_Border_Rotation_Change_End, 1);
+             if (ev)
+               {
+                  ev->border = bd;
+                  e_object_ref(E_OBJECT(bd));
+                  ecore_event_add(E_EVENT_BORDER_ROTATION_CHANGE_END,
+                                  ev,
+                                  _e_border_event_border_rotation_change_end_free,
+                                  NULL);
+               }
+          }
         if (eina_list_count(rot.list) == 0)
           {
              _e_border_rotation_change_done();
@@ -7948,8 +8191,7 @@ _e_border_rotation_check(E_Border *bd)
 
    ang = zone->rot.curr;
 
-   if (((rot.vkbd) && (rot.vkbd == bd)) ||
-       ((rot.vkbd_prediction) && (rot.vkbd_prediction == bd)))
+   if (bd->client.vkbd.win_type != E_VIRTUAL_KEYBOARD_WINDOW_TYPE_NONE)
      {
         ELBF(ELBT_ROT, 1, bd->client.win,
              "%s->parent:0x%08x (support:%d app_set:%d ang:%d)",
@@ -8048,8 +8290,6 @@ _e_border_rotation_check(E_Border *bd)
 
    if (bd->client.e.state.rot.curr != ang)
      {
-        Eina_Bool is_screen_locked = EINA_FALSE;
-
         if ((rot.vkbd != bd) && (rot.vkbd_prediction != bd) &&
             /* check whether virtual keyboard is visible on the zone */
             (_e_border_rotation_zone_vkbd_check(bd->zone)) &&
@@ -8062,7 +8302,6 @@ _e_border_rotation_check(E_Border *bd)
           {
              ELB(ELBT_ROT, "DO VKBD ROT", bd->client.win);
              e_manager_comp_screen_lock(e_manager_current_get());
-             is_screen_locked = EINA_TRUE;
 
              if (rot.prepare_timer) ecore_timer_del(rot.prepare_timer);
              rot.prepare_timer = NULL;
@@ -8072,7 +8311,7 @@ _e_border_rotation_check(E_Border *bd)
 
              ELB(ELBT_ROT, "send rot_change_prepare", rot.vkbd_ctrl_win);
              ecore_x_e_window_rotation_change_prepare_send(rot.vkbd_ctrl_win,
-                                                           bd->zone->rot.curr,
+                                                           ang,
                                                            EINA_FALSE, 1, 1);
              rot.prepare_timer = ecore_timer_add(4.0f,
                                                  _e_border_rotation_change_prepare_timeout,
@@ -8115,9 +8354,6 @@ _e_border_rotation_check(E_Border *bd)
         info = E_NEW(E_Border_Rotation_Info, 1);
         if (info)
           {
-             if (!is_screen_locked)
-               e_manager_comp_screen_lock(e_manager_current_get());
-
              info->bd = bd;
              info->ang = ang;
              info->x = x; info->y = y;
@@ -8127,6 +8363,8 @@ _e_border_rotation_check(E_Border *bd)
 
              if (info->win_resize)
                bd->client.e.state.rot.pending_change_request = 1;
+
+             _e_border_event_border_rotation_change_begin_send(bd);
 
              ELBF(ELBT_ROT, 1, info->bd->client.win,
                   "SEND ROT_CHANGE_PREPARE a%d res%d %dx%d",
@@ -8264,27 +8502,6 @@ _e_border_rotation_zone_vkbd_check(E_Zone *zone)
    return EINA_FALSE;
 }
 
-/* check whether prediction keyboard is visible on the zone */
-static Eina_Bool
-_e_border_rotation_zone_prediction_check(E_Zone *zone)
-{
-   if (!e_config->wm_win_rotation) return EINA_FALSE;
-
-   if ((rot.vkbd_ctrl_win) &&
-       (rot.vkbd_prediction) &&
-       (!e_object_is_del(E_OBJECT(rot.vkbd_prediction))) &&
-       (rot.vkbd_prediction->visible) &&
-       (rot.vkbd_prediction->zone == zone) &&
-       (E_INTERSECTS(zone->x, zone->y,
-                     zone->w, zone->h,
-                     rot.vkbd_prediction->x, rot.vkbd_prediction->y,
-                     rot.vkbd_prediction->w, rot.vkbd_prediction->h)))
-     {
-        return EINA_TRUE;
-     }
-   return EINA_FALSE;
-}
-
 /* check whether border is parent of the virtual keyboard */
 static Eina_Bool
 _e_border_rotation_vkbd_transient_for_check(E_Border *bd)
@@ -8303,7 +8520,6 @@ _e_border_rotation_vkbd_transient_for_check(E_Border *bd)
         if ((rot.vkbd_prediction) && (!e_object_is_del(E_OBJECT(rot.vkbd_prediction))) &&
             (rot.vkbd_prediction != bd))
           {
-             /* bug! but i can't fix it */
              if (rot.vkbd_prediction == bd)
                return EINA_TRUE;
           }
@@ -8349,8 +8565,10 @@ _e_border_rotation_list_add(E_Zone *zone, Eina_Bool without_vkbd)
         if ((!bd) || (e_object_is_del(E_OBJECT(bd)))) continue;
 
         if ((without_vkbd) &&
-            (((rot.vkbd) && (rot.vkbd == bd)) ||
-             ((rot.vkbd_prediction) && (rot.vkbd_prediction == bd)))) continue;
+            (bd->client.vkbd.win_type != E_VIRTUAL_KEYBOARD_WINDOW_TYPE_NONE))
+          {
+             continue;
+          }
 
         if ((bd->visible) &&
             ((bd->client.e.state.rot.support) || (bd->client.e.state.rot.app_set)) &&
@@ -8373,8 +8591,20 @@ _e_border_rotation_list_add(E_Zone *zone, Eina_Bool without_vkbd)
              /* skip same angle */
              if (bd->client.e.state.rot.curr == ang)
                {
-                  ELBF(ELBT_ROT, 0, bd->client.win, "SKIP ang:%d", ang);
-                  continue;
+                  /* FIXME: hack for rotating vkbd:
+                   * even if angle of zone is not changed,
+                   * if preferred_rot of parent is set with specific angle, vkbd has to rotate, too.
+                   * all of other transient window like this case.
+                   */
+                  if ((bd->parent) &&
+                      (bd->parent->client.e.state.rot.preferred_rot != -1))
+                    ang = bd->parent->client.e.state.rot.preferred_rot;
+                  if (bd->client.e.state.rot.curr == ang)
+                    {
+                       ELBF(ELBT_ROT, 0, bd->client.win, "SKIP ang:%d", ang);
+                       continue;
+                    }
+                  ELBF(ELBT_ROT, 0, bd->client.win, "rotate by parent ang:%d", ang);
                }
              else
                {
@@ -8411,7 +8641,8 @@ _e_border_rotation_list_add(E_Zone *zone, Eina_Bool without_vkbd)
 
                   Eina_Bool move = EINA_TRUE;
                   Eina_Bool hint = EINA_FALSE;
-                  hint = _e_border_rotation_geom_get(bd, zone, zone->rot.curr, &x, &y, &w, &h, &move);
+                  hint = _e_border_rotation_geom_get(bd, zone, ang,
+                                                     &x, &y, &w, &h, &move);
                   if (hint)
                     _e_border_move_resize_internal(bd, x, y, w, h, EINA_TRUE, move);
                   else
@@ -8447,56 +8678,17 @@ _e_border_rotation_list_add(E_Zone *zone, Eina_Bool without_vkbd)
                   wait = EINA_TRUE;
                }
 
-             /* support for rotating prediction window without virtual keyboard */
-             if (without_vkbd)
+             /* check whether rotation is available for sub borders such as prediction and magnifier */
+             Eina_List *ll;
+             E_Border *_child;
+             Eina_List *_list = _e_border_sub_borders_new(bd);
+             EINA_LIST_FOREACH(_list, ll, _child)
                {
-                  if ((rot.vkbd != bd) && (rot.vkbd_prediction != bd) &&
-                      /* check whether prediction is visible on the zone */
-                      (_e_border_rotation_zone_prediction_check(bd->zone)) &&
-                      /* check whether prediction window belongs to this border (transient_for) */
-                      (rot.vkbd_prediction->parent == bd) &&
-                      /* check rotation of prediction window */
-                      (rot.vkbd_prediction->client.e.state.rot.curr != bd->client.e.state.rot.curr) &&
-                      (!rot.wait_prepare_done))
-                    {
-                       E_Border *pbd = rot.vkbd_prediction;
-                       ang = bd->client.e.state.rot.curr;
-
-                       ELBF(ELBT_ROT, 0, pbd->client.win, "ADD ROT_LIST curr:%d != ang:%d (PREDICTION)",
-                            pbd->client.e.state.rot.curr, ang);
-
-                       pbd->client.e.state.rot.prev = pbd->client.e.state.rot.curr;
-                       pbd->client.e.state.rot.curr = ang;
-                       pbd->client.e.state.rot.wait_for_done = 1;
-
-                       info = E_NEW(E_Border_Rotation_Info, 1);
-                       if (info)
-                         {
-                            info->bd = pbd;
-                            info->ang = ang;
-                            info->x = pbd->x; info->y = pbd->y;
-                            info->w = pbd->w; info->h = pbd->h;
-                            info->win_resize = EINA_FALSE;
-                            nl = eina_list_append(nl, info);
-                         }
-
-                       int x, y, w, h;
-                       Eina_Bool move = EINA_TRUE;
-                       Eina_Bool hint = EINA_FALSE;
-                       hint = _e_border_rotation_geom_get(pbd, zone, zone->rot.curr, &x, &y, &w, &h, &move);
-                       if (hint)
-                         _e_border_move_resize_internal(pbd, x, y, w, h, EINA_TRUE, move);
-
-                       if (info)
-                         {
-                            info->x = x; info->y = y;
-                            info->w = w; info->h = h;
-                            info->win_resize = EINA_TRUE;
-                         }
-
-                       pbd->client.e.state.rot.pending_change_request = 1;
-                    }
+                  if ((_child->client.e.state.rot.support) ||
+                      (_child->client.e.state.rot.app_set))
+                    _e_border_rotation_check(_child);
                }
+             eina_list_free(_list);
           }
      }
 
@@ -8915,7 +9107,7 @@ _e_border_eval0(E_Border *bd)
      {
         const char **profiles = NULL;
         const char *str;
-        int num, i;
+        int num = 0, i;
 
         if (bd->client.e.state.profile)
           eina_stringshare_del(bd->client.e.state.profile);
@@ -8953,7 +9145,11 @@ _e_border_eval0(E_Border *bd)
           }
 
         if (profiles)
-          free(profiles);
+          {
+             for (i = 0; i < num; i++)
+                if (profiles[i]) free(profiles[i]);
+             free(profiles);
+          }
 
         bd->client.e.fetch.profile_list = 0;
      }
@@ -9283,6 +9479,9 @@ _e_border_eval0(E_Border *bd)
      {
         /* TODO: What do to if the transient for isn't mapped yet? */
         E_Border *bd_parent = NULL;
+#ifdef _F_DEICONIFY_APPROVE_
+        Eina_Bool change_parent = EINA_FALSE;
+#endif
 
         bd->client.icccm.transient_for = ecore_x_icccm_transient_for_get(bd->client.win);
         if (bd->client.icccm.transient_for)
@@ -9304,6 +9503,9 @@ _e_border_eval0(E_Border *bd)
           {
              bd_parent->transients = eina_list_append(bd_parent->transients, bd);
              bd->parent = bd_parent;
+#ifdef _F_DEICONIFY_APPROVE_
+             change_parent = EINA_TRUE;
+#endif
           }
         if (bd->parent)
           {
@@ -9323,6 +9525,33 @@ _e_border_eval0(E_Border *bd)
                  (bd->parent->focused && (e_config->focus_setting == E_FOCUS_NEW_DIALOG_IF_OWNER_FOCUSED)))
                bd->take_focus = 1;
           }
+
+#ifdef _F_DEICONIFY_APPROVE_
+        if (change_parent)
+          {
+             bd->client.e.state.deiconify_approve.render_done = 0;
+
+             E_Border *ancestor_bd;
+             ancestor_bd = bd->client.e.state.deiconify_approve.ancestor;
+             if ((ancestor_bd) &&
+                 (!e_object_is_del(E_OBJECT(ancestor_bd))))
+               {
+                  ancestor_bd->client.e.state.deiconify_approve.req_list = eina_list_remove(ancestor_bd->client.e.state.deiconify_approve.req_list, bd);
+                  bd->client.e.state.deiconify_approve.ancestor = NULL;
+
+                  if ((ancestor_bd->client.e.state.deiconify_approve.req_list == NULL) &&
+                      (ancestor_bd->client.e.state.deiconify_approve.render_done))
+                    {
+                       if (ancestor_bd->client.e.state.deiconify_approve.wait_timer)
+                         {
+                            ecore_timer_del(ancestor_bd->client.e.state.deiconify_approve.wait_timer);
+                            ancestor_bd->client.e.state.deiconify_approve.wait_timer = NULL;
+                            e_border_uniconify(ancestor_bd);
+                         }
+                    }
+               }
+          }
+#endif
         bd->client.icccm.fetch.transient_for = 0;
         rem_change = 1;
      }
@@ -9858,7 +10087,21 @@ _e_border_eval0(E_Border *bd)
        (need_rotation_set))
      {
         ELB(ELBT_ROT, "NEED ROT", bd->client.win);
-        _e_border_rotation_check(bd);
+        Eina_Bool _rot = _e_border_rotation_check(bd);
+        /* check whether rotation is available for sub borders such as prediction and magnifier */
+        if (_rot)
+          {
+             Eina_List *ll;
+             E_Border *_child;
+             Eina_List *_list = _e_border_sub_borders_new(bd);
+             EINA_LIST_FOREACH(_list, ll, _child)
+               {
+                  if ((_child->client.e.state.rot.support) ||
+                      (_child->client.e.state.rot.app_set))
+                    _e_border_rotation_check(_child);
+               }
+             eina_list_free(_list);
+          }
      }
 #endif
 
@@ -11616,14 +11859,49 @@ _e_border_event_border_unfullscreen_free(void *data __UNUSED__,
 
 #ifdef _F_ZONE_WINDOW_ROTATION_
 static void
-_e_border_event_border_rotation_free(void *data __UNUSED__,
-                                     void      *ev)
+_e_border_event_border_rotation_change_begin_free(void *data __UNUSED__,
+                                                  void      *ev)
 {
-   E_Event_Border_Rotation *e;
-
+   E_Event_Border_Rotation_Change_Begin *e;
    e = ev;
    e_object_unref(E_OBJECT(e->border));
    E_FREE(e);
+}
+
+static void
+_e_border_event_border_rotation_change_cancel_free(void *data __UNUSED__,
+                                                   void      *ev)
+{
+   E_Event_Border_Rotation_Change_Cancel *e;
+   e = ev;
+   e_object_unref(E_OBJECT(e->border));
+   E_FREE(e);
+}
+
+static void
+_e_border_event_border_rotation_change_end_free(void *data __UNUSED__,
+                                                void      *ev)
+{
+   E_Event_Border_Rotation_Change_End *e;
+   e = ev;
+   e_object_unref(E_OBJECT(e->border));
+   E_FREE(e);
+}
+
+static void
+_e_border_event_border_rotation_change_begin_send(E_Border *bd)
+{
+   E_Event_Border_Rotation_Change_Begin *ev = NULL;
+   ev = E_NEW(E_Event_Border_Rotation_Change_End, 1);
+   if (ev)
+     {
+        ev->border = bd;
+        e_object_ref(E_OBJECT(bd));
+        ecore_event_add(E_EVENT_BORDER_ROTATION_CHANGE_BEGIN,
+                        ev,
+                        _e_border_event_border_rotation_change_begin_free,
+                        NULL);
+     }
 }
 #endif
 

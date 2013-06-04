@@ -23,7 +23,10 @@ typedef struct _E_Event_Zone_Del            E_Event_Zone_Del;
 typedef struct _E_Event_Pointer_Warp        E_Event_Pointer_Warp;
 typedef struct _E_Event_Zone_Edge           E_Event_Zone_Edge;
 #ifdef _F_ZONE_WINDOW_ROTATION_
-typedef struct _E_Event_Zone_Rotation_Change E_Event_Zone_Rotation_Change;
+typedef struct _E_Event_Zone_Rotation_Change        E_Event_Zone_Rotation_Change; /* deprecated */
+typedef struct _E_Event_Zone_Rotation_Change_Begin  E_Event_Zone_Rotation_Change_Begin;
+typedef struct _E_Event_Zone_Rotation_Change_Cancel E_Event_Zone_Rotation_Change_Cancel;
+typedef struct _E_Event_Zone_Rotation_Change_End    E_Event_Zone_Rotation_Change_End;
 #endif
 
 #else
@@ -141,7 +144,23 @@ struct _E_Event_Zone_Edge
 };
 
 #ifdef _F_ZONE_WINDOW_ROTATION_
+/* deprecated */
 struct _E_Event_Zone_Rotation_Change
+{
+   E_Zone     *zone;
+};
+
+struct _E_Event_Zone_Rotation_Change_Begin
+{
+   E_Zone     *zone;
+};
+
+struct _E_Event_Zone_Rotation_Change_Cancel
+{
+   E_Zone     *zone;
+};
+
+struct _E_Event_Zone_Rotation_Change_End
 {
    E_Zone     *zone;
 };
@@ -193,7 +212,10 @@ extern EAPI int E_EVENT_ZONE_EDGE_IN;
 extern EAPI int E_EVENT_ZONE_EDGE_OUT;
 extern EAPI int E_EVENT_ZONE_EDGE_MOVE;
 #ifdef _F_ZONE_WINDOW_ROTATION_
-extern EAPI int E_EVENT_ZONE_ROTATION_CHANGE;
+extern EAPI int E_EVENT_ZONE_ROTATION_CHANGE; /* deprecated */
+extern EAPI int E_EVENT_ZONE_ROTATION_CHANGE_BEGIN;
+extern EAPI int E_EVENT_ZONE_ROTATION_CHANGE_CANCEL;
+extern EAPI int E_EVENT_ZONE_ROTATION_CHANGE_END;
 #endif
 
 #endif

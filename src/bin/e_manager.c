@@ -702,14 +702,68 @@ e_manager_comp_src_input_region_set(E_Manager *man, E_Manager_Comp_Source *src, 
    return man->comp->func.src_input_region_set(man->comp->data, man, src, x, y, w, h);
 }
 
+EAPI int
+e_manager_comp_input_region_new(E_Manager *man)
+{
+   E_OBJECT_CHECK_RETURN(man, 0);
+   E_OBJECT_TYPE_CHECK_RETURN(man, E_MANAGER_TYPE, 0);
+   if (!man->comp) return 0;
+   if (!man->comp->func.input_region_new) return 0;
+   return man->comp->func.input_region_new(man->comp->data, man);
+}
+
 EAPI Eina_Bool
-e_manager_comp_input_region_set(E_Manager *man, int x, int y, int w, int h)
+e_manager_comp_input_region_set(E_Manager *man, int id, int x, int y, int w, int h)
 {
    E_OBJECT_CHECK_RETURN(man, EINA_FALSE);
    E_OBJECT_TYPE_CHECK_RETURN(man, E_MANAGER_TYPE, EINA_FALSE);
+   if (id <= 0) return EINA_FALSE;
    if (!man->comp) return EINA_FALSE;
    if (!man->comp->func.input_region_set) return EINA_FALSE;
-   return man->comp->func.input_region_set(man->comp->data, man, x, y, w, h);
+   return man->comp->func.input_region_set(man->comp->data, man, id, x, y, w, h);
+}
+
+EAPI Eina_Bool
+e_manager_comp_input_region_del(E_Manager *man, int id)
+{
+   E_OBJECT_CHECK_RETURN(man, EINA_FALSE);
+   E_OBJECT_TYPE_CHECK_RETURN(man, E_MANAGER_TYPE, EINA_FALSE);
+   if (id <= 0) return EINA_FALSE;
+   if (!man->comp) return EINA_FALSE;
+   if (!man->comp->func.input_region_del) return EINA_FALSE;
+   return man->comp->func.input_region_del(man->comp->data, man, id);
+}
+
+EAPI int
+e_manager_comp_input_region_id_new(E_Manager *man)
+{
+   E_OBJECT_CHECK_RETURN(man, 0);
+   E_OBJECT_TYPE_CHECK_RETURN(man, E_MANAGER_TYPE, 0);
+   if (!man->comp) return 0;
+   if (!man->comp->func.input_region_new) return 0;
+   return man->comp->func.input_region_new(man->comp->data, man);
+}
+
+EAPI Eina_Bool
+e_manager_comp_input_region_id_set(E_Manager *man, int id, int x, int y, int w, int h)
+{
+   E_OBJECT_CHECK_RETURN(man, EINA_FALSE);
+   E_OBJECT_TYPE_CHECK_RETURN(man, E_MANAGER_TYPE, EINA_FALSE);
+   if (id <= 0) return EINA_FALSE;
+   if (!man->comp) return EINA_FALSE;
+   if (!man->comp->func.input_region_set) return EINA_FALSE;
+   return man->comp->func.input_region_set(man->comp->data, man, id, x, y, w, h);
+}
+
+EAPI Eina_Bool
+e_manager_comp_input_region_id_del(E_Manager *man, int id)
+{
+   E_OBJECT_CHECK_RETURN(man, EINA_FALSE);
+   E_OBJECT_TYPE_CHECK_RETURN(man, E_MANAGER_TYPE, EINA_FALSE);
+   if (id <= 0) return EINA_FALSE;
+   if (!man->comp) return EINA_FALSE;
+   if (!man->comp->func.input_region_del) return EINA_FALSE;
+   return man->comp->func.input_region_del(man->comp->data, man, id);
 }
 #endif
 

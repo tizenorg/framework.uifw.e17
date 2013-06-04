@@ -48,9 +48,9 @@ e_log_shutdown(void)
 #ifdef _F_E_LOGBUF_
 EAPI unsigned int e_logbuf_type = ELBT_NONE;
 
-#define MAX_LOGS 1024
-#define MAX_LOG_FUNC_STR_SIZE 50
-#define MAX_LOG_STR_SIZE 256
+#define MAX_LOGS 9216
+#define MAX_LOG_FUNC_STR_SIZE 20
+#define MAX_LOG_STR_SIZE 80
 
 typedef struct _E_Log
 {

@@ -52,7 +52,9 @@ struct _E_Manager_Comp
 #endif
 #ifdef _F_COMP_INPUT_REGION_SET_
     Eina_Bool          (*src_input_region_set) (void *data, E_Manager *man, E_Manager_Comp_Source *src, int x, int y, int w, int h);
-    Eina_Bool          (*input_region_set)     (void *data, E_Manager *man, int x, int y, int w, int h);
+    int                (*input_region_new)     (void *data, E_Manager *man);
+    Eina_Bool          (*input_region_set)     (void *data, E_Manager *man, int id, int x, int y, int w, int h);
+    Eina_Bool          (*input_region_del)     (void *data, E_Manager *man, int id);
 #endif
 #ifdef _F_COMP_MOVE_LOCK_
     Eina_Bool          (*src_move_lock)        (void *data, E_Manager *man, E_Manager_Comp_Source *src);
@@ -157,7 +159,12 @@ EAPI void             e_manager_comp_screen_unlock(E_Manager *man);
 #endif
 #ifdef _F_COMP_INPUT_REGION_SET_
 EAPI Eina_Bool        e_manager_comp_src_input_region_set(E_Manager *man, E_Manager_Comp_Source *src, int x, int y, int w, int h);
-EAPI Eina_Bool        e_manager_comp_input_region_set(E_Manager *man, int x, int y, int w, int h);
+EAPI int              e_manager_comp_input_region_new(E_Manager *man);
+EAPI Eina_Bool        e_manager_comp_input_region_set(E_Manager *man, int id, int x, int y, int w, int h);
+EAPI Eina_Bool        e_manager_comp_input_region_del(E_Manager *man, int id);
+EAPI int              e_manager_comp_input_region_id_new(E_Manager *man);
+EAPI Eina_Bool        e_manager_comp_input_region_id_set(E_Manager *man, int id, int x, int y, int w, int h);
+EAPI Eina_Bool        e_manager_comp_input_region_id_del(E_Manager *man, int id);
 #endif
 #ifdef _F_COMP_MOVE_LOCK_
 EAPI Eina_Bool        e_manager_comp_src_move_lock(E_Manager *man, E_Manager_Comp_Source *src);
