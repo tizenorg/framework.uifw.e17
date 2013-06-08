@@ -166,7 +166,7 @@ static Eina_Bool _e_border_rotation_geom_get(E_Border  *bd,
                                              Eina_Bool *move);
 static Eina_Bool _e_border_rotation_start(E_Zone *zone, Eina_Bool without_vkbd);
 static void      _e_border_rotation_list_remove(E_Border *bd);
-static Eina_Bool _e_border_rotation_pre_resize(E_Border *bd);
+static Eina_Bool _e_border_rotation_pre_resize(E_Border *bd, int *x, int *y, int *w, int *h);
 static Eina_Bool _e_border_rotation_check(E_Border *bd);
 static Eina_Bool _e_border_rotation_zone_check(E_Zone *zone);
 static Eina_Bool _e_border_rotation_border_check(E_Border *bd, int ang);
@@ -8286,7 +8286,11 @@ _e_border_rotation_check(E_Border *bd)
 
    hint = _e_border_rotation_geom_get(bd, zone, ang, &x, &y, &w, &h, &move);
    if (hint)
-     _e_border_move_resize_internal(bd, x, y, w, h, EINA_TRUE, move);
+     {
+        _e_border_move_resize_internal(bd, x, y, w, h, EINA_TRUE, move);
+        ELBF(ELBT_ROT, 0, bd->client.win, "RESIZE_BY_HINT name:%s (%d,%d) %dx%d",
+             bd->client.icccm.name, x, y, w, h);
+     }
 
    /* need to check previous rotation angle, this may be because
     * the window was unmapped with non-0 rotation degree.
@@ -8522,6 +8526,7 @@ e_border_rotation_list_add(Eina_List *list)
    Eina_List *l;
    E_Border *bd = NULL;
    E_Border_Rotation_Info *info = NULL;
+   int x=0, y=0, w=0, h=0;
 
    if (!list) return EINA_FALSE;
    EINA_LIST_FOREACH(list, l, bd)
@@ -8531,9 +8536,9 @@ e_border_rotation_list_add(Eina_List *list)
 
         info->bd = bd;
         info->ang = bd->client.e.state.rot.curr;
-        info->win_resize = _e_border_rotation_pre_resize(bd);
-        info->x = bd->x; info->y = bd->y;
-        info->w = bd->w; info->h = bd->h;
+        info->win_resize = _e_border_rotation_pre_resize(bd, &x, &y, &w, &h);
+        info->x = x; info->y = y;
+        info->w = w; info->h = h;
         if (info->win_resize) bd->client.e.state.rot.pending_change_request = 1;
         rot.list = eina_list_append(rot.list, info);
      }
@@ -8545,42 +8550,64 @@ e_border_rotation_list_add(Eina_List *list)
    ((((a)->w) == ((z)->w)) &&    \
     (((a)->h) == ((z)->h)))
 static Eina_Bool
-_e_border_rotation_pre_resize(E_Border *bd)
+_e_border_rotation_pre_resize(E_Border *bd, int *x, int *y, int *w, int *h)
 {
    E_Zone *zone = bd->zone;
    int ang = bd->client.e.state.rot.curr;
    int diff = ang - bd->client.e.state.rot.prev;
-   int x, y, w, h;
+   int _x, _y, _w, _h;
    Eina_Bool move = EINA_FALSE;
    Eina_Bool hint = EINA_FALSE;
    Eina_Bool resize = EINA_FALSE;
 
+   if (x) *x = bd->x;
+   if (y) *y = bd->y;
+   if (w) *w = bd->w;
+   if (h) *h = bd->h;
+
    if (SIZE_EQUAL_TO_ZONE(bd, zone)) return resize;
 
+   ELB(ELBT_ROT, "SIZE DIFF WITH ZONE", 0);
+   ELBF(ELBT_ROT, 0, bd->client.win, "ORIGIN_SIZE name:%s (%d,%d) %dx%d",
+        bd->client.icccm.name, bd->x, bd->y, bd->w, bd->h);
+
    hint = _e_border_rotation_geom_get(bd, bd->zone, ang,
-                                      &x, &y, &w, &h, &move);
+                                      &_x, &_y, &_w, &_h, &move);
    if (hint)
      {
-        _e_border_move_resize_internal(bd, x, y, w, h, EINA_TRUE, move);
+        _e_border_move_resize_internal(bd, _x, _y, _w, _h, EINA_TRUE, move);
         resize = EINA_TRUE;
+        ELBF(ELBT_ROT, 0, bd->client.win, "RESIZE_BY_HINT name:%s (%d,%d) %dx%d",
+             bd->client.icccm.name, _x, _y, _w, _h);
      }
    else
      {
-        x = bd->x; y = bd->y;
-        w = bd->w; h = bd->h;
+        _x = bd->x; _y = bd->y;
+        _w = bd->w; _h = bd->h;
 
         if ((diff != 180) && (diff != -180))
           {
              if (w != h)
                {
-                  w = bd->h;
-                  h = bd->w;
+                  _w = bd->h;
+                  _h = bd->w;
                   resize = EINA_TRUE;
 
-                  _e_border_move_resize_internal(bd, x, y, w, h,
+                  _e_border_move_resize_internal(bd, _x, _y, _w, _h,
                                                  EINA_TRUE, EINA_TRUE);
+                  ELBF(ELBT_ROT, 0, bd->client.win, "MANUAL_RESIZE name:%s (%d,%d) %dx%d",
+                       bd->client.icccm.name, _x, _y, _w, _h);
+
                }
           }
+     }
+
+   if (resize)
+     {
+        if (x) *x = _x;
+        if (y) *y = _y;
+        if (w) *w = _w;
+        if (h) *h = _h;
      }
 
    return resize;
