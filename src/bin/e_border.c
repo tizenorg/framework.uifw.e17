@@ -5860,11 +5860,22 @@ _e_border_cb_window_show_request(void *data  __UNUSED__,
                                  void       *ev)
 {
    E_Border *bd;
+   E_Container *con;
    Ecore_X_Event_Window_Show_Request *e;
 
    e = ev;
    bd = e_border_find_by_client_window(e->win);
    if (!bd) return ECORE_CALLBACK_PASS_ON;
+
+   if ((e_config->wm_win_rotation) &&
+       (rot.vkbd_ctrl_win) && (rot.vkbd) &&
+       (bd == rot.vkbd) &&
+       (rot.vkbd_hide_prepare_timer))
+     {
+        con = bd->zone->container;
+        bd = e_border_new(con, e->win, 0, 0);
+     }
+
    if (bd->iconic)
      {
         if (!bd->lock_client_iconify)
