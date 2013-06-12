@@ -8027,7 +8027,6 @@ _e_border_rotation_change_request(E_Zone *zone __UNUSED__)
 EAPI void
 e_border_rotation_list_clear(E_Zone *zone, Eina_Bool send_request)
 {
-   Eina_List *l = NULL;
    E_Border_Rotation_Info *info = NULL;
 
    if (send_request) _e_border_rotation_change_request(zone);
@@ -8215,11 +8214,11 @@ _e_border_rotation_check(E_Border *bd)
    Eina_List *nl = NULL;
    int x, y, w, h, ang = 0;
    int _ang = 0;
-   Eina_Bool resize = EINA_TRUE;
    Eina_Bool hint = EINA_FALSE;
    Eina_Bool move = EINA_TRUE;
 
    if (!e_config->wm_win_rotation) return EINA_FALSE;
+   if (bd->client.e.state.rot.type != E_BORDER_ROTATION_TYPE_NORMAL) return EINA_FALSE;
 
    ELB(ELBT_ROT, "CHECK ROT", bd->client.win);
 
@@ -8641,7 +8640,6 @@ _e_border_rotation_start(E_Zone *zone, Eina_Bool without_vkbd)
    E_Border_List *l = NULL;
    Eina_List *nl = NULL;
    E_Border *bd = NULL;
-   E_Border_Rotation_Info *info = NULL;
 
    if (!e_config->wm_win_rotation) return EINA_FALSE;
 
