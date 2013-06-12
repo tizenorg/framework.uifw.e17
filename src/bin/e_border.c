@@ -2024,8 +2024,18 @@ _e_border_move_resize_internal(E_Border *bd,
 
    if (bd->new_client)
      {
-        _e_border_pending_move_resize_add(bd, move, 1, x, y, w, h, without_border, 0);
-        return;
+        /* FIXME: hack for resizing vkbd like window.
+         * IT SHOULD BE REMOVED after move the code which set the geometry of vkbd like window
+         * to illume's layout hook handler.
+         * the job of pending move/resize wouldn't be processed,
+         * in case this function is called from "_e_border_rotation_check" via "e_hints_window_init".
+         * thus we have to move/resize directry without pending in case geometry hint is existed. */
+        if (!_e_border_rotation_geom_get(bd, bd->zone, bd->client.e.state.rot.curr,
+                                         NULL, NULL, NULL, NULL, NULL))
+          {
+             _e_border_pending_move_resize_add(bd, move, 1, x, y, w, h, without_border, 0);
+             return;
+          }
      }
 
    if (bd->maximized)
@@ -10097,7 +10107,13 @@ _e_border_eval0(E_Border *bd)
 #endif
 #ifdef _F_ZONE_WINDOW_ROTATION_
    if ((e_config->wm_win_rotation) &&
-       (need_rotation_set))
+       (need_rotation_set) &&
+       /* since this parts of code is processed before illume's layout hook handler is processed,
+        * this border could be non-fullsize window at this time.
+        * in this case, if we send rotation like message to window,
+        * that window could have abnormal geometry.
+        * so, we skip it in case new_client for now.*/
+       (!bd->new_client))
      {
         ELB(ELBT_ROT, "NEED ROT", bd->client.win);
         Eina_Bool _rot = _e_border_rotation_check(bd);
