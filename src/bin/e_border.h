@@ -448,6 +448,8 @@ struct _E_Border
                unsigned char support : 1;
                unsigned char geom_hint: 1;
                unsigned char pending_change_request : 1;
+               unsigned char pending_show : 1;  // newly created window that has to be rotated will be show after rotating done.
+                                                // so, it will be used pending e_border_show called at main eval time.
                unsigned char wait_for_done: 1;
                // added for the window manager rotation protocol
                unsigned char app_set : 1;    // v1: app wants to communicate with the window manager
@@ -455,6 +457,7 @@ struct _E_Border
                int           preferred_rot;  // v1: app specified rotation
                int          *available_rots; // v1: app specified available rotations
                unsigned int  count;          // v1: number of elements of available rotations
+               int           changes;         // added for precessing rotation in main eval after fetch in eval0.
             } rot;
 #endif
          } state;
@@ -880,9 +883,8 @@ EAPI void           e_border_tmp_input_hidden_pop(E_Border *bd);
 EAPI void           e_border_activate(E_Border *bd, Eina_Bool just_do_it);
 
 #ifdef _F_ZONE_WINDOW_ROTATION_
-EAPI Eina_Bool      e_border_rotation_list_add(Eina_List *list);
-EAPI Eina_Bool      e_border_rotation_list_add_change_req(E_Zone *zone, Eina_List *list);
 EAPI void           e_border_rotation_list_clear(E_Zone *zone, Eina_Bool send_request);
+EAPI Eina_Bool      e_border_rotation_set(E_Border *bd, int rotation);
 #endif
 
 
