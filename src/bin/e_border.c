@@ -8636,7 +8636,7 @@ _e_border_rotation_pre_resize(E_Border *bd, int rotation, int *x, int *y, int *w
         _x = bd->x; _y = bd->y;
         _w = bd->w; _h = bd->h;
 
-        rot_dif = bd->client.e.state.rot.curr - rotation;
+        rot_dif = bd->client.e.state.rot.prev - rotation;
         if (rot_dif < 0) rot_dif = -rot_dif;
         if (rot_dif != 180)
           {
