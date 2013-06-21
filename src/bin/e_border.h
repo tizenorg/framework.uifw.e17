@@ -457,7 +457,9 @@ struct _E_Border
                int           preferred_rot;  // v1: app specified rotation
                int          *available_rots; // v1: app specified available rotations
                unsigned int  count;          // v1: number of elements of available rotations
-               int           changes;         // added for precessing rotation in main eval after fetch in eval0.
+               int           changes;        // added for precessing rotation in main eval after fetch in eval0.
+               int           wait_done_ang;  // the angle that wm wait for done.
+                                             // when wait_for_done is set to 1, it's meaningful.
             } rot;
 #endif
          } state;

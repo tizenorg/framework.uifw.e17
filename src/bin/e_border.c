@@ -8052,6 +8052,8 @@ _e_border_rotation_list_flush(Eina_List *list, Eina_Bool flush)
    EINA_LIST_FOREACH (list, l, info)
      {
         if (!info->bd) continue;
+        if ((info->bd->client.e.state.rot.wait_for_done) &&
+            (info->bd->client.e.state.rot.wait_done_ang == info->ang)) continue;
 
         _e_border_event_border_rotation_change_begin_send(info->bd);
 
@@ -8075,7 +8077,8 @@ _e_border_rotation_list_flush(Eina_List *list, Eina_Bool flush)
              ELBF(ELBT_ROT, 1, 0, "SEND ROT_CHANGE_REQUEST");
              ecore_x_e_window_rotation_change_request_send(info->bd->client.win,
                                                            info->ang);
-             info->bd->client.e.state.rot.wait_for_done = EINA_TRUE;
+             info->bd->client.e.state.rot.wait_for_done = 1;
+             info->bd->client.e.state.rot.wait_done_ang = info->ang;
           }
      }
 
@@ -8686,6 +8689,9 @@ _e_border_cb_window_configure(void *data    __UNUSED__,
              ELB(ELBT_BD, "GET CONFIGURE_NOTI (ROTATION)", bd->client.win);
              bd->client.e.state.rot.pending_change_request = 0;
 
+             if ((bd->client.e.state.rot.wait_for_done) &&
+                 (bd->client.e.state.rot.wait_done_ang == bd->client.e.state.rot.curr)) goto end;
+
              // if this window is rotation dependent window and zone is blocked to rotate,
              // then skip here, request will be sent after cancel block.
              if ((bd->client.e.state.rot.type == E_BORDER_ROTATION_TYPE_DEPENDENT) &&
@@ -8703,7 +8709,8 @@ _e_border_cb_window_configure(void *data    __UNUSED__,
                   bd->w, bd->h);
              ecore_x_e_window_rotation_change_request_send(bd->client.win,
                                                            bd->client.e.state.rot.curr);
-             bd->client.e.state.rot.wait_for_done = EINA_TRUE;
+             bd->client.e.state.rot.wait_for_done = 1;
+             bd->client.e.state.rot.wait_done_ang = bd->client.e.state.rot.curr;
           }
      }
 
