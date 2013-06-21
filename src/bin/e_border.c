@@ -8037,7 +8037,7 @@ _e_border_rotation_change_request(E_Zone *zone)
    if (rot.done_timer)
      ecore_timer_del(rot.done_timer);
    ELB(ELBT_ROT, "ADD TIMEOUT ROT_DONE", zone->id);
-   rot.done_timer = ecore_timer_add(4.0f,
+   rot.done_timer = ecore_timer_add(5.0f,
                                     _e_border_rotation_change_done_timeout,
                                     NULL);
 }
