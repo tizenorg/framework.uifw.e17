@@ -1488,11 +1488,12 @@ e_zone_rotation_block_set(E_Zone *zone, const char *name_hint, Eina_Bool set)
      {
         zone->rot.block_count = 0;
 
-        e_border_rotation_list_clear(zone, (!zone->rot.pending));
+        e_border_rotation_list_clear(zone, EINA_TRUE);
         if (zone->rot.pending)
           {
              zone->rot.prev = zone->rot.curr;
              zone->rot.curr = zone->rot.next;
+             zone->rot.wait_for_done = EINA_TRUE;
              zone->rot.pending = EINA_FALSE;
 
              ev = E_NEW(E_Event_Zone_Rotation_Change_Begin, 1);
@@ -1537,6 +1538,7 @@ e_zone_rotation_update_done(E_Zone *zone)
      {
         zone->rot.prev = zone->rot.curr;
         zone->rot.curr = zone->rot.next;
+        zone->rot.wait_for_done = EINA_TRUE;
         zone->rot.pending = EINA_FALSE;
 
         E_Event_Zone_Rotation_Change_Begin *ev2;
