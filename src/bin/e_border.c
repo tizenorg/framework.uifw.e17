@@ -10074,19 +10074,18 @@ _e_border_eval0(E_Border *bd)
      {
         if (need_rotation_set)
           {
-             ELB(ELBT_ROT, "NEED ROT", bd->client.win);
-             bd->client.e.state.rot.changes = _e_border_rotation_angle_get(bd);
-             if (bd->client.e.state.rot.changes != -1) bd->changed = 1;
-          }
-
-        if (bd->new_client)
-          {
              Eina_Bool hint = EINA_FALSE;
              int ang = 0;
              int x, y, w, h, move;
 
+             ELB(ELBT_ROT, "NEED ROT", bd->client.win);
+             bd->client.e.state.rot.changes = _e_border_rotation_angle_get(bd);
+
              if (bd->client.e.state.rot.changes != -1)
-               ang = bd->client.e.state.rot.changes;
+               {
+                  ang = bd->client.e.state.rot.changes;
+                  bd->changed = 1;
+               }
              else ang = bd->client.e.state.rot.curr;
 
              hint = _e_border_rotation_geom_get(bd, bd->zone, ang, &x, &y, &w, &h, &move);
@@ -10097,7 +10096,6 @@ _e_border_eval0(E_Border *bd)
                        bd->client.icccm.name, x, y, w, h);
                }
           }
-
      }
 #endif
 
