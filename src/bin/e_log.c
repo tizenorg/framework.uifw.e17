@@ -234,6 +234,7 @@ _type_name_get(unsigned int t)
       case ELBT_ILLUME: return "ILLUME"; break;
       case ELBT_COMP:   return "COMP";   break;
       case ELBT_MOVE:   return "MOVE";   break;
+      case ELBT_TRACE:  return "TRACE";  break;
       case ELBT_ALL:    return "ALL";    break;
       default: break;
      }

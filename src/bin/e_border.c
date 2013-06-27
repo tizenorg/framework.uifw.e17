@@ -1386,11 +1386,18 @@ e_border_show(E_Border *bd)
    E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
    if (bd->visible) return;
 #ifdef _F_ZONE_WINDOW_ROTATION_
+   // newly created window that has to be rotated will be show after rotation done.
+   // so, skip at this time. it will be called again after GETTING ROT_DONE.
    if ((bd->new_client) &&
        (bd->client.e.state.rot.changes != -1))
      {
-        // newly created window that has to be rotated will be show after rotation done.
-        // so, skip at this time. it will be called again after GETTING ROT_DONE.
+        // if this window is in withdrawn state, show this window right now.
+        // that's because the window in withdrawn state can't render its canvas.
+        // eventually, this window will not send the message of rotation done,
+        // even if e17 request to rotation this window.
+        if (bd->client.icccm.state != ECORE_X_WINDOW_STATE_HINT_NORMAL)
+          e_hints_window_visible_set(bd);
+
         bd->client.e.state.rot.pending_show = 1;
         return;
      }
@@ -8598,6 +8605,151 @@ _e_border_is_vkbd(E_Border *bd)
    return EINA_FALSE;
 }
 
+static Eina_Bool
+_e_border_rotation_change_floating_pos(E_Border *bd, int *x, int *y)
+{
+   int new_x, new_y;
+   int min_title_width=96;
+
+   if (!bd) return EINA_FALSE;
+   if (!x || !y) return EINA_FALSE;
+
+   new_x = bd->x;
+   new_y = bd->y;
+
+   // Portrait -> Landscape,  x= pre_x*2, y=pre_y/2
+   // Landscape -> Portrait,  x= pre_x/2, y=pre_y*2
+   // guaranteeing the minimum size of titlebar shown, min_title_width
+   // so user can initiate drag&drop action after rotation changed.
+   if (bd->client.e.state.rot.curr == 0)
+     {
+        if (bd->client.e.state.rot.prev == 90)
+          {
+             new_x = (bd->zone->h - bd->h - bd->y) / 2;
+             new_y = 2 * bd->x;
+          }
+        else if (bd->client.e.state.rot.prev == 270)
+          {
+             new_x = bd->y / 2;
+             new_y = (bd->zone->w - bd->w - bd->x) * 2;
+          }
+        else if (bd->client.e.state.rot.prev == 180)
+          {
+             new_x = bd->zone->w - bd->x - bd->w;
+             new_y = bd->zone->h - bd->y - bd->h;
+          }
+
+        if(new_x + bd->w < min_title_width)
+          {
+             new_x = min_title_width - bd->w;
+          }
+        else if(new_x > bd->zone->w - min_title_width)
+          {
+             new_x = bd->zone->w - min_title_width;
+          }
+     }
+   else if (bd->client.e.state.rot.curr == 90)
+     {
+        if (bd->client.e.state.rot.prev == 0)
+          {
+             new_x = bd->y / 2;
+             new_y = bd->zone->h - (2 * bd->x) - bd->w;
+          }
+        else if (bd->client.e.state.rot.prev == 270)
+          {
+             new_x = bd->zone->w - bd->x - bd->w;
+             new_y = bd->zone->h - bd->y - bd->h;
+          }
+        else if (bd->client.e.state.rot.prev == 180)
+          {
+             new_x = (bd->zone->h - bd->y - bd->h) / 2;
+             new_y = bd->zone->h - (2 * (bd->zone->w - bd->x - bd->w)) - bd->w;
+          }
+
+        if(new_y > bd->zone->h - min_title_width)
+          {
+             new_y = bd->zone->h - min_title_width;
+          }
+        else if(new_y < min_title_width - bd->w)
+          {
+             new_y = min_title_width - bd->w;
+          }
+     }
+   else if (bd->client.e.state.rot.curr == 270)
+     {
+        if (bd->client.e.state.rot.prev == 0)
+          {
+             new_x = bd->zone->w - bd->h - (bd->y / 2);
+             new_y = bd->x * 2;
+          }
+        else if (bd->client.e.state.rot.prev == 90)
+          {
+             new_x = bd->zone->w - bd->x - bd->w;
+             new_y = bd->zone->h - bd->y - bd->h;
+          }
+        else if (bd->client.e.state.rot.prev == 180)
+          {
+             new_x = bd->zone->w - bd->x - bd->w;
+             new_y = bd->zone->h - bd->y - bd->h;
+
+             new_x = bd->zone->w - bd->h - ((bd->zone->h - bd->y - bd->h) / 2);
+             new_y = (bd->zone->w - bd->x - bd->w) * 2;
+          }
+
+        if(new_y >  bd->zone->h - min_title_width)
+          {
+             new_y = bd->zone->h - min_title_width;
+          }
+        else if( new_y + bd->w < min_title_width)
+          {
+             new_y = min_title_width - bd->w ;
+          }
+     }
+   else if (bd->client.e.state.rot.curr == 180)
+     {
+        if (bd->client.e.state.rot.prev == 0)
+          {
+             new_x = bd->zone->w - bd->x - bd->w;
+             new_y = bd->zone->h - bd->y - bd->h;
+          }
+        else if (bd->client.e.state.rot.prev == 90)
+          {
+             new_x = bd->zone->w - ((bd->zone->h - bd->h - bd->y) / 2) - bd->h;
+             new_y = bd->zone->h - (2 * bd->x) - bd->w;
+          }
+        else if (bd->client.e.state.rot.prev == 270)
+          {
+             new_x = bd->zone->w - (bd->y / 2) - bd->h;
+             new_y = bd->zone->h - ((bd->zone->w - bd->w - bd->x) * 2) - bd->w;
+          }
+
+        if(new_x + bd->w < min_title_width)
+          {
+             new_x = min_title_width - bd->w;
+          }
+        else if(new_x > bd->zone->w - min_title_width)
+          {
+             new_x = bd->zone->w - min_title_width;
+          }
+     }
+
+   ELBF(ELBT_ROT, 0, bd->client.win,
+        "Floating Mode. ANGLE (%d->%d), POS (%d,%d) -> (%d,%d)",
+        bd->client.e.state.rot.prev, bd->client.e.state.rot.curr,
+        bd->x, bd->y, new_x, new_y);
+
+   if ((new_x == *x) &&
+       (new_y == *y))
+     {
+        return EINA_FALSE;
+     }
+
+   *x = new_x;
+   *y = new_y;
+
+   return EINA_TRUE;
+}
+
 #define SIZE_EQUAL_TO_ZONE(a, z) \
    ((((a)->w) == ((z)->w)) &&    \
     (((a)->h) == ((z)->h)))
@@ -8636,6 +8788,11 @@ _e_border_rotation_pre_resize(E_Border *bd, int rotation, int *x, int *y, int *w
         _x = bd->x; _y = bd->y;
         _w = bd->w; _h = bd->h;
 
+        if (bd->client.illume.win_state.state == ECORE_X_ILLUME_WINDOW_STATE_FLOATING)
+          move = _e_border_rotation_change_floating_pos(bd, &_x, &_y);
+        else
+          move = EINA_FALSE;
+
         rot_dif = bd->client.e.state.rot.prev - rotation;
         if (rot_dif < 0) rot_dif = -rot_dif;
         if (rot_dif != 180)
@@ -8653,6 +8810,9 @@ _e_border_rotation_pre_resize(E_Border *bd, int rotation, int *x, int *y, int *w
 
                }
           }
+
+        if (!resize && move)
+          _e_border_move_internal(bd, _x, _y, EINA_TRUE);
      }
 
    if (resize)
@@ -11937,6 +12097,8 @@ _e_border_zone_update(E_Border *bd)
 static int
 _e_border_resize_begin(E_Border *bd)
 {
+   int ret;
+
    if (!bd->lock_user_stacking)
      {
         if (e_config->border_raise_on_mouse_action)
@@ -11946,7 +12108,12 @@ _e_border_resize_begin(E_Border *bd)
        (bd->fullscreen) || (bd->lock_user_size))
      return 0;
 
-   if (grabbed && !e_grabinput_get(bd->win, 0, bd->win))
+   if (bd->client.icccm.accepts_focus || bd->client.icccm.take_focus)
+     ret = e_grabinput_get(bd->win, 0, bd->win);
+   else
+     ret = e_grabinput_get(bd->win, 0, 0);
+
+   if (grabbed && !ret)
      {
         grabbed = 0;
         return 0;
@@ -12014,6 +12181,7 @@ _e_border_resize_update(E_Border *bd)
 static int
 _e_border_move_begin(E_Border *bd)
 {
+   int ret;
    if (!bd->lock_user_stacking)
      {
         if (e_config->border_raise_on_mouse_action)
@@ -12022,7 +12190,12 @@ _e_border_move_begin(E_Border *bd)
    if ((bd->fullscreen) || (bd->lock_user_location))
      return 0;
 
-   if (grabbed && !e_grabinput_get(bd->win, 0, bd->win))
+   if (bd->client.icccm.accepts_focus || bd->client.icccm.take_focus)
+     ret = e_grabinput_get(bd->win, 0, bd->win);
+   else
+     ret = e_grabinput_get(bd->win, 0, 0);
+
+   if (grabbed && !ret)
      {
         grabbed = 0;
         return 0;

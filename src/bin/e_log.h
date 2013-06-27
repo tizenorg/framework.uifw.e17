@@ -43,6 +43,7 @@ EINTERN int e_log_shutdown(void);
 #define ELBT_ILLUME 0x00000010
 #define ELBT_COMP   0x00000020
 #define ELBT_MOVE   0x00000040
+#define ELBT_TRACE  0x00000080
 #define ELBT_ALL    0xFFFFFFFF
 
 extern EAPI unsigned int e_logbuf_type;
@@ -54,9 +55,26 @@ EAPI    void e_logbuf_fmt_add(unsigned int type, unsigned int blank, const char 
 
 #define ELB(t, s, i)           do { if ((e_logbuf_type) & (t)) { e_logbuf_add((t), __FUNCTION__, __LINE__, (s), (i));             } } while (0);
 #define ELBF(t, b, i, f, x...) do { if ((e_logbuf_type) & (t)) { e_logbuf_fmt_add((t), (b), __FUNCTION__, __LINE__, (i), f, ##x); } } while (0);
+#define ELB_BACKTRACE() \
+  do \
+    { \
+       void* frame_addrs[16]; \
+       char** frame_strings; \
+       size_t backtrace_size; \
+       int i; \
+       backtrace_size = backtrace(frame_addrs, 16); \
+       frame_strings = backtrace_symbols(frame_addrs, backtrace_size); \
+       for (i = 0; i < backtrace_size; ++i) \
+         { \
+           ELBF(ELBT_TRACE, 0, 0, "%d: [0x%x] %s", i, frame_addrs[i], frame_strings[i]); \
+         } \
+      free(frame_strings); \
+    } \
+  while (0);
 #else
 #define ELB(...)            ;
 #define ELBF(...)           ;
+#define ELB_BACKTRACE()     ;
 #endif
 
 #endif

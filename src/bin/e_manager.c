@@ -905,6 +905,21 @@ e_manager_comp_src_shadow_hide(E_Manager *man, E_Manager_Comp_Source *src)
 }
 #endif
 
+#ifdef _F_COMP_LAYER_
+EAPI Evas_Object *
+e_manager_comp_layer_get(E_Manager *man, E_Zone *zone, const char *name)
+{
+   E_OBJECT_CHECK_RETURN(man, NULL);
+   E_OBJECT_TYPE_CHECK_RETURN(man, E_MANAGER_TYPE, NULL);
+   E_OBJECT_CHECK_RETURN(zone, NULL);
+   E_OBJECT_TYPE_CHECK_RETURN(zone, E_ZONE_TYPE, NULL);
+   if (!name) return NULL;
+   if (!man->comp) return NULL;
+   if (!man->comp->func.layer_get) return NULL;
+   return man->comp->func.layer_get(man->comp->data, man, zone, name);
+}
+#endif
+
 /* local subsystem functions */
 static void
 _e_manager_free(E_Manager *man)
@@ -961,7 +976,8 @@ _e_manager_cb_window_configure(void *data, int ev_type __UNUSED__, void *ev)
    man = data;
    e = ev;
    if (e->win != man->root) return ECORE_CALLBACK_PASS_ON;
-   e_manager_resize(man, e->w, e->h);
+   if ((man->w != e->w) || (man->h != e->h))
+     e_manager_resize(man, e->w, e->h);
    return ECORE_CALLBACK_PASS_ON;
 }
 

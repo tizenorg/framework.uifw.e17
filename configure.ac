@@ -643,6 +643,8 @@ e_extra_features+="-D_F_DEICONIFY_APPROVE_ "
 e_extra_features+="-D_F_TRANSIENT_FOR_PATCH_ "
 # add border hook patch
 e_extra_features+="-D_F_BORDER_HOOK_PATCH_ "
+# add multi-layer feature of the compositor
+e_extra_features+="-D_F_COMP_LAYER_ "
 
 have_extra_features=no
 AC_ARG_ENABLE(extra_features,

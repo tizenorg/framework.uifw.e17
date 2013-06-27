@@ -271,6 +271,12 @@ main(int argc, char **argv)
    int i, do_precache = 0, valgrind_mode = 0;
    int valgrind_tool = 0;
    int valgrind_gdbserver = 0;
+#ifdef _F_SET_USER_GROUP_
+   int res;
+   char *user;
+   int user_id;
+   int group_id;
+#endif /* _F_SET_USER_GROUP_ */
    char buf[16384], **args, *p;
    char valgrind_path[PATH_MAX] = "";
    const char *valgrind_log = NULL;
@@ -284,6 +290,18 @@ main(int argc, char **argv)
    for (i = 1; i < argc; i++)
      {
 	if (!strcmp(argv[i], "-no-precache")) do_precache = 0;
+#ifdef _F_SET_USER_GROUP_
+	else if (!strncmp(argv[i], "-user", sizeof("-user") - 1))
+	  {
+	     if (sscanf(argv[i+1], "%d", &user_id) <= 0) user_id = 0;
+	     else i++;
+	  }
+	else if (!strncmp(argv[i], "-group", sizeof("-group") - 1))
+	  {
+	     if (sscanf(argv[i+1], "%d", &group_id) <= 0) group_id = 0;
+	     else i++;
+	  }
+#endif /* _F_SET_USER_GROUP_ */
 	else if (!strcmp(argv[i], "-valgrind-gdb")) valgrind_gdbserver = 1;
 	else if (!strncmp(argv[i], "-valgrind", sizeof("-valgrind") - 1))
 	  {
@@ -317,6 +335,10 @@ main(int argc, char **argv)
 	     printf
                 (
                     "Options:\n"
+#ifdef _F_SET_USER_GROUP_
+                    "\t-user [user id in integer value]\n"
+                    "\t-group [group id in integer value]\n"
+#endif /* _F_SET_USER_GROUP_ */
                     "\t-no-precache\n"
                     "\t\tDisable pre-caching of files\n"
                     "\t-valgrind[=MODE]\n"
@@ -342,6 +364,32 @@ main(int argc, char **argv)
         else if (!strcmp(argv[i], "-i-really-know-what-i-am-doing-and-accept-full-responsibility-for-it"))
           really_know = EINA_TRUE;
      }
+
+#ifdef _F_SET_USER_GROUP_
+   if (group_id)
+     {
+        user = getenv("USER");
+
+        if (user)
+          {
+             res = initgroups(user, (gid_t)group_id);
+
+             if (res)
+               {
+                  printf("Failed to set groups !(errno=%d)\n", errno);
+               }
+          }
+     }
+
+   if ((group_id) && setgid((gid_t)group_id) && setegid((gid_t)group_id))
+     {
+        printf("Fail to set group to %d. errno=%d\n", group_id, errno);
+     }
+   if ((user_id) && setuid((uid_t)user_id) && seteuid((uid_t)user_id))
+     {
+        printf("Fail to set user to %d. errno=%d\n", user_id, errno);
+     }
+#endif /* _F_SET_USER_GROUP_ */
 
    if (really_know)
      {

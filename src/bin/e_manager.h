@@ -68,6 +68,9 @@ struct _E_Manager_Comp
     void               (*src_shadow_show)      (void *data, E_Manager *man, E_Manager_Comp_Source *src);
     void               (*src_shadow_hide)      (void *data, E_Manager *man, E_Manager_Comp_Source *src);
 #endif
+#ifdef _F_COMP_LAYER_
+    Evas_Object      * (*layer_get)            (void *data, E_Manager *man, E_Zone *zone, const char *name);
+#endif
   } func;
   void                   *data;
 };
@@ -167,8 +170,8 @@ EAPI Eina_Bool        e_manager_comp_input_region_id_set(E_Manager *man, int id,
 EAPI Eina_Bool        e_manager_comp_input_region_id_del(E_Manager *man, int id);
 #endif
 #ifdef _F_COMP_MOVE_LOCK_
-EAPI Eina_Bool        e_manager_comp_src_move_lock(E_Manager *man, E_Manager_Comp_Source *src);
-EAPI Eina_Bool        e_manager_comp_src_move_unlock(E_Manager *man, E_Manager_Comp_Source *src);
+EAPI Eina_Bool        e_manager_comp_src_move_lock(E_Manager *man, E_Manager_Comp_Source *src);   /* deprecated */
+EAPI Eina_Bool        e_manager_comp_src_move_unlock(E_Manager *man, E_Manager_Comp_Source *src); /* deprecated */
 #endif
 #ifdef _F_COMP_COMPOSITE_MODE_
 // set the composite rendering state of a zone.
@@ -182,6 +185,10 @@ EAPI Eina_Bool        e_manager_comp_composite_mode_get(E_Manager *man, E_Zone *
 #ifdef _F_USE_EXTENDED_ICONIFY_
 EAPI void             e_manager_comp_src_shadow_show(E_Manager *man, E_Manager_Comp_Source *src);
 EAPI void             e_manager_comp_src_shadow_hide(E_Manager *man, E_Manager_Comp_Source *src);
+#endif
+#ifdef _F_COMP_LAYER_
+// get compositor's layer by specific name
+EAPI Evas_Object     *e_manager_comp_layer_get(E_Manager *man, E_Zone *zone, const char *name);
 #endif
 #endif
 #endif
