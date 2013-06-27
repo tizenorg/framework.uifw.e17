@@ -1,6 +1,6 @@
 Name:       e17
 Summary:    The Enlightenment window manager
-Version:    1.0.0.001+svn.76808slp2+build38
+Version:    1.0.0.001+svn.76808slp2+build39
 Release:    1
 Group:      System/GUI/Other
 License:    BSD
