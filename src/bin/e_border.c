@@ -8298,7 +8298,11 @@ _e_border_rotation_angle_get(E_Border *bd)
 
    ELB(ELBT_ROT, "CHECK ROT", bd->client.win);
 
-   if (bd->parent) will_ang = bd->parent->client.e.state.rot.curr;
+   // the window with "ECORE_X_WINDOW_TYPE_NORMAL" type
+   // should follow the state of rotation of zone.
+   if ((bd->parent) &&
+       (bd->client.netwm.type != ECORE_X_WINDOW_TYPE_NORMAL))
+     will_ang = bd->parent->client.e.state.rot.curr;
    else will_ang = zone->rot.curr;
 
    if (bd->client.vkbd.win_type != E_VIRTUAL_KEYBOARD_WINDOW_TYPE_NONE)
@@ -8406,12 +8410,14 @@ _e_border_rotation_zone_set(E_Zone *zone)
      {
         if (!bd) continue;
 
-        // if this window have parent,
+        // if this window has parent and window type isn't "ECORE_X_WINDOW_TYPE_NORMAL",
         // it will be rotated when parent do rotate itself.
         // so skip here.
-        if (bd->parent) continue;
+        if ((bd->parent) &&
+            (bd->client.netwm.type != ECORE_X_WINDOW_TYPE_NORMAL)) continue;
 
-        // this type is set by illume.
+        // default type is "E_BORDER_ROTATION_TYPE_NORMAL",
+        // but it can be changed to "E_BORDER_ROTATION_TYPE_DEPENDENT" by illume according to its policy.
         // if it's not normal type window, will be rotated by illume.
         // so skip here.
         if (bd->client.e.state.rot.type != E_BORDER_ROTATION_TYPE_NORMAL) continue;
@@ -8498,6 +8504,9 @@ e_border_rotation_set(E_Border *bd, int rotation)
    list = _e_border_sub_borders_new(bd);
    EINA_LIST_FOREACH(list, l, child)
      {
+        // the window which type is "ECORE_X_WINDOW_TYPE_NORMAL" will be rotated itself.
+        // it shouldn't be rotated by rotation state of parent window.
+        if (child->client.netwm.type == ECORE_X_WINDOW_TYPE_NORMAL) continue;
         if (_e_border_rotatable_check(child, rotation))
           {
              ELBF(ELBT_ROT, 0, child->client.win, "ROT_SET(child) curr:%d != TOBE:%d",
