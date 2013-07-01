@@ -431,6 +431,7 @@ struct _E_Border
                Ecore_Timer *wait_timer;
                Eina_List *req_list;
                E_Border *ancestor;
+               Ecore_Job *pending_job;
             } deiconify_approve;
 #endif
 #ifdef _F_USE_DESK_WINDOW_PROFILE_

@@ -180,6 +180,7 @@ static Eina_Bool _e_border_vkbd_show_prepare_timeout(void *data);
 static Eina_Bool _e_border_vkbd_hide_prepare_timeout(void *data);
 static void      _e_border_vkbd_show(E_Border *bd);
 static void      _e_border_vkbd_hide(E_Border *bd);
+static Eina_Bool _e_border_rotation_set_internal(E_Border *bd, int rotation, Eina_Bool *pending);
 #endif
 static void      _e_border_move_resize_internal(E_Border *bd,
                                                 int       x,
@@ -2227,6 +2228,14 @@ e_border_resize(E_Border *bd,
    _e_border_move_resize_internal(bd, 0, 0, w, h, 0, 0);
 }
 
+#ifdef _F_ZONE_WINDOW_ROTATION_
+EAPI Eina_Bool
+e_border_rotation_set(E_Border *bd, int rotation)
+{
+   return _e_border_rotation_set_internal(bd, rotation, NULL);
+}
+#endif
+
 /**
  * Resize window to values that do not account border decorations yet.
  *
@@ -3753,7 +3762,32 @@ _e_border_uniconify_timeout(void *data)
 }
 
 static void
-_e_border_deiconify_approve_send(E_Border *bd, E_Border *bd_ancestor)
+_e_border_deiconify_approve_send_pending_end(void *data)
+{
+   E_Border *bd = (E_Border *)data;
+
+   if (e_config->deiconify_approve)
+     {
+        if (!e_object_is_del(E_OBJECT(bd)))
+          {
+             bd->client.e.state.deiconify_approve.pending_job = NULL;
+
+             ELBF(ELBT_BD, 0, bd->client.win,
+                  "SEND DEICONIFY_APPROVE. (PENDING_END) ancestor:%x",
+                  bd->client.win);
+
+             ecore_x_client_message32_send(bd->client.win,
+                                           ECORE_X_ATOM_E_DEICONIFY_APPROVE,
+                                           ECORE_X_EVENT_MASK_WINDOW_CONFIGURE,
+                                           bd->client.win, 0, 0, 0, 0);
+
+             bd->client.e.state.deiconify_approve.wait_timer = ecore_timer_add(e_config->deiconify_timeout, _e_border_uniconify_timeout, bd);
+          }
+     }
+}
+
+static void
+_e_border_deiconify_approve_send(E_Border *bd, E_Border *bd_ancestor, Eina_Bool pending_ancestor)
 {
    if (!bd || !bd_ancestor) return;
 
@@ -3766,6 +3800,9 @@ _e_border_deiconify_approve_send(E_Border *bd, E_Border *bd_ancestor)
              Eina_List *list = _e_border_sub_borders_new(bd);
              EINA_LIST_FOREACH(list, l, child)
                {
+                  Eina_Bool pending = EINA_FALSE;
+                  Eina_Bool p = EINA_FALSE;
+
 #ifdef _F_ZONE_WINDOW_ROTATION_
                   if ((e_config->wm_win_rotation) &&
                       ((child->client.e.state.rot.support) ||
@@ -3773,21 +3810,36 @@ _e_border_deiconify_approve_send(E_Border *bd, E_Border *bd_ancestor)
                     {
                        ELB(ELBT_ROT, "CHECK_DEICONIFY CHILD", child->client.win);
                        int rotation = _e_border_rotation_angle_get(bd);
-                       if (rotation != -1) e_border_rotation_set(bd, rotation);
+                       if (rotation != -1) _e_border_rotation_set_internal(bd, rotation, &pending);
                     }
 #endif
-                  _e_border_deiconify_approve_send(child, bd_ancestor);
+                  if ((pending_ancestor) || (pending)) p = EINA_TRUE;
+
+                  _e_border_deiconify_approve_send(child, bd_ancestor, p);
                   if (child->client.e.state.deiconify_approve.support)
                     {
-                       ELBF(ELBT_BD, 0, child->client.win,
-                            "SEND DEICONIFY_APPROVE. ancestor:%x", bd_ancestor->client.win);
+                       if (p)
+                         {
+                            ELBF(ELBT_BD, 0, child->client.win,
+                                 "SEND DEICONIFY_APPROVE. ancestor:%x pending(%d,%d)",
+                                 bd_ancestor->client.win,
+                                 pending_ancestor, pending);
 
-                       ecore_x_client_message32_send(child->client.win,
-                                                     ECORE_X_ATOM_E_DEICONIFY_APPROVE,
-                                                     ECORE_X_EVENT_MASK_WINDOW_CONFIGURE,
-                                                     child->client.win, 0, 0, 0, 0);
-                       child->client.e.state.deiconify_approve.ancestor = bd_ancestor;
-                       bd_ancestor->client.e.state.deiconify_approve.req_list = eina_list_append(bd_ancestor->client.e.state.deiconify_approve.req_list, child);
+                            ecore_x_client_message32_send(child->client.win,
+                                                          ECORE_X_ATOM_E_DEICONIFY_APPROVE,
+                                                          ECORE_X_EVENT_MASK_WINDOW_CONFIGURE,
+                                                          child->client.win, 0, 0, 0, 0);
+                            child->client.e.state.deiconify_approve.ancestor = bd_ancestor;
+                            bd_ancestor->client.e.state.deiconify_approve.req_list = eina_list_append(bd_ancestor->client.e.state.deiconify_approve.req_list, child);
+                         }
+                       else
+                         {
+                            /* queue a deiconify send job to give the chance to other jobs */
+                            ELBF(ELBT_BD, 0, child->client.win,
+                                 "SEND DEICONIFY_APPROVE. (PENDING) ancestor:%x",
+                                 bd_ancestor->client.win);
+                            child->client.e.state.deiconify_approve.pending_job = ecore_job_add(_e_border_deiconify_approve_send_pending_end, child);
+                         }
                     }
                }
              eina_list_free(list);
@@ -3798,8 +3850,7 @@ _e_border_deiconify_approve_send(E_Border *bd, E_Border *bd_ancestor)
 static void
 _e_border_deiconify_approve_send_all_transient(E_Border *bd)
 {
-   E_Border *bd_ancestor;
-   bd_ancestor = bd;
+   Eina_Bool pending = EINA_FALSE;
 
    if (e_config->deiconify_approve)
      {
@@ -3810,25 +3861,32 @@ _e_border_deiconify_approve_send_all_transient(E_Border *bd)
           {
              ELB(ELBT_ROT, "CHECK_DEICONIFY", bd->client.win);
              int rotation = _e_border_rotation_angle_get(bd);
-             if (rotation != -1) e_border_rotation_set(bd, rotation);
+             if (rotation != -1) _e_border_rotation_set_internal(bd, rotation, &pending);
           }
 #endif
 
         if (e_config->transient.iconify)
           {
-             _e_border_deiconify_approve_send(bd, bd_ancestor);
+             _e_border_deiconify_approve_send(bd, bd, pending);
           }
 
         if (bd->client.e.state.deiconify_approve.support)
           {
-             ELBF(ELBT_BD, 0, bd->client.win,
-                  "SEND DEICONIFY_APPROVE.. ancestor:%x", bd_ancestor->client.win);
-
-             ecore_x_client_message32_send(bd->client.win,
-                                           ECORE_X_ATOM_E_DEICONIFY_APPROVE,
-                                           ECORE_X_EVENT_MASK_WINDOW_CONFIGURE,
-                                           bd->client.win, 0, 0, 0, 0);
-             bd->client.e.state.deiconify_approve.wait_timer = ecore_timer_add(e_config->deiconify_timeout, _e_border_uniconify_timeout, bd);
+             if (!pending)
+               {
+                  ELBF(ELBT_BD, 0, bd->client.win, "SEND DEICONIFY_APPROVE.");
+                  ecore_x_client_message32_send(bd->client.win,
+                                                ECORE_X_ATOM_E_DEICONIFY_APPROVE,
+                                                ECORE_X_EVENT_MASK_WINDOW_CONFIGURE,
+                                                bd->client.win, 0, 0, 0, 0);
+                  bd->client.e.state.deiconify_approve.wait_timer = ecore_timer_add(e_config->deiconify_timeout, _e_border_uniconify_timeout, bd);
+               }
+             else
+               {
+                  /* queue a deiconify send job to give the chance to other jobs */
+                  ELBF(ELBT_BD, 0, bd->client.win, "SEND DEICONIFY_APPROVE. (PENDING)");
+                  bd->client.e.state.deiconify_approve.pending_job = ecore_job_add(_e_border_deiconify_approve_send_pending_end, bd);
+               }
           }
      }
 }
@@ -5666,6 +5724,13 @@ _e_border_free(E_Border *bd)
         else if ((rot.vkbd_prediction) &&
                  (rot.vkbd_prediction == bd))
           rot.vkbd_prediction = NULL;
+     }
+#endif
+#ifdef _F_DEICONIFY_APPROVE_
+   if (bd->client.e.state.deiconify_approve.pending_job)
+     {
+        ecore_job_del(bd->client.e.state.deiconify_approve.pending_job);
+        bd->client.e.state.deiconify_approve.pending_job = NULL;
      }
 #endif
    evas_object_del(bd->bg_object);
@@ -8443,8 +8508,8 @@ _e_border_rotation_zone_set(E_Zone *zone)
    return ret;
 }
 
-EAPI Eina_Bool
-e_border_rotation_set(E_Border *bd, int rotation)
+static Eina_Bool
+_e_border_rotation_set_internal(E_Border *bd, int rotation, Eina_Bool *pending)
 {
    E_Zone *zone = bd->zone;
    E_Border_Rotation_Info *info = NULL;
@@ -8452,6 +8517,7 @@ e_border_rotation_set(E_Border *bd, int rotation)
    E_Border *child;
 
    if (rotation < 0) return EINA_FALSE;
+   if (pending) *pending = EINA_FALSE;
 
    /* step 1. check if rotation */
    if (!_e_border_rotatable_check(bd, rotation)) return EINA_FALSE;
@@ -8503,6 +8569,8 @@ e_border_rotation_set(E_Border *bd, int rotation)
             ((eina_list_count(rot.list) == 2)))
           e_manager_comp_screen_lock(e_manager_current_get());
      }
+
+   if (pending) *pending = EINA_TRUE;
 
    /* step 3. search rotatable window in this window's child */
    list = _e_border_sub_borders_new(bd);
