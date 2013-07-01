@@ -1388,6 +1388,7 @@ e_border_show(E_Border *bd)
 #ifdef _F_ZONE_WINDOW_ROTATION_
    // newly created window that has to be rotated will be show after rotation done.
    // so, skip at this time. it will be called again after GETTING ROT_DONE.
+#if 0
    if ((bd->new_client) &&
        (bd->client.e.state.rot.changes != -1))
      {
@@ -1401,6 +1402,7 @@ e_border_show(E_Border *bd)
         bd->client.e.state.rot.pending_show = 1;
         return;
      }
+#endif
    if ((e_config->wm_win_rotation) &&
        (rot.vkbd_ctrl_win) && (rot.vkbd) &&
        (bd == rot.vkbd) &&
@@ -7054,12 +7056,14 @@ _e_border_cb_client_message(void *data  __UNUSED__,
              if ((int)e->data.l[1] == bd->client.e.state.rot.curr)
                {
                   _e_border_rotation_list_remove(bd);
+#if 0
                   if (bd->client.e.state.rot.pending_show)
                     {
                        ELB(ELBT_BD, "SHOW_BD (PEND)", bd->client.win);
                        e_border_show(bd);
                        bd->client.e.state.rot.pending_show = 0;
                     }
+#endif
                }
           }
      }
