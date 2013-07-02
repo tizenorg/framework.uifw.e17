@@ -1,8 +1,10 @@
 e17 system::vconf rwxat
+e17 system::vconf_misc r
 e17 system::homedir rwxat
 e17 xorg rw---
+e17 xorg::screencapture r
 e17 isf rwx--
-e17 com.samsung.virtual-controller r----
+e17 org.tizen.virtual-controller r----
 e17 pkgmgr r----
 e17 e17-data rwx--
 e17 system r-x--
