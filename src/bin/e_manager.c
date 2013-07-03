@@ -953,16 +953,31 @@ _e_manager_cb_window_show_request(void *data, int ev_type __UNUSED__, void *ev)
      return ECORE_CALLBACK_PASS_ON;  /* try other handlers for this */
 
      {
-	E_Container *con;
-	E_Border *bd;
+        E_Container *con;
+        E_Border *bd;
 
-	con = e_container_current_get(man);
-	if (!e_border_find_by_client_window(e->win))
-	  {
-	     bd = e_border_new(con, e->win, 0, 0);
-	     if (!bd)
-	       ecore_x_window_show(e->win);
-	  }
+        con = e_container_current_get(man);
+        if (!e_border_find_by_client_window(e->win))
+          {
+             bd = e_border_new(con, e->win, 0, 0);
+             if (!bd)
+               {
+                  /* the wm shows only valid input_only window.
+                   * it doesn't need to deal with invalid window and
+                   * override_redirect window.
+                   */
+                  Ecore_X_Window_Attributes att;
+                  if ((ecore_x_window_attributes_get(e->win, &att)) &&
+                      (!att.override))
+                    {
+                       ecore_x_window_show(e->win);
+                    }
+                  else
+                    {
+                       ELB(ELBT_MNG, "show request of invalid win", e->win);
+                    }
+               }
+          }
      }
    return ECORE_CALLBACK_PASS_ON;
 }
