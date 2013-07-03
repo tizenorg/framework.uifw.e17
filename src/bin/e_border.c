@@ -8674,7 +8674,6 @@ _e_border_is_vkbd(E_Border *bd)
    if ((rot.vkbd_ctrl_win) &&
        (rot.vkbd == bd) &&
        (!e_object_is_del(E_OBJECT(rot.vkbd))) &&
-       (rot.vkbd->visible) &&
        (rot.vkbd->zone == bd->zone) &&
        (E_INTERSECTS(bd->zone->x, bd->zone->y,
                      bd->zone->w, bd->zone->h,
@@ -10322,20 +10321,19 @@ _e_border_eval0(E_Border *bd)
              ELB(ELBT_ROT, "NEED ROT", bd->client.win);
              bd->client.e.state.rot.changes = _e_border_rotation_angle_get(bd);
 
-             if (bd->client.e.state.rot.changes != -1)
+             if (bd->client.e.state.rot.changes == -1)
                {
-                  ang = bd->client.e.state.rot.changes;
-                  bd->changed = 1;
-               }
-             else ang = bd->client.e.state.rot.curr;
+                  ang = bd->client.e.state.rot.curr;
 
-             hint = _e_border_rotation_geom_get(bd, bd->zone, ang, &x, &y, &w, &h, &move);
-             if (hint)
-               {
-                  _e_border_move_resize_internal(bd, x, y, w, h, EINA_TRUE, move);
-                  ELBF(ELBT_ROT, 0, bd->client.win, "RESIZE_BY_HINT name:%s (%d,%d) %dx%d",
-                       bd->client.icccm.name, x, y, w, h);
+                  hint = _e_border_rotation_geom_get(bd, bd->zone, ang, &x, &y, &w, &h, &move);
+                  if (hint)
+                    {
+                       _e_border_move_resize_internal(bd, x, y, w, h, EINA_TRUE, move);
+                       ELBF(ELBT_ROT, 0, bd->client.win, "RESIZE_BY_HINT name:%s (%d,%d) %dx%d",
+                            bd->client.icccm.name, x, y, w, h);
+                    }
                }
+             else bd->changed = 1;
           }
      }
 #endif
