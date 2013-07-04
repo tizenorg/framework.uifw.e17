@@ -4387,14 +4387,16 @@ e_border_idler_before(void)
                        if ((zone) && (rot.wait_prepare_done))
                          {
                             if (rot.list)
+                              _e_border_rotation_change_request(zone);
+                            else if (rot.async_list)
                               {
-                                 _e_border_rotation_change_request(zone);
-                                 if (rot.prepare_timer)
-                                   ecore_timer_del(rot.prepare_timer);
-                                 rot.prepare_timer = NULL;
-                                 rot.wait_prepare_done = EINA_FALSE;
-
+                                 _e_border_rotation_list_flush(rot.async_list, EINA_TRUE);
+                                 rot.async_list = NULL;
                               }
+                            if (rot.prepare_timer)
+                              ecore_timer_del(rot.prepare_timer);
+                            rot.prepare_timer = NULL;
+                            rot.wait_prepare_done = EINA_FALSE;
                          }
                     }
                }
@@ -8062,8 +8064,11 @@ _e_border_cb_rotation_async_job(void *data)
 
    ELB(ELBT_ROT, "FLUSH ASYNC LIST TO ROT_CHANGE_REQ", zone->id);
 
-   _e_border_rotation_list_flush(rot.async_list, EINA_TRUE);
-   rot.async_list = NULL;
+   if (!rot.wait_prepare_done)
+     {
+        _e_border_rotation_list_flush(rot.async_list, EINA_TRUE);
+        rot.async_list = NULL;
+     }
 
 end:
    // clear async job
