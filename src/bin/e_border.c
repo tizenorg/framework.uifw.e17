@@ -1389,11 +1389,11 @@ e_border_show(E_Border *bd)
 #ifdef _F_ZONE_WINDOW_ROTATION_
    // newly created window that has to be rotated will be show after rotation done.
    // so, skip at this time. it will be called again after GETTING ROT_DONE.
-#if 0
    if ((bd->new_client) &&
        (bd->client.e.state.rot.changes != -1))
      {
-        // if this window is in withdrawn state, show this window right now.
+        ELB(ELBT_BD, "PENDING SHOW UNTIL GETTING ROT_DONE", bd->client.win);
+        // if this window is in withdrawn state, set the normal state
         // that's because the window in withdrawn state can't render its canvas.
         // eventually, this window will not send the message of rotation done,
         // even if e17 request to rotation this window.
@@ -1403,7 +1403,6 @@ e_border_show(E_Border *bd)
         bd->client.e.state.rot.pending_show = 1;
         return;
      }
-#endif
    if ((e_config->wm_win_rotation) &&
        (rot.vkbd_ctrl_win) && (rot.vkbd) &&
        (bd == rot.vkbd) &&
@@ -7121,14 +7120,16 @@ _e_border_cb_client_message(void *data  __UNUSED__,
              if ((int)e->data.l[1] == bd->client.e.state.rot.curr)
                {
                   _e_border_rotation_list_remove(bd);
-#if 0
                   if (bd->client.e.state.rot.pending_show)
                     {
                        ELB(ELBT_BD, "SHOW_BD (PEND)", bd->client.win);
                        e_border_show(bd);
+#ifdef _F_FOCUS_WINDOW_IF_TOP_STACK_
+                       if (e_config->focus_setting == E_FOCUS_NEW_WINDOW_IF_TOP_STACK)
+                         _e_border_check_stack(bd);
+#endif
                        bd->client.e.state.rot.pending_show = 0;
                     }
-#endif
                }
           }
      }
@@ -8262,6 +8263,10 @@ _e_border_rotation_change_done(void)
                {
                   ELB(ELBT_ROT, "SHOW PEND(TIMEOUT)", info->bd->client.win);
                   e_border_show(info->bd);
+#ifdef _F_FOCUS_WINDOW_IF_TOP_STACK_
+                  if (e_config->focus_setting == E_FOCUS_NEW_WINDOW_IF_TOP_STACK)
+                    _e_border_check_stack(info->bd);
+#endif
                   info->bd->client.e.state.rot.pending_show = 0;
                }
              info->bd->client.e.state.rot.wait_for_done = 0;
