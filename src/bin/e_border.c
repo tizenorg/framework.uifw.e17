@@ -8223,12 +8223,16 @@ _e_border_cb_rotation_sync_job(void *data)
    Eina_List *l;
    E_Border_Rotation_Info *info = NULL;
 
-   ELB(ELBT_ROT, "DO ROTATION SYNC_JOB", zone->id);
-
+   ELBF(ELBT_ROT, 0, zone->id, "DO ROTATION SYNC_JOB rot.list:%p(%d) wait_prepare_done:%d zone_block_count:%d",
+        rot.list, eina_list_count(rot.list), rot.wait_prepare_done, zone->rot.block_count);
    if (rot.list)
      {
         EINA_LIST_FOREACH(rot.list, l, info)
            _e_border_hook_call(E_BORDER_HOOK_ROTATION_LIST_ADD, info->bd);
+
+        ELBF(ELBT_ROT, 0, zone->id, "SYNC_JOB list(%d) wait_prepare_done:%d zone_block_count:%d",
+             eina_list_count(rot.list), rot.wait_prepare_done, zone->rot.block_count);
+
         if (!rot.wait_prepare_done)
           {
              _e_border_rotation_change_request(zone);
@@ -8297,7 +8301,8 @@ _e_border_rotation_change_request(E_Zone *zone)
    if (!e_config->wm_win_rotation) return;
    if (!rot.list) return;
    if (eina_list_count(rot.list) <= 0) return;
-   if (zone->rot.block_count) return;
+   /* pending rotation problem occurred while launching app by the tray */
+   //if (zone->rot.block_count) return;
 
    if (rot.prepare_timer) ecore_timer_del(rot.prepare_timer);
    rot.prepare_timer = NULL;
