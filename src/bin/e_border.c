@@ -10322,7 +10322,8 @@ _e_border_eval0(E_Border *bd)
 #ifdef _F_ZONE_WINDOW_ROTATION_
    if (e_config->wm_win_rotation)
      {
-        if (need_rotation_set)
+        if ((need_rotation_set) &&
+            (bd->client.e.state.rot.type == E_BORDER_ROTATION_TYPE_NORMAL))
           {
              Eina_Bool hint = EINA_FALSE;
              int ang = 0;
