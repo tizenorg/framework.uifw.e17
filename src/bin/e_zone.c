@@ -1502,7 +1502,7 @@ e_zone_rotation_block_set(E_Zone *zone, const char *name_hint, Eina_Bool set)
      {
         zone->rot.block_count = 0;
 
-        e_border_rotation_list_clear(zone, EINA_TRUE);
+//        e_border_rotation_list_clear(zone, EINA_FALSE);
         if (zone->rot.pending)
           {
              zone->rot.prev = zone->rot.curr;

@@ -9149,11 +9149,6 @@ _e_border_cb_window_configure(void *data    __UNUSED__,
              if ((bd->client.e.state.rot.wait_for_done) &&
                  (bd->client.e.state.rot.wait_done_ang == bd->client.e.state.rot.curr)) goto end;
 
-             // if this window is rotation dependent window and zone is blocked to rotate,
-             // then skip here, request will be sent after cancel block.
-             if ((bd->client.e.state.rot.type == E_BORDER_ROTATION_TYPE_DEPENDENT) &&
-                 (bd->zone->rot.block_count)) goto end;
-
              EINA_LIST_FOREACH(rot.list, l, info)
                 if (info->bd == bd) found = EINA_TRUE;
              // send request message if it's async rotation window,
