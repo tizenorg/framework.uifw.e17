@@ -9079,10 +9079,14 @@ _e_border_rotation_pre_resize(E_Border *bd, int rotation, int *x, int *y, int *w
                                       &_x, &_y, &_w, &_h, &move);
    if (hint)
      {
-        _e_border_move_resize_internal(bd, _x, _y, _w, _h, EINA_TRUE, move);
-        resize = EINA_TRUE;
-        ELBF(ELBT_ROT, 0, bd->client.win, "RESIZE_BY_HINT name:%s (%d,%d) %dx%d",
-             bd->client.icccm.name, _x, _y, _w, _h);
+        if (((move) && ((bd->x !=_x) || (bd->y !=_y))) ||
+            (bd->w != _w) || (bd->h != _h))
+          {
+             resize = EINA_TRUE;
+             _e_border_move_resize_internal(bd, _x, _y, _w, _h, EINA_TRUE, move);
+             ELBF(ELBT_ROT, 0, bd->client.win, "RESIZE_BY_HINT name:%s (%d,%d) %dx%d resize:%d",
+                  bd->client.icccm.name, _x, _y, _w, _h, resize);
+          }
      }
    else
      {
