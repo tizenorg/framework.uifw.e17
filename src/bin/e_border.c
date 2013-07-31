@@ -3764,6 +3764,7 @@ static void
 _e_border_deiconify_approve_send_pending_end(void *data)
 {
    E_Border *bd = (E_Border *)data;
+   E_Border *bd_ancestor;
 
    if (e_config->deiconify_approve)
      {
@@ -3779,8 +3780,14 @@ _e_border_deiconify_approve_send_pending_end(void *data)
                                            ECORE_X_ATOM_E_DEICONIFY_APPROVE,
                                            ECORE_X_EVENT_MASK_WINDOW_CONFIGURE,
                                            bd->client.win, 0, 0, 0, 0);
+             bd_ancestor = bd->client.e.state.deiconify_approve.ancestor;
+             if (bd_ancestor)
+               {
+                  bd_ancestor->client.e.state.deiconify_approve.req_list = eina_list_append(bd_ancestor->client.e.state.deiconify_approve.req_list, bd);
+               }
 
-             bd->client.e.state.deiconify_approve.wait_timer = ecore_timer_add(e_config->deiconify_timeout, _e_border_uniconify_timeout, bd);
+             if (!bd->client.e.state.deiconify_approve.wait_timer)
+               bd->client.e.state.deiconify_approve.wait_timer = ecore_timer_add(e_config->deiconify_timeout, _e_border_uniconify_timeout, bd);
           }
      }
 }
@@ -3817,7 +3824,7 @@ _e_border_deiconify_approve_send(E_Border *bd, E_Border *bd_ancestor, Eina_Bool 
                   _e_border_deiconify_approve_send(child, bd_ancestor, p);
                   if (child->client.e.state.deiconify_approve.support)
                     {
-                       if (p)
+                       if (!p)
                          {
                             ELBF(ELBT_BD, 0, child->client.win,
                                  "SEND DEICONIFY_APPROVE. ancestor:%x pending(%d,%d)",
@@ -3837,6 +3844,7 @@ _e_border_deiconify_approve_send(E_Border *bd, E_Border *bd_ancestor, Eina_Bool 
                             ELBF(ELBT_BD, 0, child->client.win,
                                  "SEND DEICONIFY_APPROVE. (PENDING) ancestor:%x",
                                  bd_ancestor->client.win);
+                            child->client.e.state.deiconify_approve.ancestor = bd_ancestor;
                             child->client.e.state.deiconify_approve.pending_job = ecore_job_add(_e_border_deiconify_approve_send_pending_end, child);
                          }
                     }
@@ -3911,6 +3919,13 @@ e_border_uniconify(E_Border *bd)
                   ELB(ELBT_BD, "DEICONIFY_APPROVE WAIT_TIMER is already running", bd->client.win);
                   return;
                }
+
+             if (bd->client.e.state.deiconify_approve.pending_job)
+               {
+                  ELB(ELBT_BD, "DEICONIFY_APPROVE PENDING_JOB is already running", bd->client.win);
+                  return;
+               }
+
              if (bd->client.e.state.deiconify_approve.render_done == 0)
                {
                   ELB(ELBT_BD, "DEICONIFY_APPROVE to all transient", bd->client.win);
@@ -5897,6 +5912,12 @@ _e_border_del(E_Border *bd)
         bd->client.e.state.deiconify_approve.wait_timer = NULL;
      }
 
+   if (bd->client.e.state.deiconify_approve.pending_job)
+     {
+        ecore_job_del(bd->client.e.state.deiconify_approve.pending_job);
+        bd->client.e.state.deiconify_approve.pending_job = NULL;
+     }
+
    if (bd->client.e.state.deiconify_approve.req_list)
      {
         EINA_LIST_FREE(bd->client.e.state.deiconify_approve.req_list, child)
@@ -7071,6 +7092,15 @@ _e_border_cb_client_message(void *data  __UNUSED__,
                          {
                             ELB(ELBT_BD, "Unset DEICONIFY_APPROVE render_done", ancestor_bd->client.win);
                             ancestor_bd->client.e.state.deiconify_approve.render_done = 0;
+                         }
+                    }
+
+                  if (bd != ancestor_bd)
+                    {
+                       if (bd->client.e.state.deiconify_approve.wait_timer)
+                         {
+                            ecore_timer_del(bd->client.e.state.deiconify_approve.wait_timer);
+                            bd->client.e.state.deiconify_approve.wait_timer = NULL;
                          }
                     }
                }

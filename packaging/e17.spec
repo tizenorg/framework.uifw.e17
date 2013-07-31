@@ -1,6 +1,6 @@
 Name:       e17
 Summary:    The Enlightenment window manager
-Version:    1.0.0.001+svn.76808slp2+build44
+Version:    1.0.0.001+svn.76808slp2+build45
 Release:    1
 Group:      System/GUI/Other
 License:    BSD
@@ -184,7 +184,7 @@ ln -s ../e17.service %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants/e
 install -m 0644 %SOURCE3 %{buildroot}%{_libdir}/systemd/user/
 ln -s ../e17_early.service %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants/e17_early.service
 
-%files 
+%files
 %manifest e17.manifest
 %defattr(-,root,root,-)
 /usr/bin/enlightenment
@@ -207,7 +207,7 @@ ln -s ../e17_early.service %{buildroot}%{_libdir}/systemd/user/core-efl.target.w
 /usr/lib/pkgconfig/enlightenment.pc
 /usr/include/enlightenment/*.h
 
-%files data 
+%files data
 %manifest e17-data.manifest
 %defattr(-,root,root,-)
 /usr/share/enlightenment/data/themes
