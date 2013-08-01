@@ -8917,7 +8917,7 @@ _e_border_rotation_pre_resize(E_Border *bd, int rotation, int *x, int *y, int *w
         if (rot_dif < 0) rot_dif = -rot_dif;
         if (rot_dif != 180)
           {
-             if (w != h)
+             if (_w != _h)
                {
                   _w = bd->h;
                   _h = bd->w;
