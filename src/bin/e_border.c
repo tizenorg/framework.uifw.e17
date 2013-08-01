@@ -7086,6 +7086,13 @@ _e_border_cb_client_message(void *data  __UNUSED__,
                          {
                             ecore_timer_del(ancestor_bd->client.e.state.deiconify_approve.wait_timer);
                             ancestor_bd->client.e.state.deiconify_approve.wait_timer = NULL;
+
+                            if (bd->client.e.state.deiconify_approve.wait_timer)
+                              {
+                                 ecore_timer_del(bd->client.e.state.deiconify_approve.wait_timer);
+                                 bd->client.e.state.deiconify_approve.wait_timer = NULL;
+                              }
+
                             e_border_uniconify(ancestor_bd);
                          }
                        else
