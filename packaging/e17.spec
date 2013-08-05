@@ -34,6 +34,7 @@ BuildRequires:  pkgconfig(eio)
 BuildRequires:  pkgconfig(utilX)
 BuildRequires:  pkgconfig(x11)
 BuildRequires:  pkgconfig(xext)
+BuildRequires:  pkgconfig(dlog)
 BuildRequires:  edje-bin
 BuildRequires:  embryo-bin
 BuildRequires:  eet-bin

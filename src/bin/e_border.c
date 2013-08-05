@@ -22,6 +22,12 @@
 //#define INOUTDEBUG_MOUSE 1
 //#define INOUTDEBUG_FOCUS 1
 
+# ifdef _F_USE_DLOG_
+#  include "dlog.h"
+#  undef LOG_TAG
+#  define LOG_TAG "E17"
+# endif
+
 /* These are compatible with netwm */
 #define RESIZE_TL   0
 #define RESIZE_T    1
