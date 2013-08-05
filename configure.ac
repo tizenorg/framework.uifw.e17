@@ -544,7 +544,8 @@ PKG_CHECK_MODULES(E, [
   $hal_mount
   $eeze_mount
   $udisks_mount
-  $device_backend
+  $device_backend,
+  dlog
 ])
 requirements_e="\
 evas >= 1.2.0 \
@@ -645,6 +646,8 @@ e_extra_features+="-D_F_TRANSIENT_FOR_PATCH_ "
 e_extra_features+="-D_F_BORDER_HOOK_PATCH_ "
 # add multi-layer feature of the compositor
 e_extra_features+="-D_F_COMP_LAYER_ "
+# add use dlog
+e_extra_features+="-D_F_USE_DLOG_ "
 
 have_extra_features=no
 AC_ARG_ENABLE(extra_features,

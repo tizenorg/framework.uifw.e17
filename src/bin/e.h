@@ -45,6 +45,12 @@ void *alloca(size_t);
 #  include <features.h>
 # endif
 
+# ifdef _F_USE_DLOG_
+#  include "dlog.h"
+#  undef LOG_TAG
+#  define LOG_TAG "E17"
+# endif
+
 # include <stdio.h>
 # include <stdlib.h>
 # include <unistd.h>

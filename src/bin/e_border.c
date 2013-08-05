@@ -8187,6 +8187,12 @@ _e_border_rotation_list_flush(Eina_List *list, Eina_Bool flush)
              "SEND ROT_CHANGE_PREPARE a%d res%d %dx%d",
              info->ang, info->win_resize, info->w, info->h);
 
+#ifdef _F_USE_DLOG_
+             SECURE_SLOGD("[ROTATION] SEND PREP_ROT, win:0x%08x a%d resize%d %dx%d",
+                          info->bd->client.win, info->ang, info->win_resize,
+                          info->w, info->h);
+#endif
+
         ecore_x_e_window_rotation_change_prepare_send
            (info->bd->client.win, info->ang,
             info->win_resize, info->w, info->h);
@@ -8194,6 +8200,10 @@ _e_border_rotation_list_flush(Eina_List *list, Eina_Bool flush)
         if (!info->bd->client.e.state.rot.pending_change_request)
           {
              ELBF(ELBT_ROT, 1, 0, "SEND ROT_CHANGE_REQUEST");
+#ifdef _F_USE_DLOG_
+             SECURE_SLOGD("[ROTATION] SEND REQ_ROT, win:0x%08x, rot:%d",
+                          info->bd->client.win, info->ang);
+#endif
              ecore_x_e_window_rotation_change_request_send(info->bd->client.win,
                                                            info->ang);
              info->bd->client.e.state.rot.wait_for_done = 1;
@@ -8994,6 +9004,10 @@ _e_border_cb_window_configure(void *data    __UNUSED__,
                   "SEND ROT_CHANGE_REQUEST a%d %dx%d",
                   bd->client.e.state.rot.curr,
                   bd->w, bd->h);
+#ifdef _F_USE_DLOG_
+             SECURE_SLOGD("[ROTATION] SEND REQ_ROT(CONFIGURE_NOTI), win:0x%08x, rot:%d",
+                          bd->client.win, bd->client.e.state.rot.curr);
+#endif
              ecore_x_e_window_rotation_change_request_send(bd->client.win,
                                                            bd->client.e.state.rot.curr);
              bd->client.e.state.rot.wait_for_done = 1;

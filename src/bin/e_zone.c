@@ -1433,6 +1433,14 @@ e_zone_rotation_set(E_Zone *zone,
 
    E_OBJECT_CHECK(zone);
    E_OBJECT_TYPE_CHECK(zone, E_ZONE_TYPE);
+
+#ifdef _F_USE_DLOG_
+   SECURE_SLOGD("[ROTATION] ZONE_ROT_SET, wm_win_rotation_set:%d, wait_for_done:%d, block_count:%d, "
+                "curr_rot:%d, req_rot:%d",
+                e_config->wm_win_rotation, zone->rot.wait_for_done, zone->rot.block_count,
+                zone->rot.curr, rot);
+#endif
+
    if (!e_config->wm_win_rotation) return;
 
    ELBF(ELBT_ROT, 0, zone->num, "SET ROT a%d", rot);
