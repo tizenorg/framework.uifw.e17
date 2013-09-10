@@ -295,6 +295,16 @@ static void _e_border_focus_top_stack_set (E_Border* bd);
 #if _F_BORDER_CLIP_TO_ZONE_
 static void      _e_border_shape_input_clip_to_zone(E_Border *bd);
 #endif /* _F_BORDER_CLIP_TO_ZONE_ */
+
+#ifdef _F_DEICONIFY_APPROVE_
+static void _e_border_msg_handler(void       *data,
+                                  const char *name,
+                                  const char *info,
+                                  int         val,
+                                  E_Object   *obj,
+                                  void       *msgdata);
+#endif
+
 /* local subsystem globals */
 static Eina_List *handlers = NULL;
 static Eina_List *borders = NULL;
@@ -325,6 +335,10 @@ static int warp_x = 0;
 static int warp_y = 0;
 static Ecore_X_Window warp_to_win;
 static Ecore_Timer *warp_timer = NULL;
+
+#ifdef _F_DEICONIFY_APPROVE_
+static E_Msg_Handler *_msg_handler = NULL;
+#endif
 
 #ifdef _F_ZONE_WINDOW_ROTATION_
 typedef struct _E_Border_Rotation      E_Border_Rotation;
@@ -492,6 +506,10 @@ e_border_init(void)
 #endif
 #ifdef _F_ZONE_WINDOW_ROTATION_
    handlers = eina_list_append(handlers, ecore_event_handler_add(E_EVENT_ZONE_ROTATION_CHANGE_BEGIN, _e_border_cb_zone_rotation_change_begin, NULL));
+#endif
+
+#ifdef _F_DEICONIFY_APPROVE_
+   _msg_handler = e_msg_handler_add(_e_border_msg_handler, NULL);
 #endif
 
    if (!borders_hash) borders_hash = eina_hash_string_superfast_new(NULL);
@@ -6050,10 +6068,92 @@ _e_border_cb_window_destroy(void *data  __UNUSED__,
           }
      }
 #endif
+
+#ifdef _F_DEICONIFY_APPROVE_
+   if (e_config->wm_win_rotation)
+     {
+        if (bd->client.e.state.pending_event.pending)
+          {
+             bd->client.e.state.pending_event.destroy.pending = 1;
+             bd->client.e.state.pending_event.destroy.win = e->win;
+             bd->client.e.state.pending_event.destroy.event_win = e->event_win;
+             ELB(ELBT_BD, "PENDING destroy event", bd->client.win);
+             return ECORE_CALLBACK_CANCEL;
+          }
+     }
+
+   ELB(ELBT_BD, "Real Destroy", bd->client.win);
+#endif
+
    e_border_hide(bd, 0);
    e_object_del(E_OBJECT(bd));
    return ECORE_CALLBACK_PASS_ON;
 }
+
+#ifdef _F_DEICONIFY_APPROVE_
+static E_Border *
+_e_border_find_below_win(E_Border* bd)
+{
+   Eina_List *l;
+   int i, pos;
+   Eina_Bool passed;
+   E_Border *temp_bd;
+   E_Border *below_bd;
+
+   passed = EINA_FALSE;
+   below_bd = NULL;
+
+   E_Border_List *bl;
+   bl = e_container_border_list_last(bd->zone->container);
+   while ((temp_bd = e_container_border_list_prev(bl)))
+     {
+        /* skip if it's the same border */
+        if (temp_bd == bd)
+          {
+             passed = EINA_TRUE;
+             continue;
+          }
+
+        if (e_object_is_del(E_OBJECT(temp_bd))) continue;
+
+        /* skip if it's not on this zone */
+        if (temp_bd->zone != bd->zone) continue;
+
+        if (E_CONTAINS(temp_bd->x, temp_bd->y, temp_bd->w, temp_bd->h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
+          {
+             if (!temp_bd->client.argb && temp_bd->visible)
+               {
+                  below_bd = NULL;
+                  break;
+               }
+          }
+
+        if (!passed) continue;
+
+        if ((!temp_bd->client.argb) &&
+            (temp_bd->x == temp_bd->zone->x) &&
+            (temp_bd->y == temp_bd->zone->y) &&
+            (temp_bd->w == temp_bd->zone->w) &&
+            (temp_bd->h == temp_bd->zone->h))
+          {
+             if (temp_bd->visible)
+               {
+                  below_bd = NULL;
+                  break;
+               }
+
+             if (ecore_x_window_visible_get(temp_bd->client.win))
+               {
+                  below_bd = temp_bd;
+                  break;
+               }
+          }
+     }
+   e_container_border_list_free(bl);
+
+   return below_bd;
+}
+#endif
 
 static Eina_Bool
 _e_border_cb_window_hide(void *data  __UNUSED__,
@@ -6089,6 +6189,52 @@ _e_border_cb_window_hide(void *data  __UNUSED__,
           }
         return ECORE_CALLBACK_PASS_ON;
      }
+
+#ifdef _F_DEICONIFY_APPROVE_
+   if (e_config->wm_win_rotation)
+     {
+        if (bd->client.e.state.pending_event.done)
+           goto do_hide;
+
+        if (bd->client.e.state.pending_event.pending)
+          {
+             return ECORE_CALLBACK_CANCEL;
+          }
+
+        if (!E_CONTAINS(bd->x, bd->y, bd->w, bd->h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
+           goto do_hide;
+
+        E_Border *below_bd;
+        // 1. find below non-alpha full size win
+        below_bd = _e_border_find_below_win(bd);
+
+        if (below_bd)
+          {
+             // 2. check those rotation
+             bd->client.e.state.pending_event.pending = 1;
+             bd->client.e.state.pending_event.hold_bd = below_bd;
+
+             bd->client.e.state.pending_event.hide.pending = 1;
+             bd->client.e.state.pending_event.hide.win = e->win;
+             bd->client.e.state.pending_event.hide.event_win = e->event_win;
+             bd->client.e.state.pending_event.hide.send_event = e->send_event;
+
+             below_bd->client.e.state.deiconify_approve.pending_bd = bd;
+             ELBF(ELBT_ROT, 0, bd->client.win, "below_win:%x, below_win's wait_bd:%x", below_bd->client.win, below_bd->client.e.state.deiconify_approve.pending_bd->client.win);
+
+             // 3. if not same then uniconify
+             e_border_uniconify(below_bd);
+
+             ELB(ELBT_BD, "PENDING hide event", bd->client.win);
+             return ECORE_CALLBACK_CANCEL;
+          }
+     }
+
+do_hide:
+   bd->client.e.state.pending_event.done = 0;
+   bd->client.e.state.pending_event.pending = 0;
+   ELB(ELBT_BD, "Real hide", bd->client.win);
+#endif
 
 //   printf("  bd->ignore_first_unmap = %i\n", bd->ignore_first_unmap);
    if (bd->ignore_first_unmap > 0)
@@ -8433,6 +8579,7 @@ _e_border_rotation_angle_get(E_Border *bd)
    // the window with "ECORE_X_WINDOW_TYPE_NORMAL" type
    // should follow the state of rotation of zone.
    if ((bd->parent) &&
+       (bd->parent->visible) &&
        (bd->client.netwm.type != ECORE_X_WINDOW_TYPE_NORMAL))
      will_ang = bd->parent->client.e.state.rot.curr;
    else will_ang = zone->rot.curr;
@@ -8478,6 +8625,7 @@ _e_border_rotation_angle_get(E_Border *bd)
          * rotation of the transient_for window.
          */
         if ((bd->parent) &&
+            (bd->parent->visible) &&
             (bd->client.netwm.type == ECORE_X_WINDOW_TYPE_UTILITY))
           {
              will_ang = bd->parent->client.e.state.rot.curr;
@@ -8587,6 +8735,7 @@ _e_border_rotation_set_internal(E_Border *bd, int rotation, Eina_Bool *pending)
 
    /* step 2. add to async/sync list */
    if ((!zone->rot.block_count) &&
+       (!bd->client.e.state.deiconify_approve.pending_bd) &&
        ((!bd->visible) ||
         (!E_INTERSECTS(bd->x, bd->y, bd->w, bd->h, zone->x, zone->y, zone->w, zone->h))))
      {
@@ -12855,4 +13004,135 @@ e_border_activate(E_Border *bd, Eina_Bool just_do_it)
           }
      }
 }
+
+#ifdef _F_DEICONIFY_APPROVE_
+static void
+_e_border_window_pending_destroy_event_free(void *data __UNUSED__,
+                                            void *ev)
+{
+   Ecore_X_Event_Window_Destroy *e;
+
+   e = ev;
+   E_FREE(e);
+}
+
+static void
+_e_border_window_pending_hide_event_free(void *data __UNUSED__,
+                                         void *ev)
+{
+   Ecore_X_Event_Window_Hide *e;
+
+   e = ev;
+   E_FREE(e);
+}
+
+static void
+_e_border_window_pending_hide_event_send(E_Border *bd)
+{
+   Ecore_X_Event_Window_Hide *e;
+
+   if (!bd) return;
+
+   e = E_NEW(Ecore_X_Event_Window_Hide, 1);
+   if (e)
+     {
+        e->win = bd->client.e.state.pending_event.hide.win;
+        e->event_win = bd->client.e.state.pending_event.hide.event_win;
+        e->time = ecore_x_current_time_get();
+        e->send_event = bd->client.e.state.pending_event.hide.send_event;
+
+        ecore_event_add(ECORE_X_EVENT_WINDOW_HIDE, e,
+                        _e_border_window_pending_hide_event_free, NULL);
+
+        ELB(ELBT_BD, "Send pended HIDE event", e->win);
+     }
+}
+
+static void
+_e_border_window_pending_destroy_event_send(E_Border *bd)
+{
+   Ecore_X_Event_Window_Destroy *e;
+
+   if (!bd) return;
+
+   e = E_NEW(Ecore_X_Event_Window_Destroy, 1);
+   if (e)
+     {
+        e->win = bd->client.e.state.pending_event.destroy.win;
+        e->event_win = bd->client.e.state.pending_event.destroy.event_win;
+        e->time = ecore_x_current_time_get();
+
+        ecore_event_add(ECORE_X_EVENT_WINDOW_DESTROY, e,
+                        _e_border_window_pending_destroy_event_free, NULL);
+
+        ELB(ELBT_BD, "Send pended DESTROY event", e->win);
+     }
+}
+
+static void
+_e_border_msg_handler(void       *data,
+                      const char *name,
+                      const char *info,
+                      int         val,
+                      E_Object   *obj,
+                      void       *msgdata)
+{
+   E_Manager *man = (E_Manager *)obj;
+   E_Manager_Comp_Source *src = (E_Manager_Comp_Source *)msgdata;
+
+   // handle only comp.manager msg
+   if (strncmp(name, "comp.manager", sizeof("comp.manager"))) return;
+
+   if (!strncmp(info, "visibility.src", sizeof("visibility.src")))
+     {
+        Ecore_X_Window win;
+        E_Border *bd;
+        Eina_Bool visible;
+
+        win = e_manager_comp_src_window_get(man, src);
+        bd = e_border_find_by_window(win);
+
+        if (!bd) return;
+        if (!bd->client.e.state.deiconify_approve.pending_bd) return;
+
+        visible = e_manager_comp_src_visible_get(man, src);
+        if (visible)
+          {
+             E_Border *pending_bd = bd->client.e.state.deiconify_approve.pending_bd;
+             if (!pending_bd->client.e.state.pending_event.pending)
+               {
+                  bd->client.e.state.deiconify_approve.pending_bd = NULL;
+                  return;
+               }
+
+             pending_bd->client.e.state.pending_event.done = 1;
+             pending_bd->client.e.state.pending_event.hold_bd = NULL;
+
+             if (pending_bd->client.e.state.pending_event.hide.pending)
+               {
+                  _e_border_window_pending_hide_event_send(pending_bd);
+
+                  // clear hide event data
+                  pending_bd->client.e.state.pending_event.hide.pending = 0;
+                  pending_bd->client.e.state.pending_event.hide.win = 0;
+                  pending_bd->client.e.state.pending_event.hide.event_win = 0;
+                  pending_bd->client.e.state.pending_event.hide.send_event = 0;
+               }
+
+             if (pending_bd->client.e.state.pending_event.destroy.pending)
+               {
+                  _e_border_window_pending_destroy_event_send(pending_bd);
+
+                  // clear destroy event data
+                  pending_bd->client.e.state.pending_event.destroy.pending = 0;
+                  pending_bd->client.e.state.pending_event.destroy.win = 0;
+                  pending_bd->client.e.state.pending_event.destroy.event_win = 0;
+               }
+
+             bd->client.e.state.deiconify_approve.pending_bd = NULL;
+             ELBF(ELBT_ROT, 0, bd->client.win, "RESET pending_bd:%x", bd->client.e.state.deiconify_approve.pending_bd);
+          }
+     }
+}
+#endif
 /*vim:ts=8 sw=3 sts=3 expandtab cino=>5n-3f0^-2{2(0W1st0*/

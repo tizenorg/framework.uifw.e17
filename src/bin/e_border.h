@@ -50,7 +50,7 @@ typedef enum _E_Focus_Setting
    E_FOCUS_NEW_DIALOG_IF_OWNER_FOCUSED,
 #ifdef _F_FOCUS_WINDOW_IF_TOP_STACK_
    E_FOCUS_NEW_WINDOW_IF_TOP_STACK
-#endif   
+#endif
 } E_Focus_Setting;
 
 typedef enum _E_Maximize
@@ -432,7 +432,37 @@ struct _E_Border
                Eina_List *req_list;
                E_Border *ancestor;
                Ecore_Job *pending_job;
+               E_Border *pending_bd;
             } deiconify_approve;
+
+            struct
+            {
+               struct
+               {
+                  unsigned char pending;
+                  Ecore_X_Window win;
+                  Ecore_X_Window event_win;
+               } destroy;
+               struct
+               {
+                  unsigned char pending;
+                  Ecore_X_Window win;
+                  Ecore_X_Window event_win;
+                  Eina_Bool send_event;
+               } hide;
+               struct
+               {
+                  unsigned char pending;
+                  Ecore_X_Window win;
+                  Ecore_X_Window parent_win;
+                  Ecore_X_Window above_win;
+                  Ecore_X_Window_Stack_Mode detail;
+                  unsigned long value_mask;
+               } lower;
+               unsigned char done : 1; 
+               unsigned char pending: 1; 
+               E_Border *hold_bd;
+            } pending_event;
 #endif
 #ifdef _F_USE_DESK_WINDOW_PROFILE_
             unsigned char  profile_list : 1;
