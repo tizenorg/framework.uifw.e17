@@ -177,6 +177,7 @@ rm -rf %{buildroot}
 # for license notification
 mkdir -p %{buildroot}/usr/share/license
 cp -a %{_builddir}/%{buildsubdir}/COPYING %{buildroot}/usr/share/license/%{name}
+cat %{_builddir}/%{buildsubdir}/COPYING.Flora >> %{buildroot}/usr/share/license/%{name}
 
 #systemd setup
 mkdir -p %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants
