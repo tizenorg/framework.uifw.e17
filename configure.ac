@@ -648,6 +648,8 @@ e_extra_features+="-D_F_BORDER_HOOK_PATCH_ "
 e_extra_features+="-D_F_COMP_LAYER_ "
 # add use dlog
 e_extra_features+="-D_F_USE_DLOG_ "
+# enable patch to handling except case that a client will do consecutively the Map and Unmap repeatedly.
+e_extra_features+="-D_F_FIX_POSITION_PROBLEM_ "
 
 have_extra_features=no
 AC_ARG_ENABLE(extra_features,

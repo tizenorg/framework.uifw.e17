@@ -882,6 +882,10 @@ e_border_new(E_Container   *con,
    bd->client.w = att->w;
    bd->client.h = att->h;
 
+#ifdef _F_FIX_POSITION_PROBLEM_
+   bd->x = att->x;
+   bd->y = att->y;
+#endif
    bd->w = bd->client.w;
    bd->h = bd->client.h;
 
