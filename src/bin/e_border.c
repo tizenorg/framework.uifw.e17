@@ -10171,6 +10171,20 @@ _e_border_eval0(E_Border *bd)
         bd->client.illume.win_state.state =
            ecore_x_e_illume_window_state_get(bd->client.win);
         bd->client.illume.win_state.fetch.state = 0;
+#ifdef _F_ZONE_WINDOW_ROTATION_
+        /* E should rotate the window if the property "win_state" of window is
+         * changed to "ECORE_X_ILLUME_WINDOW_STATE_NORMAL".
+         * FIXME: To move below code into illume seems to better.
+         */
+        if (e_config->wm_win_rotation)
+          {
+             if (bd->client.illume.win_state.state == ECORE_X_ILLUME_WINDOW_STATE_NORMAL)
+               {
+                  bd->client.e.state.rot.type = E_BORDER_ROTATION_TYPE_NORMAL;
+                  need_rotation_set = EINA_TRUE;
+               }
+          }
+#endif
      }
    if (bd->changes.shape)
      {
