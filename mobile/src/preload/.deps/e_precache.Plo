@@ -1,0 +1,493 @@
+e_precache.lo: e_precache.c ../../config.h e_precache.h \
+ //usr/include/stdio.h //usr/include/features.h \
+ //usr/include/bits/predefs.h //usr/include/sys/cdefs.h \
+ //usr/include/bits/wordsize.h //usr/include/gnu/stubs.h \
+ /usr/lib/gcc/armv7l-tizen-linux-gnueabi/4.6/include/stddef.h \
+ //usr/include/bits/types.h //usr/include/bits/typesizes.h \
+ //usr/include/libio.h //usr/include/_G_config.h //usr/include/wchar.h \
+ /usr/lib/gcc/armv7l-tizen-linux-gnueabi/4.6/include/stdarg.h \
+ //usr/include/bits/stdio_lim.h //usr/include/bits/sys_errlist.h \
+ //usr/include/bits/stdio.h //usr/include/bits/stdio2.h \
+ //usr/include/stdlib.h //usr/include/bits/waitflags.h \
+ //usr/include/bits/waitstatus.h //usr/include/endian.h \
+ //usr/include/bits/endian.h //usr/include/bits/byteswap.h \
+ //usr/include/xlocale.h //usr/include/sys/types.h //usr/include/time.h \
+ //usr/include/sys/select.h //usr/include/bits/select.h \
+ //usr/include/bits/sigset.h //usr/include/bits/time.h \
+ //usr/include/sys/sysmacros.h //usr/include/bits/pthreadtypes.h \
+ //usr/include/alloca.h //usr/include/bits/stdlib.h \
+ //usr/include/string.h //usr/include/bits/string.h \
+ //usr/include/bits/string2.h //usr/include/bits/string3.h \
+ //usr/include/dlfcn.h //usr/include/bits/dlfcn.h //usr/include/unistd.h \
+ //usr/include/bits/posix_opt.h //usr/include/bits/environments.h \
+ //usr/include/bits/confname.h //usr/include/getopt.h \
+ //usr/include/bits/unistd.h //usr/include/sys/stat.h \
+ //usr/include/bits/stat.h //usr/include/sys/utsname.h \
+ //usr/include/bits/utsname.h //usr/include/fcntl.h \
+ //usr/include/bits/fcntl.h //usr/include/bits/uio.h \
+ //usr/include/bits/fcntl2.h /usr/include/eina-1/Eina.h \
+ /usr/include/eina-1/eina_config.h /usr/include/eina-1/eina/eina_types.h \
+ /usr/include/eina-1/eina_config.h /usr/include/eina-1/eina/eina_main.h \
+ /usr/include/eina-1/eina/eina_types.h /usr/include/eina-1/eina/eina_fp.h \
+ /usr/lib/gcc/armv7l-tizen-linux-gnueabi/4.6/include/stdint.h \
+ //usr/include/stdint.h //usr/include/bits/wchar.h \
+ /usr/include/eina-1/eina/eina_inline_f32p32.x \
+ /usr/include/eina-1/eina/eina_inline_f16p16.x \
+ /usr/include/eina-1/eina/eina_inline_f8p24.x \
+ /usr/include/eina-1/eina/eina_inline_fp.x \
+ /usr/include/eina-1/eina/eina_rectangle.h \
+ /usr/include/eina-1/eina/eina_inline_rectangle.x \
+ /usr/include/eina-1/eina/eina_clist.h \
+ /usr/include/eina-1/eina/eina_inline_clist.x \
+ /usr/include/eina-1/eina/eina_inlist.h \
+ /usr/include/eina-1/eina/eina_iterator.h \
+ /usr/include/eina-1/eina/eina_magic.h \
+ /usr/include/eina-1/eina/eina_error.h \
+ /usr/include/eina-1/eina/eina_accessor.h \
+ /usr/include/eina-1/eina/eina_file.h \
+ /usr/lib/gcc/armv7l-tizen-linux-gnueabi/4.6/include/limits.h \
+ /usr/lib/gcc/armv7l-tizen-linux-gnueabi/4.6/include/syslimits.h \
+ //usr/include/limits.h //usr/include/bits/posix1_lim.h \
+ //usr/include/bits/local_lim.h //usr/include/linux/limits.h \
+ //usr/include/bits/posix2_lim.h //usr/include/bits/xopen_lim.h \
+ /usr/include/eina-1/eina/eina_array.h \
+ /usr/include/eina-1/eina/eina_inline_array.x \
+ /usr/include/eina-1/eina/eina_list.h \
+ /usr/include/eina-1/eina/eina_inline_list.x \
+ /usr/include/eina-1/eina/eina_hash.h \
+ /usr/include/eina-1/eina/eina_inline_hash.x \
+ /usr/include/eina-1/eina/eina_trash.h \
+ /usr/include/eina-1/eina/eina_inline_trash.x \
+ /usr/include/eina-1/eina/eina_lalloc.h \
+ /usr/include/eina-1/eina/eina_module.h \
+ /usr/include/eina-1/eina/eina_mempool.h \
+ /usr/include/eina-1/eina/eina_module.h \
+ /usr/include/eina-1/eina/eina_inline_mempool.x \
+ /usr/include/eina-1/eina/eina_error.h \
+ /usr/include/eina-1/eina/eina_log.h \
+ /usr/include/eina-1/eina/eina_inline_log.x \
+ /usr/include/eina-1/eina/eina_inarray.h \
+ /usr/include/eina-1/eina/eina_array.h \
+ /usr/include/eina-1/eina/eina_binshare.h \
+ /usr/include/eina-1/eina/eina_stringshare.h \
+ /usr/include/eina-1/eina/eina_inline_stringshare.x \
+ /usr/include/eina-1/eina/eina_stringshare.h \
+ /usr/include/eina-1/eina/eina_ustringshare.h \
+ /usr/include/eina-1/eina/eina_unicode.h //usr/include/bits/wchar2.h \
+ /usr/include/eina-1/eina/eina_inline_ustringshare.x \
+ /usr/include/eina-1/eina/eina_ustringshare.h \
+ /usr/include/eina-1/eina/eina_magic.h \
+ /usr/include/eina-1/eina/eina_counter.h \
+ /usr/include/eina-1/eina/eina_rbtree.h \
+ /usr/include/eina-1/eina/eina_inline_rbtree.x \
+ /usr/include/eina-1/eina/eina_accessor.h \
+ /usr/include/eina-1/eina/eina_iterator.h \
+ /usr/include/eina-1/eina/eina_benchmark.h \
+ /usr/include/eina-1/eina/eina_convert.h \
+ /usr/include/eina-1/eina/eina_fp.h /usr/include/eina-1/eina/eina_cpu.h \
+ /usr/include/eina-1/eina/eina_sched.h \
+ /usr/include/eina-1/eina/eina_tiler.h \
+ /usr/include/eina-1/eina/eina_rectangle.h \
+ /usr/include/eina-1/eina/eina_inline_tiler.x \
+ /usr/include/eina-1/eina/eina_safety_checks.h \
+ /usr/include/eina-1/eina/eina_log.h \
+ /usr/include/eina-1/eina/eina_hamster.h \
+ /usr/include/eina-1/eina/eina_matrixsparse.h \
+ /usr/include/eina-1/eina/eina_str.h \
+ /usr/include/eina-1/eina/eina_inline_str.x \
+ /usr/include/eina-1/eina/eina_strbuf.h \
+ /usr/include/eina-1/eina/eina_binbuf.h \
+ /usr/include/eina-1/eina/eina_ustrbuf.h \
+ /usr/include/eina-1/eina/eina_unicode.h \
+ /usr/include/eina-1/eina/eina_quadtree.h \
+ /usr/include/eina-1/eina/eina_inlist.h \
+ /usr/include/eina-1/eina/eina_simple_xml_parser.h \
+ /usr/include/eina-1/eina/eina_lock.h \
+ /usr/include/eina-1/eina/eina_inline_lock_posix.x //usr/include/errno.h \
+ //usr/include/bits/errno.h //usr/include/linux/errno.h \
+ //usr/include/asm/errno.h //usr/include/asm-generic/errno.h \
+ //usr/include/asm-generic/errno-base.h //usr/include/pthread.h \
+ //usr/include/sched.h //usr/include/bits/sched.h \
+ //usr/include/bits/setjmp.h //usr/include/semaphore.h \
+ //usr/include/bits/semaphore.h //usr/include/sys/time.h \
+ /usr/include/eina-1/eina/eina_prefix.h \
+ /usr/include/eina-1/eina/eina_refcount.h \
+ /usr/include/eina-1/eina/eina_mmap.h \
+ /usr/include/eina-1/eina/eina_xattr.h \
+ /usr/include/eina-1/eina/eina_value.h \
+ /usr/include/eina-1/eina/eina_inarray.h \
+ /usr/include/eina-1/eina/eina_list.h \
+ /usr/include/eina-1/eina/eina_hash.h \
+ /usr/include/eina-1/eina/eina_inline_value.x \
+ /usr/include/eina-1/eina/eina_tmpstr.h /usr/include/evas-1/Evas.h \
+ /usr/include/ecore-1/Ecore.h //usr/include/signal.h \
+ //usr/include/bits/signum.h //usr/include/bits/siginfo.h \
+ //usr/include/bits/sigaction.h //usr/include/bits/sigcontext.h \
+ //usr/include/asm/sigcontext.h //usr/include/bits/sigstack.h \
+ //usr/include/sys/ucontext.h //usr/include/sys/procfs.h \
+ //usr/include/sys/user.h //usr/include/bits/sigthread.h \
+ /usr/include/ecore-1/Ecore_File.h /usr/include/eet-1/Eet.h
+
+../../config.h:
+
+e_precache.h:
+
+//usr/include/stdio.h:
+
+//usr/include/features.h:
+
+//usr/include/bits/predefs.h:
+
+//usr/include/sys/cdefs.h:
+
+//usr/include/bits/wordsize.h:
+
+//usr/include/gnu/stubs.h:
+
+/usr/lib/gcc/armv7l-tizen-linux-gnueabi/4.6/include/stddef.h:
+
+//usr/include/bits/types.h:
+
+//usr/include/bits/typesizes.h:
+
+//usr/include/libio.h:
+
+//usr/include/_G_config.h:
+
+//usr/include/wchar.h:
+
+/usr/lib/gcc/armv7l-tizen-linux-gnueabi/4.6/include/stdarg.h:
+
+//usr/include/bits/stdio_lim.h:
+
+//usr/include/bits/sys_errlist.h:
+
+//usr/include/bits/stdio.h:
+
+//usr/include/bits/stdio2.h:
+
+//usr/include/stdlib.h:
+
+//usr/include/bits/waitflags.h:
+
+//usr/include/bits/waitstatus.h:
+
+//usr/include/endian.h:
+
+//usr/include/bits/endian.h:
+
+//usr/include/bits/byteswap.h:
+
+//usr/include/xlocale.h:
+
+//usr/include/sys/types.h:
+
+//usr/include/time.h:
+
+//usr/include/sys/select.h:
+
+//usr/include/bits/select.h:
+
+//usr/include/bits/sigset.h:
+
+//usr/include/bits/time.h:
+
+//usr/include/sys/sysmacros.h:
+
+//usr/include/bits/pthreadtypes.h:
+
+//usr/include/alloca.h:
+
+//usr/include/bits/stdlib.h:
+
+//usr/include/string.h:
+
+//usr/include/bits/string.h:
+
+//usr/include/bits/string2.h:
+
+//usr/include/bits/string3.h:
+
+//usr/include/dlfcn.h:
+
+//usr/include/bits/dlfcn.h:
+
+//usr/include/unistd.h:
+
+//usr/include/bits/posix_opt.h:
+
+//usr/include/bits/environments.h:
+
+//usr/include/bits/confname.h:
+
+//usr/include/getopt.h:
+
+//usr/include/bits/unistd.h:
+
+//usr/include/sys/stat.h:
+
+//usr/include/bits/stat.h:
+
+//usr/include/sys/utsname.h:
+
+//usr/include/bits/utsname.h:
+
+//usr/include/fcntl.h:
+
+//usr/include/bits/fcntl.h:
+
+//usr/include/bits/uio.h:
+
+//usr/include/bits/fcntl2.h:
+
+/usr/include/eina-1/Eina.h:
+
+/usr/include/eina-1/eina_config.h:
+
+/usr/include/eina-1/eina/eina_types.h:
+
+/usr/include/eina-1/eina_config.h:
+
+/usr/include/eina-1/eina/eina_main.h:
+
+/usr/include/eina-1/eina/eina_types.h:
+
+/usr/include/eina-1/eina/eina_fp.h:
+
+/usr/lib/gcc/armv7l-tizen-linux-gnueabi/4.6/include/stdint.h:
+
+//usr/include/stdint.h:
+
+//usr/include/bits/wchar.h:
+
+/usr/include/eina-1/eina/eina_inline_f32p32.x:
+
+/usr/include/eina-1/eina/eina_inline_f16p16.x:
+
+/usr/include/eina-1/eina/eina_inline_f8p24.x:
+
+/usr/include/eina-1/eina/eina_inline_fp.x:
+
+/usr/include/eina-1/eina/eina_rectangle.h:
+
+/usr/include/eina-1/eina/eina_inline_rectangle.x:
+
+/usr/include/eina-1/eina/eina_clist.h:
+
+/usr/include/eina-1/eina/eina_inline_clist.x:
+
+/usr/include/eina-1/eina/eina_inlist.h:
+
+/usr/include/eina-1/eina/eina_iterator.h:
+
+/usr/include/eina-1/eina/eina_magic.h:
+
+/usr/include/eina-1/eina/eina_error.h:
+
+/usr/include/eina-1/eina/eina_accessor.h:
+
+/usr/include/eina-1/eina/eina_file.h:
+
+/usr/lib/gcc/armv7l-tizen-linux-gnueabi/4.6/include/limits.h:
+
+/usr/lib/gcc/armv7l-tizen-linux-gnueabi/4.6/include/syslimits.h:
+
+//usr/include/limits.h:
+
+//usr/include/bits/posix1_lim.h:
+
+//usr/include/bits/local_lim.h:
+
+//usr/include/linux/limits.h:
+
+//usr/include/bits/posix2_lim.h:
+
+//usr/include/bits/xopen_lim.h:
+
+/usr/include/eina-1/eina/eina_array.h:
+
+/usr/include/eina-1/eina/eina_inline_array.x:
+
+/usr/include/eina-1/eina/eina_list.h:
+
+/usr/include/eina-1/eina/eina_inline_list.x:
+
+/usr/include/eina-1/eina/eina_hash.h:
+
+/usr/include/eina-1/eina/eina_inline_hash.x:
+
+/usr/include/eina-1/eina/eina_trash.h:
+
+/usr/include/eina-1/eina/eina_inline_trash.x:
+
+/usr/include/eina-1/eina/eina_lalloc.h:
+
+/usr/include/eina-1/eina/eina_module.h:
+
+/usr/include/eina-1/eina/eina_mempool.h:
+
+/usr/include/eina-1/eina/eina_module.h:
+
+/usr/include/eina-1/eina/eina_inline_mempool.x:
+
+/usr/include/eina-1/eina/eina_error.h:
+
+/usr/include/eina-1/eina/eina_log.h:
+
+/usr/include/eina-1/eina/eina_inline_log.x:
+
+/usr/include/eina-1/eina/eina_inarray.h:
+
+/usr/include/eina-1/eina/eina_array.h:
+
+/usr/include/eina-1/eina/eina_binshare.h:
+
+/usr/include/eina-1/eina/eina_stringshare.h:
+
+/usr/include/eina-1/eina/eina_inline_stringshare.x:
+
+/usr/include/eina-1/eina/eina_stringshare.h:
+
+/usr/include/eina-1/eina/eina_ustringshare.h:
+
+/usr/include/eina-1/eina/eina_unicode.h:
+
+//usr/include/bits/wchar2.h:
+
+/usr/include/eina-1/eina/eina_inline_ustringshare.x:
+
+/usr/include/eina-1/eina/eina_ustringshare.h:
+
+/usr/include/eina-1/eina/eina_magic.h:
+
+/usr/include/eina-1/eina/eina_counter.h:
+
+/usr/include/eina-1/eina/eina_rbtree.h:
+
+/usr/include/eina-1/eina/eina_inline_rbtree.x:
+
+/usr/include/eina-1/eina/eina_accessor.h:
+
+/usr/include/eina-1/eina/eina_iterator.h:
+
+/usr/include/eina-1/eina/eina_benchmark.h:
+
+/usr/include/eina-1/eina/eina_convert.h:
+
+/usr/include/eina-1/eina/eina_fp.h:
+
+/usr/include/eina-1/eina/eina_cpu.h:
+
+/usr/include/eina-1/eina/eina_sched.h:
+
+/usr/include/eina-1/eina/eina_tiler.h:
+
+/usr/include/eina-1/eina/eina_rectangle.h:
+
+/usr/include/eina-1/eina/eina_inline_tiler.x:
+
+/usr/include/eina-1/eina/eina_safety_checks.h:
+
+/usr/include/eina-1/eina/eina_log.h:
+
+/usr/include/eina-1/eina/eina_hamster.h:
+
+/usr/include/eina-1/eina/eina_matrixsparse.h:
+
+/usr/include/eina-1/eina/eina_str.h:
+
+/usr/include/eina-1/eina/eina_inline_str.x:
+
+/usr/include/eina-1/eina/eina_strbuf.h:
+
+/usr/include/eina-1/eina/eina_binbuf.h:
+
+/usr/include/eina-1/eina/eina_ustrbuf.h:
+
+/usr/include/eina-1/eina/eina_unicode.h:
+
+/usr/include/eina-1/eina/eina_quadtree.h:
+
+/usr/include/eina-1/eina/eina_inlist.h:
+
+/usr/include/eina-1/eina/eina_simple_xml_parser.h:
+
+/usr/include/eina-1/eina/eina_lock.h:
+
+/usr/include/eina-1/eina/eina_inline_lock_posix.x:
+
+//usr/include/errno.h:
+
+//usr/include/bits/errno.h:
+
+//usr/include/linux/errno.h:
+
+//usr/include/asm/errno.h:
+
+//usr/include/asm-generic/errno.h:
+
+//usr/include/asm-generic/errno-base.h:
+
+//usr/include/pthread.h:
+
+//usr/include/sched.h:
+
+//usr/include/bits/sched.h:
+
+//usr/include/bits/setjmp.h:
+
+//usr/include/semaphore.h:
+
+//usr/include/bits/semaphore.h:
+
+//usr/include/sys/time.h:
+
+/usr/include/eina-1/eina/eina_prefix.h:
+
+/usr/include/eina-1/eina/eina_refcount.h:
+
+/usr/include/eina-1/eina/eina_mmap.h:
+
+/usr/include/eina-1/eina/eina_xattr.h:
+
+/usr/include/eina-1/eina/eina_value.h:
+
+/usr/include/eina-1/eina/eina_inarray.h:
+
+/usr/include/eina-1/eina/eina_list.h:
+
+/usr/include/eina-1/eina/eina_hash.h:
+
+/usr/include/eina-1/eina/eina_inline_value.x:
+
+/usr/include/eina-1/eina/eina_tmpstr.h:
+
+/usr/include/evas-1/Evas.h:
+
+/usr/include/ecore-1/Ecore.h:
+
+//usr/include/signal.h:
+
+//usr/include/bits/signum.h:
+
+//usr/include/bits/siginfo.h:
+
+//usr/include/bits/sigaction.h:
+
+//usr/include/bits/sigcontext.h:
+
+//usr/include/asm/sigcontext.h:
+
+//usr/include/bits/sigstack.h:
+
+//usr/include/sys/ucontext.h:
+
+//usr/include/sys/procfs.h:
+
+//usr/include/sys/user.h:
+
+//usr/include/bits/sigthread.h:
+
+/usr/include/ecore-1/Ecore_File.h:
+
+/usr/include/eet-1/Eet.h:

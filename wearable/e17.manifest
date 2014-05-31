@@ -1,0 +1,22 @@
+<manifest>
+   <define>
+      <domain name="e17" policy="restricted" plist="e17-misc,e17-data,e17-extra-modules,e17-extra-config-modules" />
+      <provide>
+         <label name="e17::config"/>
+      </provide>
+      <request>
+         <smack request="dbus" type="rwx"/>
+         <smack request="pulseaudio" type="rwxat"/>
+         <smack request="e17::config" type="rwxat"/>
+      </request>
+      <permit>
+         <smack permit="dbus" type="rwx"/>
+      </permit>
+   </define>
+   <request>
+      <domain name="e17" />
+   </request>
+   <assign>
+      <filesystem path="/usr/bin/enlightenment_remote" label="_" exec_label="none" />
+   </assign>
+</manifest>

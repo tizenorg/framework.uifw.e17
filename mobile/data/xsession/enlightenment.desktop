@@ -1,0 +1,19 @@
+[Desktop Entry]
+Name=Enlightenment
+Name[ru]=Enlightenment
+Name[el]=Enlightenment
+Name[eo]=Enlightenment
+Name[tr]=Enlightenment
+Comment=Log in using Enlightenment (Version 0.16.999.0)
+Comment[ru]=Войти используя Enlightenment (Версия 0.16.999.0)
+Comment[el]=Είσοδος με το Enlightenment (Έκδοση 0.16.999.0)
+Comment[eo]=Ensaluti pere de Enlightenment (Versio 0.16.999.0)
+Comment[fr]=Ouvrir une session Enlightenment (Version 0.16.999.0)
+Comment[it]=Accedi con Enlightenment (Versione 0.16.999.0)
+Comment[pt]=Iniciar sessão no Enlightenment (Versão 0.16.999.0)
+Comment[tr]=Enlightenment kullanarak giriş yaın (Version 0.16.999.0)
+Comment[ko]=Enlightenment 로그인(버전 0.16.999.0)
+Type=Application
+Icon=/usr/share/enlightenment/data/images/enlightenment.png
+Exec=/usr/bin/enlightenment_start
+TryExec=/usr/bin/enlightenment_start

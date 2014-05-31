@@ -1,0 +1,8 @@
+<manifest>
+   <define>
+      <domain name="e17-data" />
+   </define>
+   <request>
+      <domain name="e17-data" />
+   </request>
+</manifest>
