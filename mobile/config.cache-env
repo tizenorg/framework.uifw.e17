@@ -1,5 +1,0 @@
-OLD_PARM="--build=armv7l-unknown-linux-gnueabi --host=armv7l-unknown-linux-gnueabi --target=armv7l-tizen-linux-gnueabi --program-prefix= --prefix=/usr --exec-prefix=/usr --bindir=/usr/bin --sbindir=/usr/sbin --sysconfdir=/etc --datadir=/usr/share --includedir=/usr/include --libdir=/usr/lib --libexecdir=/usr/libexec --localstatedir=/var --sharedstatedir=/var/lib --mandir=/usr/share/man --infodir=/usr/share/info --disable-static"
-OLD_CFLAGS="-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -Wformat -Wformat-security -Wl,--as-needed  -fmessage-length=0 -march=armv7-a -mtune=cortex-a8 -mlittle-endian  -mfpu=vfpv3 -mfloat-abi=softfp -D__SOFTFP__ -mthumb -Wa,-mimplicit-it=thumb -fvisibility=hidden -fPIC  -DTIZEN_DEBUG_ENABLE"
-OLD_PATH="/usr/local/bin:/bin:/usr/bin"
-OLD_PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig"
-OLD_LDFLAGS=" -fvisibility=hidden -Wl,--hash-style=both -Wl,--as-needed"
