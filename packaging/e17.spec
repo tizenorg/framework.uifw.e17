@@ -1,12 +1,12 @@
-#sbs-git:slp/pkgs/e/e17 e17 1.0.0.001+svn.68441slp2+build21
 Name:       e17
 Summary:    The Enlightenment window manager
-Version:    1.0.0.001+svn.68441slp2+build21
-Release:    1
+Version:    1.0.4.001+svn.76808slp2+build06
+Release:    2
 Group:      System/GUI/Other
-License:    BSD
+License:    BSD 2-clause and Flora-1.1
 URL:        http://www.enlightenment.org/
 Source0:    %{name}-%{version}.tar.gz
+Source2:    packaging/e17.service
 BuildRequires:  pkgconfig(alsa)
 BuildRequires:  pkgconfig(ecore)
 BuildRequires:  pkgconfig(ecore-con)
@@ -25,17 +25,20 @@ BuildRequires:  pkgconfig(edje)
 BuildRequires:  pkgconfig(eet)
 BuildRequires:  pkgconfig(efreet)
 BuildRequires:  pkgconfig(efreet-mime)
-BuildRequires:  pkgconfig(efreet-trash)
 BuildRequires:  pkgconfig(ehal)
 BuildRequires:  pkgconfig(eina)
 BuildRequires:  pkgconfig(evas)
+BuildRequires:  pkgconfig(eio)
 BuildRequires:  pkgconfig(utilX)
 BuildRequires:  pkgconfig(x11)
 BuildRequires:  pkgconfig(xext)
+BuildRequires:  pkgconfig(dlog)
 BuildRequires:  edje-bin
 BuildRequires:  embryo-bin
 BuildRequires:  eet-bin
 BuildRequires:  gettext-devel
+Requires(post): e17-data
+Requires(post): sys-assert
 
 
 %description
@@ -70,9 +73,9 @@ The Enlightenment window manager (data)
 
 
 %build
-
 export CFLAGS+=" -fvisibility=hidden -fPIC "
 export LDFLAGS+=" -fvisibility=hidden -Wl,--hash-style=both -Wl,--as-needed"
+export CFLAGS="$CFLAGS -DTIZEN_DEBUG_ENABLE"
 
 %autogen --disable-static
 LIBS='-ledbus' ./configure --prefix=/usr --disable-static \
@@ -160,6 +163,16 @@ LIBS='-ledbus' ./configure --prefix=/usr --disable-static \
     --disable-backlight \
     --disable-shot \
     --disable-notification \
+    --disable-quickaccess \
+    --disable-tiling \
+    --disable-xkbswitch \
+    --disable-access \
+    --disable-clock \
+    --disable-gadman \
+    --disable-ibar \
+    --disable-ibox \
+    --disable-conf-applications \
+    --disable-conf-theme \
     --enable-extra-features
 
 make %{?jobs:-j%jobs}
@@ -168,29 +181,44 @@ make %{?jobs:-j%jobs}
 rm -rf %{buildroot}
 %make_install
 
-%files 
+# for license notification
+mkdir -p %{buildroot}/usr/share/license
+cp -a %{_builddir}/%{buildsubdir}/COPYING %{buildroot}/usr/share/license/%{name}
+cp -a %{_builddir}/%{buildsubdir}/COPYING %{buildroot}/usr/share/license/%{name}-data
+
+#systemd setup
+mkdir -p %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants
+install -m 0644 %SOURCE2 %{buildroot}%{_libdir}/systemd/user/
+ln -s ../e17.service %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants/e17.service
+
+%files
+%manifest e17.manifest
 %defattr(-,root,root,-)
 /usr/bin/enlightenment
 /usr/bin/enlightenment_imc
 /usr/bin/enlightenment_remote
 /usr/bin/enlightenment_start
-/usr/lib/enlightenment/modules
 /usr/lib/enlightenment/preload/*
-/usr/etc/enlightenment/sysactions.conf
+%config /usr/etc/enlightenment/sysactions.conf
+/usr/lib/systemd/user/e17.service
+/usr/lib/systemd/user/core-efl.target.wants/e17.service
+/usr/share/license/%{name}
 
 %files devel
 %defattr(-,root,root,-)
 /usr/lib/pkgconfig/enlightenment.pc
 /usr/include/enlightenment/*.h
 
-%files data 
+%files data
+%manifest e17-data.manifest
 %defattr(-,root,root,-)
-/usr/share/enlightenment/data/themes
-
+/etc/smack/accesses.d/e17.efl
+/usr/share/license/%{name}-data
 %exclude /usr/etc/xdg/*
 %exclude /usr/lib/enlightenment/utils/*
 %exclude /usr/share/enlightenment/AUTHORS
 %exclude /usr/share/enlightenment/COPYING
+%exclude /usr/share/enlightenment/data/themes/*
 %exclude /usr/share/enlightenment/data/backgrounds/*
 %exclude /usr/share/enlightenment/data/config/*
 %exclude /usr/share/enlightenment/data/icons/*
@@ -198,4 +226,11 @@ rm -rf %{buildroot}
 %exclude /usr/share/enlightenment/data/input_methods/*
 %exclude /usr/share/locale/*
 %exclude /usr/share/xsessions/*
+%exclude /usr/share/applications/enlightenment_filemanager.desktop
+%exclude /usr/share/enlightenment/data/flags/*
+%exclude /usr/share/enlightenment/data/favorites/*
+%exclude /usr/share/enlightenment/data/favorites/.order
+%exclude /usr/bin/enlightenment_open
+%exclude /usr/bin/enlightenment_filemanager
 
+%define _unpackaged_files_terminate_build 0

@@ -4,8 +4,7 @@ MODULE = comp
 # data files for the module
 filesdir = $(libdir)/enlightenment/modules/$(MODULE)
 files_DATA = \
-e-module-$(MODULE).edj module.desktop \
-shadow.edj
+e-module-$(MODULE).edj module.desktop
 
 EXTRA_DIST = $(files_DATA)
 
@@ -36,8 +35,6 @@ module_la_SOURCES += e_mod_comp_wl.h \
                      e_mod_comp_wl.c \
                      e_mod_comp_wl_comp.h \
                      e_mod_comp_wl_comp.c \
-                     e_mod_comp_wl_shm.h \
-                     e_mod_comp_wl_shm.c \
                      e_mod_comp_wl_output.h \
                      e_mod_comp_wl_output.c \
                      e_mod_comp_wl_input.h \
@@ -47,7 +44,9 @@ module_la_SOURCES += e_mod_comp_wl.h \
                      e_mod_comp_wl_surface.h \
                      e_mod_comp_wl_surface.c \
                      e_mod_comp_wl_buffer.h \
-                     e_mod_comp_wl_buffer.c
+                     e_mod_comp_wl_buffer.c \
+                     e_mod_comp_wl_region.h \
+                     e_mod_comp_wl_region.c
 endif
 
 module_la_LIBADD       = @e_libs@ @dlopen_libs@ @WAYLAND_LIBS@

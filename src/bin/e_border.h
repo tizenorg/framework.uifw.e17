@@ -50,21 +50,29 @@ typedef enum _E_Focus_Setting
    E_FOCUS_NEW_DIALOG_IF_OWNER_FOCUSED,
 #ifdef _F_FOCUS_WINDOW_IF_TOP_STACK_
    E_FOCUS_NEW_WINDOW_IF_TOP_STACK
-#endif   
+#endif
 } E_Focus_Setting;
 
 typedef enum _E_Maximize
 {
-   E_MAXIMIZE_NONE       = 0x00000000,
+   E_MAXIMIZE_NONE = 0x00000000,
    E_MAXIMIZE_FULLSCREEN = 0x00000001,
-   E_MAXIMIZE_SMART      = 0x00000002,
-   E_MAXIMIZE_EXPAND     = 0x00000003,
-   E_MAXIMIZE_FILL       = 0x00000004,
-   E_MAXIMIZE_TYPE       = 0x0000000f,
-   E_MAXIMIZE_VERTICAL   = 0x00000010,
+   E_MAXIMIZE_SMART = 0x00000002,
+   E_MAXIMIZE_EXPAND = 0x00000003,
+   E_MAXIMIZE_FILL = 0x00000004,
+   E_MAXIMIZE_TYPE = 0x0000000f,
+   E_MAXIMIZE_VERTICAL = 0x00000010,
    E_MAXIMIZE_HORIZONTAL = 0x00000020,
-   E_MAXIMIZE_BOTH       = 0x00000030,
-   E_MAXIMIZE_DIRECTION  = 0x000000f0
+   E_MAXIMIZE_BOTH = 0x00000030,
+   E_MAXIMIZE_LEFT = 0x00000070,
+   E_MAXIMIZE_RIGHT = 0x000000b0,
+#ifdef _F_USE_BOTTOM_TOP_MAXIMIZE
+   E_MAXIMIZE_BOTTOM = 0x00000130,
+   E_MAXIMIZE_TOP = 0x00000230,
+   E_MAXIMIZE_DIRECTION = 0x00000ff0
+#else
+   E_MAXIMIZE_DIRECTION = 0x000000f0
+#endif
 } E_Maximize;
 
 typedef enum _E_Fullscreen
@@ -101,8 +109,39 @@ typedef enum _E_Border_Hook_Point
    E_BORDER_HOOK_MOVE_END,
    E_BORDER_HOOK_RESIZE_BEGIN,
    E_BORDER_HOOK_RESIZE_UPDATE,
-   E_BORDER_HOOK_RESIZE_END
+   E_BORDER_HOOK_RESIZE_END,
+#ifdef _F_BORDER_HOOK_PATCH_
+   E_BORDER_HOOK_DEL_BORDER,
+#endif
+#ifdef _F_USE_TILED_DESK_LAYOUT_
+   E_BORDER_HOOK_DESKTOP_LAYOUT_PRE_SHOW_SET,
+   E_BORDER_HOOK_DESKTOP_LAYOUT_PRE_HIDE_SET,
+#endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+#ifdef _F_E_WIN_AUX_HINT_
+   E_BORDER_HOOK_AUX_HINT_EVAL,
+#endif /* end of _F_E_WIN_AUX_HINT_ */
+#ifdef _F_BORDER_HOOK_PATCH_
+   E_BORDER_HOOK_POST_NEW_BORDER,
+#endif
 } E_Border_Hook_Point;
+
+#ifdef _F_ZONE_WINDOW_ROTATION_
+typedef enum _E_Virtual_Keyboard_Window_Type
+{
+   E_VIRTUAL_KEYBOARD_WINDOW_TYPE_NONE = 0,
+   E_VIRTUAL_KEYBOARD_WINDOW_TYPE_KEYPAD = 1,
+   E_VIRTUAL_KEYBOARD_WINDOW_TYPE_PREDICTION = 2,
+   E_VIRTUAL_KEYBOARD_WINDOW_TYPE_MAGNIFIER = 3,
+   E_VIRTUAL_KEYBOARD_WINDOW_TYPE_POPUP = 4,
+} E_Virtual_Keyboard_Window_Type;
+
+typedef enum _E_Border_Rotation_Type
+{
+   E_BORDER_ROTATION_TYPE_NORMAL = 0,
+   E_BORDER_ROTATION_TYPE_DEPENDENT = 1,
+   E_BORDER_ROTATION_TYPE_DESK_LAYOUT = 2
+} E_Border_Rotation_Type;
+#endif
 
 typedef struct _E_Border                     E_Border;
 typedef struct _E_Border_Pending_Move_Resize E_Border_Pending_Move_Resize;
@@ -122,114 +161,144 @@ typedef struct _E_Event_Border_Desk_Set      E_Event_Border_Desk_Set;
 typedef struct _E_Event_Border_Stack         E_Event_Border_Stack;
 typedef struct _E_Event_Border_Simple        E_Event_Border_Icon_Change;
 typedef struct _E_Event_Border_Simple        E_Event_Border_Urgent_Change;
-typedef struct _E_Event_Border_Simple	       E_Event_Border_Focus_In;
+typedef struct _E_Event_Border_Simple        E_Event_Border_Focus_In;
 typedef struct _E_Event_Border_Simple        E_Event_Border_Focus_Out;
 typedef struct _E_Event_Border_Simple        E_Event_Border_Property;
 typedef struct _E_Event_Border_Simple        E_Event_Border_Fullscreen;
 typedef struct _E_Event_Border_Simple        E_Event_Border_Unfullscreen;
+#ifdef _F_ZONE_WINDOW_ROTATION_
+typedef struct _E_Event_Border_Simple        E_Event_Border_Rotation; /* deprecated */
+typedef struct _E_Event_Border_Simple        E_Event_Border_Rotation_Change_Begin;
+typedef struct _E_Event_Border_Simple        E_Event_Border_Rotation_Change_Cancel;
+typedef struct _E_Event_Border_Simple        E_Event_Border_Rotation_Change_End;
+#endif
+#ifdef _F_USE_TILED_DESK_LAYOUT_
+typedef struct _E_Event_Border_Desk_Layout   E_Event_Border_Desk_Layout_Set_Begin;
+typedef struct _E_Event_Border_Desk_Layout   E_Event_Border_Desk_Layout_Set_Cancel;
+typedef struct _E_Event_Border_Desk_Layout   E_Event_Border_Desk_Layout_Set_End;
+#endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+#ifdef _F_E_WIN_AUX_HINT_
+typedef struct _E_Border_Aux_Hint            E_Border_Aux_Hint;
+#endif /* end of _F_E_WIN_AUX_HINT_ */
+#ifdef _F_DEICONIFY_APPROVE_
+typedef struct _E_Event_Border_Simple        E_Event_Border_Force_Render_Done;
+#endif
 
+typedef void                               (*E_Border_Move_Intercept_Cb)(E_Border *, int x, int y);
 #else
 #ifndef E_BORDER_H
 #define E_BORDER_H
 
-#define E_BORDER_TYPE (int) 0xE0b01002
+#define E_BORDER_TYPE (int)0xE0b01002
 
 struct _E_Border
 {
-   E_Object             e_obj_inherit;
+   E_Object e_obj_inherit;
 
-   struct {
-      struct {
+   struct
+   {
+      struct
+      {
          int x, y, w, h;
          int mx, my;
       } current, last_down[3], last_up[3];
    } mouse;
-   
-   struct {
-      struct {
+
+   struct
+   {
+      struct
+      {
          int x, y, w, h;
          int mx, my;
          int button;
       } down;
    } moveinfo;
 
-   Ecore_X_Window  win;
-   int             x, y, w, h;
-   int             ref;
-   E_Zone         *zone;
-   E_Desk         *desk;
-   Eina_List      *handlers;
+   Ecore_X_Window win;
+   int            x, y, w, h;
+   int            ref;
+   E_Zone        *zone;
+   E_Desk        *desk;
+   Eina_List     *handlers;
 
-   struct {
-      int          x, y;
-      struct {
-         int       x, y;
-         double    t;
+   struct
+   {
+      int x, y;
+      struct
+      {
+         int    x, y;
+         double t;
       } start;
    } fx;
-   
-   struct {
-      int          l, r, t, b;
+
+   struct
+   {
+      int l, r, t, b;
    } client_inset;
 
-   Ecore_Evas     *bg_ecore_evas;
-   Evas           *bg_evas;
-   Ecore_X_Window  bg_win;
-   Evas_Object    *bg_object;
-   Evas_Object    *icon_object;
-   Ecore_X_Window  event_win;
-   const char     *internal_icon;
-   const char     *internal_icon_key;
-   Eina_Bool       bg_evas_in : 1;
+   Ecore_Evas    *bg_ecore_evas;
+   Evas          *bg_evas;
+   Ecore_X_Window bg_win;
+   Evas_Object   *bg_object;
+   Evas_Object   *icon_object;
+   Ecore_X_Window event_win;
+   const char    *internal_icon;
+   const char    *internal_icon_key;
+   Eina_Bool      bg_evas_in : 1;
 
-   struct {
+   struct
+   {
       Ecore_X_Window shell_win;
       Ecore_X_Window win;
-      
-      int x, y, w, h;
-      
-      struct {
+
+      int            x, y, w, h;
+
+      struct
+      {
          unsigned char changed : 1;
          unsigned char user_selected : 1;
-         const char *name;
+         const char   *name;
       } border;
-      
-      unsigned char shaped : 1;
-      unsigned char argb : 1;
-      
+
+      unsigned char  shaped : 1;
+      unsigned char  argb : 1;
+
       /* ICCCM */
-      struct {
-	 const char *title;
-	 const char *name;
-	 const char *class;
-         const char *icon_name;
-         const char *machine;
-         int min_w, min_h;
-         int max_w, max_h;
-         int base_w, base_h;
-         int step_w, step_h;
-         int start_x, start_y;
-         double min_aspect, max_aspect;
+      struct
+      {
+         const char               *title;
+         const char               *name;
+         const char               *class;
+         const char               *icon_name;
+         const char               *machine;
+         int                       min_w, min_h;
+         int                       max_w, max_h;
+         int                       base_w, base_h;
+         int                       step_w, step_h;
+         int                       start_x, start_y;
+         double                    min_aspect, max_aspect;
          Ecore_X_Window_State_Hint initial_state;
          Ecore_X_Window_State_Hint state;
-         Ecore_X_Pixmap icon_pixmap;
-         Ecore_X_Pixmap icon_mask;
-         Ecore_X_Window icon_window;
-         Ecore_X_Window window_group;
-         Ecore_X_Window transient_for;
-         Ecore_X_Window client_leader;
-         Ecore_X_Gravity gravity;
-         const char *window_role;
-         unsigned char take_focus : 1;
-         unsigned char accepts_focus : 1;
-         unsigned char urgent : 1;
-         unsigned char delete_request : 1;
-         unsigned char request_pos : 1;
-         struct {
-            int argc;
+         Ecore_X_Pixmap            icon_pixmap;
+         Ecore_X_Pixmap            icon_mask;
+         Ecore_X_Window            icon_window;
+         Ecore_X_Window            window_group;
+         Ecore_X_Window            transient_for;
+         Ecore_X_Window            client_leader;
+         Ecore_X_Gravity           gravity;
+         const char               *window_role;
+         unsigned char             take_focus : 1;
+         unsigned char             accepts_focus : 1;
+         unsigned char             urgent : 1;
+         unsigned char             delete_request : 1;
+         unsigned char             request_pos : 1;
+         struct
+         {
+            int    argc;
             char **argv;
          } command;
-         struct {
+         struct
+         {
             unsigned char title : 1;
             unsigned char name_class : 1;
             unsigned char icon_name : 1;
@@ -243,30 +312,41 @@ struct _E_Border
             unsigned char state : 1;
             unsigned char command : 1;
          } fetch;
+#ifdef _F_MOVE_RESIZE_SEND_PATCH_
+         struct
+         {
+            unsigned char need_send : 1;
+            int           x, y, w, h;
+         } move_resize_send;
+#endif
       } icccm;
 
       /* MWM */
-      struct {
-         Ecore_X_MWM_Hint_Func func;
+      struct
+      {
+         Ecore_X_MWM_Hint_Func  func;
          Ecore_X_MWM_Hint_Decor decor;
          Ecore_X_MWM_Hint_Input input;
-         unsigned char exists : 1;
-         unsigned char borderless : 1;
-         struct {
+         unsigned char          exists : 1;
+         unsigned char          borderless : 1;
+         struct
+         {
             unsigned char hints : 1;
          } fetch;
       } mwm;
 
-     /* NetWM */
-      struct {
+      /* NetWM */
+      struct
+      {
          pid_t         pid;
          unsigned int  desktop;
-         const char         *name;
-         const char         *icon_name;
+         const char   *name;
+         const char   *icon_name;
          Ecore_X_Icon *icons;
          int           num_icons;
          unsigned int  user_time;
-         struct {
+         struct
+         {
             int left;
             int right;
             int top;
@@ -281,7 +361,8 @@ struct _E_Border
             int bottom_end_x;
          } strut;
          unsigned char ping : 1;
-         struct {
+         struct
+         {
             unsigned char        request : 1;
             unsigned int         wait;
             Ecore_X_Sync_Alarm   alarm;
@@ -291,7 +372,8 @@ struct _E_Border
          } sync;
 
          /* NetWM Window state */
-         struct {
+         struct
+         {
             unsigned char modal : 1;
             unsigned char sticky : 1;
             unsigned char maximized_v : 1;
@@ -305,7 +387,8 @@ struct _E_Border
          } state;
 
          /* NetWM Window allowed actions */
-         struct {
+         struct
+         {
             unsigned char move : 1;
             unsigned char resize : 1;
             unsigned char minimize : 1;
@@ -317,13 +400,14 @@ struct _E_Border
             unsigned char change_desktop : 1;
             unsigned char close : 1;
          } action;
-         
-         Ecore_X_Window_Type type;
-         Ecore_X_Window_Type *extra_types;
-         int extra_types_num;
-         int startup_id;
 
-         struct {
+         Ecore_X_Window_Type  type;
+         Ecore_X_Window_Type *extra_types;
+         int                  extra_types_num;
+         int                  startup_id;
+
+         struct
+         {
             unsigned char name : 1;
             unsigned char icon_name : 1;
             unsigned char icon : 1;
@@ -332,236 +416,368 @@ struct _E_Border
             unsigned char type : 1;
             unsigned char state : 1;
             /* No, fetch on new_client, shouldn't be changed after map.
-            unsigned char pid : 1;
-            */
+               unsigned char pid : 1;
+             */
             /* No, ignore this
-            unsigned char desktop : 1;
-            */
+               unsigned char desktop : 1;
+             */
          } fetch;
 
-         struct {
+         struct
+         {
             unsigned char state : 1;
          } update;
       } netwm;
 
       /* Extra e stuff */
-      struct {
-         struct {
-            struct {
-               int x, y;
+      struct
+      {
+         struct
+         {
+            struct
+            {
+               int           x, y;
 
                unsigned char updated : 1;
             } video_position;
             Ecore_X_Window video_parent;
-            E_Border *video_parent_border;
-            Eina_List *video_child;
-            const char *profile;
-            Eina_List *profiles;
+            E_Border      *video_parent_border;
+            Eina_List     *video_child;
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+            const char    *profile;
+            Eina_List     *profiles;
+#endif
 
-            unsigned char centered : 1;
-            unsigned char video : 1;
-            unsigned char profile_list : 1;
+            unsigned char  centered : 1;
+            unsigned char  video : 1;
+#ifdef _F_DEICONIFY_APPROVE_
+            struct
+            {
+               unsigned char support : 1;
+               unsigned char need_send : 1;
+               unsigned char render_done : 1;
+               unsigned char not_raise : 1;
+               unsigned char pending : 1;
+               unsigned char render_only : 1;
+               unsigned char defer_deiconify : 1;
+               Ecore_Timer *wait_timer;
+               Eina_List *req_list;
+               E_Border *ancestor;
+               Eina_List *pending_list;
+            } deiconify_approve;
+
+            struct
+            {
+               struct
+               {
+                  unsigned char pending;
+                  Ecore_X_Window win;
+                  Ecore_X_Window event_win;
+               } destroy;
+               struct
+               {
+                  unsigned char pending;
+                  Ecore_X_Window win;
+                  Ecore_X_Window event_win;
+                  Eina_Bool send_event;
+               } hide;
+               struct
+               {
+                  unsigned char pending;
+                  Ecore_X_Window win;
+                  Ecore_X_Window parent_win;
+                  Ecore_X_Window above_win;
+                  Ecore_X_Window_Stack_Mode detail;
+                  unsigned long value_mask;
+               } lower;
+               unsigned char done : 1;  // pending done or not
+               unsigned char pending: 1; // currently pending
+               Eina_List *wait_for_list;
+            } pending_event;
+#endif
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+            unsigned char  profile_list : 1;
+#endif
+#ifdef _F_ZONE_WINDOW_ROTATION_
+            struct
+            {
+               E_Border_Rotation_Type type;
+               struct
+               {
+                  int        prev, curr, next, reserve;
+               } ang;
+               struct
+               {
+                  int        x, y, w, h;
+               } geom[4];
+               unsigned char support : 1;
+               unsigned char geom_hint: 1;
+               unsigned char pending_change_request : 1;
+               unsigned char pending_show : 1;  // newly created window that has to be rotated will be show after rotating done.
+                                                // so, it will be used pending e_border_show called at main eval time.
+               unsigned char wait_for_done: 1;
+               // added for the window manager rotation protocol
+               unsigned char app_set : 1;    // v1: app wants to communicate with the window manager
+               int           rot;            // v1: decided rotation by the window manager
+               int           preferred_rot;  // v1: app specified rotation
+               int          *available_rots; // v1: app specified available rotations
+               unsigned int  count;          // v1: number of elements of available rotations
+            } rot;
+#endif
+#ifdef _F_USE_TILED_DESK_LAYOUT_
+            struct
+            {
+               unsigned char  support : 1;
+               unsigned char  changing : 1;
+               E_Desk_Layout *curr_ly;
+               E_Desk_Layout *prev_ly;
+            } ly;
+#endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+#ifdef _F_E_WIN_AUX_HINT_
+            struct
+            {
+               unsigned char support : 1;
+               Eina_List    *hints;
+            } aux_hint;
+#endif /* end of _F_E_WIN_AUX_HINT_ */
          } state;
 
-         struct {
+         struct
+         {
             unsigned char state : 1;
             unsigned char video_parent : 1;
             unsigned char video_position : 1;
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
             unsigned char profile_list : 1;
+#endif
+#ifdef _F_ZONE_WINDOW_ROTATION_
+            struct
+            {
+               unsigned char support : 1;
+               unsigned char geom_hint : 1;
+               // added for the window manager rotation protocol
+               unsigned char app_set : 1;        // v1: app wants to communicate with the window manager
+               unsigned char preferred_rot : 1;  // v1: app specified rotation
+               unsigned char available_rots : 1; // v1: app specified available rotations
+               unsigned char need_rotation : 1;
+            } rot;
+#endif
+#ifdef _F_USE_TILED_DESK_LAYOUT_
+            struct
+            {
+               unsigned char support : 1;
+            } ly;
+#endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+#ifdef _F_E_WIN_AUX_HINT_
+            struct
+            {
+               unsigned char support : 1;
+               unsigned char hints : 1;
+            } aux_hint;
+#endif /* end of _F_E_WIN_AUX_HINT_ */
          } fetch;
       } e;
-      
-      struct {
-         struct {
+
+      struct
+      {
+         struct
+         {
             unsigned char soft_menu : 1;
             unsigned char soft_menus : 1;
          } fetch;
-         
+
          unsigned char soft_menu : 1;
          unsigned char soft_menus : 1;
       } qtopia;
-      
-      struct {
-         struct {
+
+      struct
+      {
+         struct
+         {
             unsigned char state : 1;
             unsigned char vkbd : 1;
          } fetch;
          Ecore_X_Virtual_Keyboard_State state;
-         unsigned char vkbd : 1;
+         unsigned char                  vkbd : 1;
+#ifdef _F_ZONE_WINDOW_ROTATION_
+         E_Virtual_Keyboard_Window_Type win_type;
+#endif
       } vkbd;
 
-      struct 
-        {
-           struct 
-             {
-                struct 
-                  {
-                     unsigned char conformant : 1;
-                  } fetch;
-                unsigned char conformant : 1;
-             } conformant;
-           struct 
-             {
-                struct 
-                  {
-                     unsigned char state : 1;
-                     struct 
-                       {
-                          unsigned int major : 1;
-                          unsigned int minor : 1;
-                       } priority;
-                     unsigned char quickpanel : 1;
-                     unsigned char zone : 1;
-                  } fetch;
-                Ecore_X_Illume_Quickpanel_State state;
-                struct 
-                  {
-                     unsigned int major : 1;
-                     unsigned int minor : 1;
-                  } priority;
-                unsigned char quickpanel : 1;
-                int zone;
-             } quickpanel;
-           struct 
-             {
-                struct 
-                  {
-                     unsigned char drag : 1;
-                     unsigned char locked : 1;
-                  } fetch;
-                unsigned char drag : 1;
-                unsigned char locked : 1;
-             } drag;
-           struct
-             {
-                unsigned int state;
-                unsigned int need_change : 1;
-                int          angle;
-                struct
-                  {
-                     unsigned char down : 1;
-                     unsigned char locked : 1;
-                     unsigned char resize : 1;
-                     int           x, y, dx, dy, sx, sy;
-                     int           w, h;
-                  } mouse;
-               Eina_List *handlers;
-             } win_state;
-        } illume;
+      struct
+      {
+         struct
+         {
+            struct
+            {
+               unsigned char conformant : 1;
+            } fetch;
+            unsigned char conformant : 1;
+         } conformant;
+         struct
+         {
+            struct
+            {
+               unsigned char state : 1;
+               struct
+               {
+                  unsigned int major : 1;
+                  unsigned int minor : 1;
+               } priority;
+               unsigned char quickpanel : 1;
+               unsigned char zone : 1;
+            } fetch;
+            Ecore_X_Illume_Quickpanel_State state;
+            struct
+            {
+               unsigned int major : 1;
+               unsigned int minor : 1;
+            } priority;
+            unsigned char                   quickpanel : 1;
+            int                             zone;
+         } quickpanel;
+         struct
+         {
+            struct
+            {
+               unsigned char drag : 1;
+               unsigned char locked : 1;
+            } fetch;
+            unsigned char drag : 1;
+            unsigned char locked : 1;
+         } drag;
+         struct
+         {
+            struct
+            {
+               unsigned char state : 1;
+            } fetch;
+            Ecore_X_Illume_Window_State state;
+         } win_state;
+      } illume;
 
       Ecore_X_Window_Attributes initial_attributes;
    } client;
-   
+
    E_Container_Shape *shape;
-   
-   unsigned int    visible : 1;
-   unsigned int    await_hide_event;
-   unsigned int    moving : 1;
-   unsigned int    focused : 1;
-   unsigned int    new_client : 1;
-   unsigned int    re_manage : 1;
-   unsigned int    placed : 1;
-   unsigned int    shading : 1;
-   unsigned int    shaded : 1;
-   unsigned int    iconic : 1;
-   unsigned int    deskshow : 1;
-   unsigned int    sticky : 1;
-   unsigned int    shaped : 1;
-   unsigned int    shaped_input : 1;
-   unsigned int    need_shape_merge : 1;
-   unsigned int    need_shape_export : 1;
-   unsigned int    fullscreen : 1;
-   unsigned int    need_fullscreen : 1;
-   unsigned int    already_unparented : 1;
-   unsigned int    need_reparent : 1;
-   unsigned int    button_grabbed : 1;
-   unsigned int    delete_requested : 1;
-   unsigned int    ping_ok : 1;
-   unsigned int    hung : 1;
-   unsigned int    take_focus : 1;
-   unsigned int    want_focus : 1;
-   unsigned int    user_skip_winlist : 1;
-   unsigned int    need_maximize : 1;
-   E_Maximize      maximized;
-   unsigned int    borderless : 1;
-   unsigned char   offer_resistance : 1;
-   const char     *bordername;
 
-   unsigned int    lock_user_location : 1; /*DONE*/
-   unsigned int    lock_client_location : 1; /*DONE*/
-   unsigned int    lock_user_size : 1; /*DONE*/
-   unsigned int    lock_client_size : 1; /*DONE*/
-   unsigned int    lock_user_stacking : 1; /*DONE*/
-   unsigned int    lock_client_stacking : 1; /*DONE*/
-   unsigned int    lock_user_iconify : 1; /*DONE*/
-   unsigned int    lock_client_iconify : 1; /*DONE*/
-   unsigned int    lock_user_desk : 1;
-   unsigned int    lock_client_desk : 1;
-   unsigned int    lock_user_sticky : 1; /*DONE*/
-   unsigned int    lock_client_sticky : 1; /*DONE*/
-   unsigned int    lock_user_shade : 1; /*DONE*/
-   unsigned int    lock_client_shade : 1; /*DONE*/
-   unsigned int    lock_user_maximize : 1; /*DONE*/
-   unsigned int    lock_client_maximize : 1; /*DONE*/
-   unsigned int    lock_user_fullscreen : 1; /*DONE*/
-   unsigned int    lock_client_fullscreen : 1; /*DONE*/
-   unsigned int    lock_border : 1; /*DONE*/
-   unsigned int    lock_close : 1; /*DONE*/
-   unsigned int    lock_focus_in : 1; /*DONE*/
-   unsigned int    lock_focus_out : 1; /*DONE*/
-   unsigned int    lock_life : 1; /*DONE*/
+   unsigned int       visible : 1;
+   Eina_Bool          hidden : 1; // set when window has been hidden by api and should not be shown
+   unsigned int       await_hide_event;
+   unsigned int       moving : 1;
+   unsigned int       focused : 1;
+   unsigned int       new_client : 1;
+   unsigned int       re_manage : 1;
+   unsigned int       placed : 1;
+   unsigned int       shading : 1;
+   unsigned int       shaded : 1;
+   unsigned int       iconic : 1;
+   unsigned int       deskshow : 1;
+   unsigned int       sticky : 1;
+   unsigned int       shaped : 1;
+   unsigned int       shaped_input : 1;
+   unsigned int       need_shape_merge : 1;
+   unsigned int       need_shape_export : 1;
+   unsigned int       fullscreen : 1;
+   unsigned int       need_fullscreen : 1;
+   unsigned int       already_unparented : 1;
+   unsigned int       need_reparent : 1;
+   unsigned int       button_grabbed : 1;
+   unsigned int       delete_requested : 1;
+   unsigned int       ping_ok : 1;
+   unsigned int       hung : 1;
+   unsigned int       take_focus : 1;
+   unsigned int       want_focus : 1;
+   unsigned int       user_skip_winlist : 1;
+   unsigned int       need_maximize : 1;
+   E_Maximize         maximized;
+   E_Fullscreen       fullscreen_policy;
+   unsigned int       borderless : 1;
+   unsigned char      offer_resistance : 1;
+   const char        *bordername;
 
-   unsigned int    internal : 1;
-   unsigned int    internal_no_remember : 1;
-   unsigned int    stolen : 1;
-   
-   Ecore_Evas     *internal_ecore_evas;
-   
-   double          ping;
- 
-   unsigned char   changed : 1;
-  
-   unsigned char   icon_preference; 
-   unsigned char   ignore_first_unmap;
-   unsigned char   resize_mode;
-   
-   struct {
-      int x, y, w, h;
+   unsigned int       lock_user_location : 1; /*DONE*/
+   unsigned int       lock_client_location : 1; /*DONE*/
+   unsigned int       lock_user_size : 1; /*DONE*/
+   unsigned int       lock_client_size : 1; /*DONE*/
+   unsigned int       lock_user_stacking : 1; /*DONE*/
+   unsigned int       lock_client_stacking : 1; /*DONE*/
+   unsigned int       lock_user_iconify : 1; /*DONE*/
+   unsigned int       lock_client_iconify : 1; /*DONE*/
+   unsigned int       lock_user_desk : 1;
+   unsigned int       lock_client_desk : 1;
+   unsigned int       lock_user_sticky : 1; /*DONE*/
+   unsigned int       lock_client_sticky : 1; /*DONE*/
+   unsigned int       lock_user_shade : 1; /*DONE*/
+   unsigned int       lock_client_shade : 1; /*DONE*/
+   unsigned int       lock_user_maximize : 1; /*DONE*/
+   unsigned int       lock_client_maximize : 1; /*DONE*/
+   unsigned int       lock_user_fullscreen : 1; /*DONE*/
+   unsigned int       lock_client_fullscreen : 1; /*DONE*/
+   unsigned int       lock_border : 1; /*DONE*/
+   unsigned int       lock_close : 1; /*DONE*/
+   unsigned int       lock_focus_in : 1; /*DONE*/
+   unsigned int       lock_focus_out : 1; /*DONE*/
+   unsigned int       lock_life : 1; /*DONE*/
+
+   unsigned int       internal : 1;
+   unsigned int       internal_no_remember : 1;
+   unsigned int       stolen : 1;
+
+   Ecore_Evas        *internal_ecore_evas;
+
+   double             ping;
+
+   unsigned char      changed : 1;
+
+   unsigned char      icon_preference;
+   unsigned char      ignore_first_unmap;
+   unsigned char      resize_mode;
+
+   struct
+   {
+      int          x, y, w, h;
       unsigned int layer;
-      int zone;
-	  E_Maximize maximized;
+      int          zone;
+      E_Maximize   maximized;
+      unsigned int event_mask;
    } saved;
 
-   struct {
+   struct
+   {
       unsigned char valid : 1;
-      int x, y, w, h;
-      struct {
-	        int x, y, w, h;
+      int           x, y, w, h;
+      struct
+      {
+         int x, y, w, h;
       } saved;
    } pre_res_change;
-   
-   struct {
-      double start;
-      double val;
-      int x, y;
-      E_Direction dir;
+
+   struct
+   {
+      double          start;
+      double          val;
+      int             x, y;
+      E_Direction     dir;
       Ecore_Animator *anim;
    } shade;
-   
-   struct {
+
+   struct
+   {
       int x, y;
       int modified;
    } shelf_fix;
 
-   Eina_List *stick_desks;
-   E_Menu *border_menu;
+   Eina_List       *stick_desks;
+   E_Menu          *border_menu;
    E_Config_Dialog *border_locks_dialog;
    E_Config_Dialog *border_remember_dialog;
    E_Config_Dialog *border_border_dialog;
-   E_Dialog *border_prop_dialog;
-   Eina_List *pending_move_resize;
-   
-   struct {
+   E_Dialog        *border_prop_dialog;
+   Eina_List       *pending_move_resize;
+
+   struct
+   {
       unsigned char visible : 1;
       unsigned char pos : 1;
       unsigned char size : 1;
@@ -574,49 +790,79 @@ struct _E_Border
       unsigned char shape : 1;
       unsigned char shape_input : 1;
       unsigned char icon : 1;
+#ifdef _F_ZONE_WINDOW_ROTATION_
+      unsigned char rotation : 1;
+#endif
+#ifdef _F_E_WIN_AUX_HINT_
+      unsigned char aux_hint : 1;
+#endif /* end of _F_E_WIN_AUX_HINT_ */
    } changes;
 
-   struct {
+   struct
+   {
       unsigned char start : 1;
-      int x, y;
+      int           x, y;
    } drag;
 
-   unsigned int layer;
-   E_Action *cur_mouse_action;
-   Ecore_Timer *raise_timer;
-   Ecore_Poller *ping_poller;
-   Ecore_Timer *kill_timer;
-   int shape_rects_num;
-   Ecore_X_Rectangle *shape_rects;
-   E_Remember *remember;
+   unsigned int               layer;
+   E_Action                  *cur_mouse_action;
+   Ecore_Timer               *raise_timer;
+   Ecore_Poller              *ping_poller;
+   Ecore_Timer               *kill_timer;
+   E_Border_Move_Intercept_Cb move_intercept_cb;
+   int                        shape_rects_num;
+   Ecore_X_Rectangle         *shape_rects;
+   E_Remember                *remember;
 
-   E_Border *modal;
+   E_Border                  *modal;
 
-   E_Border  *leader;
-   Eina_List *group;
+   E_Border                  *leader;
+   Eina_List                 *group;
 
-   E_Border  *parent;
-   Eina_List *transients;
+   E_Border                  *parent;
+   Eina_List                 *transients;
 
-   Efreet_Desktop *desktop;
-   E_Pointer *pointer;
+   Efreet_Desktop            *desktop;
+   E_Pointer                 *pointer;
 
-   unsigned char comp_hidden   : 1;
-   
-   unsigned char post_move   : 1;
-   unsigned char post_resize : 1;
-   unsigned char post_show : 1;
-   
-   Ecore_Idle_Enterer *post_job;
+   unsigned char              comp_hidden   : 1;
 
-   Eina_Bool argb;
-   
-   int tmp_input_hidden;
+   unsigned char              post_move   : 1;
+   unsigned char              post_resize : 1;
+   unsigned char              post_show : 1;
+
+   Ecore_Idle_Enterer        *post_job;
+
+   Eina_Bool                  argb;
+
+#ifdef _F_USE_WM_VISIBILITY_
+   int                        visibility;
+#endif
+
+   int                        tmp_input_hidden;
+
+#ifdef _F_USE_TILED_DESK_LAYOUT_
+   struct
+   {
+      int first; // new launch or re-launch
+      int launch_by; // split-launcher, taskmanager, other
+      int launch_to; // top, bottom pos, -1:no consider
+   } launch_info;
+#endif
+
+#ifdef _F_USE_ICONIFY_RESIZE_
+   struct
+   {
+      unsigned char support;
+      unsigned char set;
+      int           w, h;
+   } iconify_resize;
+#endif
 };
 
-struct _E_Border_Pending_Move_Resize 
+struct _E_Border_Pending_Move_Resize
 {
-   int x, y, w, h;
+   int           x, y, w, h;
    unsigned char move : 1;
    unsigned char resize : 1;
    unsigned char without_border : 1;
@@ -625,10 +871,10 @@ struct _E_Border_Pending_Move_Resize
 
 struct _E_Border_Hook
 {
-   E_Border_Hook_Point   hookpoint;
-   void                (*func) (void *data, void *bd);
-   void                 *data;
-   unsigned char         delete_me : 1;
+   E_Border_Hook_Point hookpoint;
+   void                (*func)(void *data, void *bd);
+   void               *data;
+   unsigned char       delete_me : 1;
 };
 
 struct _E_Event_Border_Simple
@@ -650,110 +896,160 @@ struct _E_Event_Border_Desk_Set
 
 struct _E_Event_Border_Stack
 {
-   E_Border *border, *stack;
+   E_Border  *border, *stack;
    E_Stacking type;
 };
 
-EINTERN int       e_border_init(void);
-EINTERN int       e_border_shutdown(void);
+#ifdef _F_USE_TILED_DESK_LAYOUT_
+struct _E_Event_Border_Desk_Layout
+{
+   E_Border *border;
+   int       show;
+};
+#endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
 
-EAPI E_Border *e_border_new(E_Container *con, Ecore_X_Window win, int first_map, int internal);
-EAPI void      e_border_free(E_Border *bd);
-EAPI void      e_border_ref(E_Border *bd);
-EAPI void      e_border_unref(E_Border *bd);
-EAPI void      e_border_res_change_geometry_save(E_Border *bd);
-EAPI void      e_border_res_change_geometry_restore(E_Border *bd);
-    
-EAPI void      e_border_zone_set(E_Border *bd, E_Zone *zone);
-EAPI void      e_border_desk_set(E_Border *bd, E_Desk *desk);
-EAPI void      e_border_show(E_Border *bd);
-EAPI void      e_border_hide(E_Border *bd, int manage);
-EAPI void      e_border_move(E_Border *bd, int x, int y);
-EAPI void      e_border_move_without_border(E_Border *bd, int x, int y);
-EAPI void      e_border_center(E_Border *bd);
-EAPI void      e_border_center_pos_get(E_Border *bd, int *x, int *y);
-EAPI void      e_border_fx_offset(E_Border *bd, int x, int y);
-EAPI void      e_border_resize(E_Border *bd, int w, int h);
-EAPI void      e_border_resize_without_border(E_Border *bd, int w, int h);
-EAPI void      e_border_move_resize(E_Border *bd, int x, int y, int w, int h);
-EAPI void      e_border_move_resize_without_border(E_Border *bd, int x, int y, int w, int h);
-EAPI void      e_border_layer_set(E_Border *bd, int layer);
-EAPI void      e_border_raise(E_Border *bd);
-EAPI void      e_border_lower(E_Border *bd);
-EAPI void      e_border_stack_above(E_Border *bd, E_Border *above);
-EAPI void      e_border_stack_below(E_Border *bd, E_Border *below);
-EAPI void      e_border_focus_latest_set(E_Border *bd);
-EAPI void      e_border_raise_latest_set(E_Border *bd);
-EAPI void      e_border_focus_set_with_pointer(E_Border *bd);
-EAPI void      e_border_focus_set(E_Border *bd, int focus, int set);
-EAPI void      e_border_shade(E_Border *bd, E_Direction dir);
-EAPI void      e_border_unshade(E_Border *bd, E_Direction dir);
-EAPI void      e_border_maximize(E_Border *bd, E_Maximize max);
-EAPI void      e_border_unmaximize(E_Border *bd, E_Maximize max);
-EAPI void      e_border_fullscreen(E_Border *bd, E_Fullscreen policy);
-EAPI void      e_border_unfullscreen(E_Border *bd);
-EAPI void      e_border_iconify(E_Border *bd);
-EAPI void      e_border_uniconify(E_Border *bd);
-EAPI void      e_border_stick(E_Border *bd);
-EAPI void      e_border_unstick(E_Border *bd);
-EAPI void      e_border_pinned_set(E_Border *bd, int set);
+#ifdef _F_E_WIN_AUX_HINT_
+struct _E_Border_Aux_Hint
+{
+   unsigned int  id;
+   const char   *hint;
+   const char   *val;
+   unsigned char changed : 1;
+   unsigned char replied : 1;
+   unsigned char deleted : 1;
+};
+#endif /* end of _F_E_WIN_AUX_HINT_ */
 
-EAPI E_Border *e_border_find_by_client_window(Ecore_X_Window win);
-EAPI E_Border *e_border_find_all_by_client_window(Ecore_X_Window win);
-EAPI E_Border *e_border_find_by_frame_window(Ecore_X_Window win);
-EAPI E_Border *e_border_find_by_window(Ecore_X_Window win);
-EAPI E_Border *e_border_find_by_alarm(Ecore_X_Sync_Alarm alarm);
-EAPI E_Border *e_border_focused_get(void);
+EINTERN int         e_border_init(void);
+EINTERN int         e_border_shutdown(void);
 
-EAPI void      e_border_idler_before(void);
+EAPI E_Border      *e_border_new(E_Container *con, Ecore_X_Window win, int first_map, int internal);
+EAPI void           e_border_free(E_Border *bd);
+EAPI void           e_border_ref(E_Border *bd);
+EAPI void           e_border_unref(E_Border *bd);
+EAPI void           e_border_res_change_geometry_save(E_Border *bd);
+EAPI void           e_border_res_change_geometry_restore(E_Border *bd);
 
-EAPI Eina_List *e_border_client_list(void);
+EAPI void           e_border_zone_set(E_Border *bd, E_Zone *zone);
+EAPI void           e_border_desk_set(E_Border *bd, E_Desk *desk);
+EAPI void           e_border_show(E_Border *bd);
+EAPI void           e_border_hide(E_Border *bd, int manage);
+EAPI void           e_border_move(E_Border *bd, int x, int y);
+EAPI void           e_border_move_intercept_cb_set(E_Border *bd, E_Border_Move_Intercept_Cb cb);
+EAPI void           e_border_move_without_border(E_Border *bd, int x, int y);
+EAPI void           e_border_center(E_Border *bd);
+EAPI void           e_border_center_pos_get(E_Border *bd, int *x, int *y);
+EAPI void           e_border_fx_offset(E_Border *bd, int x, int y);
+EAPI void           e_border_resize(E_Border *bd, int w, int h);
+EAPI void           e_border_resize_without_border(E_Border *bd, int w, int h);
+EAPI void           e_border_move_resize(E_Border *bd, int x, int y, int w, int h);
+EAPI void           e_border_move_resize_without_border(E_Border *bd, int x, int y, int w, int h);
+EAPI void           e_border_layer_set(E_Border *bd, int layer);
+EAPI void           e_border_raise(E_Border *bd);
+EAPI void           e_border_lower(E_Border *bd);
+EAPI void           e_border_stack_above(E_Border *bd, E_Border *above);
+EAPI void           e_border_stack_below(E_Border *bd, E_Border *below);
+EAPI void           e_border_focus_latest_set(E_Border *bd);
+EAPI void           e_border_raise_latest_set(E_Border *bd);
+EAPI void           e_border_focus_set_with_pointer(E_Border *bd);
+EAPI void           e_border_focus_set(E_Border *bd, int focus, int set);
+EAPI void           e_border_shade(E_Border *bd, E_Direction dir);
+EAPI void           e_border_unshade(E_Border *bd, E_Direction dir);
+EAPI void           e_border_maximize(E_Border *bd, E_Maximize max);
+EAPI void           e_border_unmaximize(E_Border *bd, E_Maximize max);
+EAPI void           e_border_fullscreen(E_Border *bd, E_Fullscreen policy);
+EAPI void           e_border_unfullscreen(E_Border *bd);
+EAPI void           e_border_iconify(E_Border *bd);
+EAPI void           e_border_uniconify(E_Border *bd);
+EAPI void           e_border_stick(E_Border *bd);
+EAPI void           e_border_unstick(E_Border *bd);
+EAPI void           e_border_pinned_set(E_Border *bd, int set);
 
-EAPI void e_border_act_move_keyboard(E_Border *bd);
-EAPI void e_border_act_resize_keyboard(E_Border *bd);
+EAPI E_Border      *e_border_find_by_client_window(Ecore_X_Window win);
+EAPI E_Border      *e_border_find_all_by_client_window(Ecore_X_Window win);
+EAPI E_Border      *e_border_find_by_frame_window(Ecore_X_Window win);
+EAPI E_Border      *e_border_find_by_window(Ecore_X_Window win);
+EAPI E_Border      *e_border_find_by_alarm(Ecore_X_Sync_Alarm alarm);
+EAPI E_Border      *e_border_focused_get(void);
 
-EAPI void e_border_act_move_begin(E_Border *bd, Ecore_Event_Mouse_Button *ev);
-EAPI void e_border_act_move_end(E_Border *bd, Ecore_Event_Mouse_Button *ev);
-EAPI void e_border_act_resize_begin(E_Border *bd, Ecore_Event_Mouse_Button *ev);
-EAPI void e_border_act_resize_end(E_Border *bd, Ecore_Event_Mouse_Button *ev);
-EAPI void e_border_act_menu_begin(E_Border *bd, Ecore_Event_Mouse_Button *ev, int key);
-EAPI void e_border_act_close_begin(E_Border *bd);
-EAPI void e_border_act_kill_begin(E_Border *bd);
+EAPI void           e_border_idler_before(void);
 
-EAPI Evas_Object *e_border_icon_add(E_Border *bd, Evas *evas);
+EAPI Eina_List     *e_border_client_list(void);
 
-EAPI void e_border_button_bindings_ungrab_all(void);
-EAPI void e_border_button_bindings_grab_all(void);
+EAPI void           e_border_act_move_keyboard(E_Border *bd);
+EAPI void           e_border_act_resize_keyboard(E_Border *bd);
 
-EAPI Eina_List *e_border_focus_stack_get(void);
-EAPI Eina_List *e_border_lost_windows_get(E_Zone *zone);
+EAPI void           e_border_act_move_begin(E_Border *bd, Ecore_Event_Mouse_Button *ev);
+EAPI void           e_border_act_move_end(E_Border *bd, Ecore_Event_Mouse_Button *ev);
+EAPI void           e_border_act_resize_begin(E_Border *bd, Ecore_Event_Mouse_Button *ev);
+EAPI void           e_border_act_resize_end(E_Border *bd, Ecore_Event_Mouse_Button *ev);
+EAPI void           e_border_act_menu_begin(E_Border *bd, Ecore_Event_Mouse_Button *ev, int key);
+EAPI void           e_border_act_close_begin(E_Border *bd);
+EAPI void           e_border_act_kill_begin(E_Border *bd);
 
-EAPI void e_border_ping(E_Border *bd);
-EAPI void e_border_move_cancel(void);
-EAPI void e_border_resize_cancel(void);
-EAPI void e_border_frame_recalc(E_Border *bd);
-EAPI Eina_List *e_border_immortal_windows_get(void);
+EAPI Evas_Object   *e_border_icon_add(E_Border *bd, Evas *evas);
 
-EAPI const char *e_border_name_get(const E_Border *bd);
+EAPI void           e_border_button_bindings_ungrab_all(void);
+EAPI void           e_border_button_bindings_grab_all(void);
 
-EAPI void e_border_signal_move_begin(E_Border *bd, const char *sig, const char *src);
-EAPI void e_border_signal_move_end(E_Border *bd, const char *sig, const char *src);
-EAPI int  e_border_resizing_get(E_Border *bd);
-EAPI void e_border_signal_resize_begin(E_Border *bd, const char *dir, const char *sig, const char *src);
-EAPI void e_border_signal_resize_end(E_Border *bd, const char *dir, const char *sig, const char *src);
-EAPI void e_border_resize_limit(E_Border *bd, int *w, int *h);
+EAPI Eina_List     *e_border_focus_stack_get(void);
+EAPI Eina_List     *e_border_lost_windows_get(E_Zone *zone);
 
-EAPI E_Border_Hook *e_border_hook_add(E_Border_Hook_Point hookpoint, void (*func) (void *data, void *bd), void *data);
-EAPI void e_border_hook_del(E_Border_Hook *bh);
-EAPI void e_border_focus_track_freeze(void);
-EAPI void e_border_focus_track_thaw(void);
+EAPI void           e_border_ping(E_Border *bd);
+EAPI void           e_border_move_cancel(void);
+EAPI void           e_border_resize_cancel(void);
+EAPI void           e_border_frame_recalc(E_Border *bd);
+EAPI Eina_List     *e_border_immortal_windows_get(void);
 
-EAPI E_Border *e_border_under_pointer_get(E_Desk *desk, E_Border *exclude);
-EAPI int e_border_pointer_warp_to_center(E_Border *bd);
+EAPI const char    *e_border_name_get(const E_Border *bd);
 
-EAPI void e_border_comp_hidden_set(E_Border *bd, Eina_Bool hidden);
-EAPI void e_border_tmp_input_hidden_push(E_Border *bd);
-EAPI void e_border_tmp_input_hidden_pop(E_Border *bd);
+EAPI void           e_border_signal_move_begin(E_Border *bd, const char *sig, const char *src);
+EAPI void           e_border_signal_move_end(E_Border *bd, const char *sig, const char *src);
+EAPI int            e_border_resizing_get(E_Border *bd);
+EAPI void           e_border_signal_resize_begin(E_Border *bd, const char *dir, const char *sig, const char *src);
+EAPI void           e_border_signal_resize_end(E_Border *bd, const char *dir, const char *sig, const char *src);
+EAPI void           e_border_resize_limit(E_Border *bd, int *w, int *h);
+
+EAPI E_Border_Hook *e_border_hook_add(E_Border_Hook_Point hookpoint, void (*func)(void *data, void *bd), void *data);
+EAPI void           e_border_hook_del(E_Border_Hook *bh);
+EAPI void           e_border_focus_track_freeze(void);
+EAPI void           e_border_focus_track_thaw(void);
+
+EAPI E_Border      *e_border_under_pointer_get(E_Desk *desk, E_Border *exclude);
+EAPI int            e_border_pointer_warp_to_center(E_Border *bd);
+
+EAPI void           e_border_comp_hidden_set(E_Border *bd, Eina_Bool hidden);
+EAPI void           e_border_tmp_input_hidden_push(E_Border *bd);
+EAPI void           e_border_tmp_input_hidden_pop(E_Border *bd);
+
+EAPI void           e_border_activate(E_Border *bd, Eina_Bool just_do_it);
+
+#ifdef _F_ZONE_WINDOW_ROTATION_
+EAPI Eina_Bool      e_border_rotation_is_progress(E_Border *bd);
+EAPI Eina_Bool      e_border_rotation_is_available(E_Border *bd, int ang);
+EAPI Eina_List     *e_border_rotation_available_list_get(E_Border *bd);
+EAPI int            e_border_rotation_curr_angle_get(E_Border *bd);
+EAPI int            e_border_rotation_next_angle_get(E_Border *bd);
+EAPI int            e_border_rotation_prev_angle_get(E_Border *bd);
+EAPI int            e_border_rotation_recommend_angle_get(E_Border *bd);
+EAPI Eina_Bool      e_border_rotation_set(E_Border *bd, int rotation);
+#endif
+
+#ifdef _F_USE_TILED_DESK_LAYOUT_
+EAPI void           e_border_desk_layout_set(E_Border *bd, E_Desk_Layout *desk_ly, Eina_Bool show, Eina_Bool hook);
+#endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+
+#ifdef _F_E_WIN_AUX_HINT_
+EAPI void           e_border_aux_hint_reply_send(E_Border *bd, unsigned int id);
+EAPI void           e_border_aux_hint_info_update(E_Border *bd);
+#endif /* end of _F_E_WIN_AUX_HINT_ */
+
+#ifdef _F_DEICONIFY_APPROVE_
+EAPI void           e_border_force_render_request(E_Border *bd, Eina_Bool uniconify);
+EAPI Eina_List     *e_border_uniconify_pending_list_get(void);
+EAPI Eina_List     *e_border_uniconify_waiting_list_get(void);
+#endif /* end of _F_DEICONIFY_APPROVE_ */
+
 
 extern EAPI int E_EVENT_BORDER_RESIZE;
 extern EAPI int E_EVENT_BORDER_MOVE;
@@ -775,6 +1071,20 @@ extern EAPI int E_EVENT_BORDER_FOCUS_OUT;
 extern EAPI int E_EVENT_BORDER_PROPERTY;
 extern EAPI int E_EVENT_BORDER_FULLSCREEN;
 extern EAPI int E_EVENT_BORDER_UNFULLSCREEN;
+#ifdef _F_ZONE_WINDOW_ROTATION_
+extern EAPI int E_EVENT_BORDER_ROTATION; /* deprecated */
+extern EAPI int E_EVENT_BORDER_ROTATION_CHANGE_BEGIN;
+extern EAPI int E_EVENT_BORDER_ROTATION_CHANGE_CANCEL;
+extern EAPI int E_EVENT_BORDER_ROTATION_CHANGE_END;
+#endif
+#ifdef _F_USE_TILED_DESK_LAYOUT_
+extern EAPI int E_EVENT_BORDER_DESK_LAYOUT_SET_BEGIN;
+extern EAPI int E_EVENT_BORDER_DESK_LAYOUT_SET_CANCEL;
+extern EAPI int E_EVENT_BORDER_DESK_LAYOUT_SET_END;
+#endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+#ifdef _F_DEICONIFY_APPROVE_
+extern EAPI int E_EVENT_BORDER_FORCE_RENDER_DONE;
+#endif /* end of _F_DEICONIFY_APPROVE_ */
 
 #endif
 #endif

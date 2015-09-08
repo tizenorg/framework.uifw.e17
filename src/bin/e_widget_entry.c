@@ -27,6 +27,9 @@ static void _e_wid_keydown(void *data, Evas *e, Evas_Object *obj, void *event_in
  *
  * @param evas the evas where to add the new entry widget
  * @param text_location the location where to store the text of the entry.
+ * @param func DOCUMENT ME!
+ * @param data  DOCUMENT ME!
+ * @param data2 DOCUMENT ME!
  * The current value will be used to initialize the entry
  * @return Returns the new entry widget
  */
@@ -36,17 +39,17 @@ EAPI Evas_Object
    Evas_Object *obj, *o;
    E_Widget_Data *wd;
    Evas_Coord minw, minh;
-   
+
    obj = e_widget_add(evas);
 
    e_widget_del_hook_set(obj, _e_wid_del_hook);
    e_widget_focus_hook_set(obj, _e_wid_focus_hook);
    e_widget_disable_hook_set(obj, _e_wid_disable_hook);
-   
+
    wd = calloc(1, sizeof(E_Widget_Data));
    e_widget_data_set(obj, wd);
    wd->text_location = text_location;
-   
+
    o = e_entry_add(evas);
    wd->o_entry = o;
    evas_object_show(o);
@@ -59,7 +62,7 @@ EAPI Evas_Object
 
    if ((text_location) && (*text_location))
      e_entry_text_set(o, *text_location);
-   
+
    e_entry_size_min_get(o, &minw, &minh);
    e_widget_size_min_set(obj, minw, minh);
 
@@ -140,7 +143,7 @@ e_widget_entry_password_set(Evas_Object *entry, int password_mode)
  * allows copying and selecting, just no inserting or deleting of text.
  *
  * @param entry an entry widget
- * @param readonly 1 to enable read-only mode, 0 to turn it off
+ * @param readonly_mode 1 to enable read-only mode, 0 to turn it off
  */
 EAPI void
 e_widget_entry_readonly_set(Evas_Object *entry, int readonly_mode)
@@ -194,7 +197,7 @@ _e_wid_focus_hook(Evas_Object *obj)
 
    if (!(obj) || (!(wd = e_widget_data_get(obj))))
       return;
-   
+
    if (e_widget_focus_get(obj))
      e_entry_focus(wd->o_entry);
    else
@@ -208,7 +211,7 @@ _e_wid_disable_hook(Evas_Object *obj)
 
    if (!(obj) || (!(wd = e_widget_data_get(obj))))
       return;
-   
+
    if (e_widget_disabled_get(obj))
      e_entry_disable(wd->o_entry);
    else
@@ -225,7 +228,7 @@ static void
 _e_wid_in(void *data, Evas *e __UNUSED__, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
 {
    E_Pointer *p;
-   
+
    p = e_widget_pointer_get(data);
    if (p) e_pointer_type_push(p, data, "entry");
 }
@@ -234,7 +237,7 @@ static void
 _e_wid_out(void *data, Evas *e __UNUSED__, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
 {
    E_Pointer *p;
-   
+
    p = e_widget_pointer_get(data);
    if (p) e_pointer_type_pop(p, data, "entry");
 }
@@ -260,7 +263,7 @@ _e_wid_changed_cb(void *data, Evas_Object *obj __UNUSED__, void *event_info __UN
    if (wd->func) wd->func(wd->data, wd->data2);
 }
 
-static void 
+static void
 _e_wid_keydown(void *data, Evas *e __UNUSED__, Evas_Object *obj __UNUSED__, void *event_info)
 {
    evas_object_smart_callback_call(data, "key_down", event_info);

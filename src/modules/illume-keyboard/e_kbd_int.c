@@ -940,7 +940,7 @@ static void
 _e_kbd_int_layout_parse(E_Kbd_Int *ki, const char *layout)
 {
    FILE *f;
-   char buf[PATH_MAX];
+   char buf[4096];
    int isok = 0;
    E_Kbd_Int_Key *ky = NULL;
    E_Kbd_Int_Key_State *st = NULL;
@@ -956,7 +956,7 @@ _e_kbd_int_layout_parse(E_Kbd_Int *ki, const char *layout)
    while (fgets(buf, sizeof(buf), f))
      {
         int len;
-        char str[PATH_MAX];
+        char str[4096];
 
         if (!isok)
           {
@@ -1010,7 +1010,7 @@ _e_kbd_int_layout_parse(E_Kbd_Int *ki, const char *layout)
             (!strcmp(str, "capslock")) || (!strcmp(str, "altgr")))
           {
              char *p;
-             char label[PATH_MAX];
+             char label[4096];
 
              if (sscanf(buf, "%*s %4000s", label) != 1) continue;
              st = calloc(1, sizeof(E_Kbd_Int_Key_State));
@@ -1216,7 +1216,7 @@ _e_kbd_int_layouts_list_update(E_Kbd_Int *ki)
         kil = E_NEW(E_Kbd_Int_Layout, 1);
         if (kil)
           {
-             char *s, *p;
+             char *s;
              FILE *f;
 
              kil->path = path;
@@ -1241,7 +1241,6 @@ _e_kbd_int_layouts_list_update(E_Kbd_Int *ki)
 
                   while (fgets(buf, sizeof(buf), f))
                     {
-                       int len;
                        char str[4096];
 
                        if (!isok)
@@ -1790,7 +1789,7 @@ e_kbd_int_new(const char *themedir, const char *syskbds, const char *sysdicts)
    if (il_kbd_cfg->dict)
      ki->kbuf = e_kbd_buf_new(ki->sysdicts, il_kbd_cfg->dict);
    else
-     ki->kbuf = e_kbd_buf_new(ki->sysdicts, "English_(US).dic");
+     ki->kbuf = e_kbd_buf_new(ki->sysdicts, "English_US.dic");
 
    _e_kbd_int_layouts_list_update(ki);
 

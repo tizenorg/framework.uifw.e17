@@ -60,6 +60,24 @@ e_screensaver_update(void)
    if (changed) ecore_x_screensaver_set(timeout, interval, blanking, expose);
 }
 
+EAPI void
+e_screensaver_force_update(void)
+{
+   int timeout = 0, count = (1 + _e_screensaver_ask_presentation_count);
+
+   if ((e_config->screensaver_enable) && (!e_config->mode.presentation) &&
+       (!e_util_fullscreen_curreny_any()))
+     timeout = e_config->screensaver_timeout * count;
+   ecore_x_screensaver_set(timeout + 10,
+                           e_config->screensaver_interval + 10,
+                           !e_config->screensaver_blanking,
+                           !e_config->screensaver_expose);
+   ecore_x_screensaver_set(timeout,
+                           e_config->screensaver_interval,
+                           e_config->screensaver_blanking,
+                           e_config->screensaver_expose);
+}
+
 static Eina_Bool
 _e_screensaver_handler_config_mode_cb(void *data __UNUSED__, int type __UNUSED__, void *event __UNUSED__)
 {
@@ -140,11 +158,11 @@ _e_screensaver_ask_presentation_mode(void)
 		       "Would you like to enable <b>presentation</b> mode and "
 		       "temporarily disable screen saver, lock and power saving?"));
 
-   e_object_del_attach_func_set(E_OBJECT(dia), 
+   e_object_del_attach_func_set(E_OBJECT(dia),
 				_e_screensaver_ask_presentation_del);
-   e_dialog_button_add(dia, _("Yes"), NULL, 
+   e_dialog_button_add(dia, _("Yes"), NULL,
 		       _e_screensaver_ask_presentation_yes, NULL);
-   e_dialog_button_add(dia, _("No"), NULL, 
+   e_dialog_button_add(dia, _("No"), NULL,
 		       _e_screensaver_ask_presentation_no, NULL);
    e_dialog_button_add(dia, _("No, but increase timeout"), NULL,
 		       _e_screensaver_ask_presentation_no_increase, NULL);
@@ -182,7 +200,7 @@ _e_screensaver_handler_powersave_cb(void *data __UNUSED__, int type __UNUSED__, 
      {
         if (_e_screensaver_suspend_timer)
            ecore_timer_del(_e_screensaver_suspend_timer);
-        _e_screensaver_suspend_timer = 
+        _e_screensaver_suspend_timer =
            ecore_timer_add(e_config->screensaver_suspend_delay,
                            _e_screensaver_suspend_cb, NULL);
      }
@@ -204,12 +222,15 @@ _e_screensaver_handler_screensaver_notify_cb(void *data __UNUSED__, int type __U
              _e_screensaver_suspend_timer = NULL;
           }
         if (e_config->screensaver_suspend)
-           _e_screensaver_suspend_timer = 
+           _e_screensaver_suspend_timer =
            ecore_timer_add(e_config->screensaver_suspend_delay,
                            _e_screensaver_suspend_cb, NULL);
      }
    else
      {
+        e_screensaver_force_update();
+        e_dpms_force_update();
+        
         _e_screensaver_on = EINA_FALSE;
         if (_e_screensaver_suspend_timer)
           {
@@ -217,7 +238,7 @@ _e_screensaver_handler_screensaver_notify_cb(void *data __UNUSED__, int type __U
              _e_screensaver_suspend_timer = NULL;
           }
      }
-   
+
    if (e->on)
      {
 	last_start = ecore_loop_time_get();
@@ -290,7 +311,7 @@ e_screensaver_init(void)
 
    _e_screensaver_handler_powersave = ecore_event_handler_add
      (E_EVENT_POWERSAVE_UPDATE, _e_screensaver_handler_powersave_cb, NULL);
-   
+
    _e_screensaver_timeout = ecore_x_screensaver_timeout_get();
    _e_screensaver_interval = ecore_x_screensaver_interval_get();
    _e_screensaver_blanking = ecore_x_screensaver_blank_get();
@@ -309,13 +330,13 @@ e_screensaver_shutdown(void)
         ecore_timer_del(_e_screensaver_suspend_timer);
         _e_screensaver_suspend_timer = NULL;
      }
-   
+
    if (_e_screensaver_handler_powersave)
      {
         ecore_event_handler_del(_e_screensaver_handler_powersave);
         _e_screensaver_handler_powersave = NULL;
      }
-   
+
    if (_e_screensaver_handler_config_mode)
      {
         ecore_event_handler_del(_e_screensaver_handler_config_mode);

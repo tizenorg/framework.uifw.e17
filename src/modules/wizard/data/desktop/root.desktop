@@ -1,9 +1,9 @@
 [Desktop Entry]
-Encoding=UTF-8
 Name=Root
 Comment=The Root Filesystem base
 Comment[it]=Il filesystem principale
 Comment[fr]=Le système de fichiers à la base
+Comment[pt]=Sistema de ficheiros root
 Type=Link
 X-Enlightenment-Type=Mount
 URL=file:/

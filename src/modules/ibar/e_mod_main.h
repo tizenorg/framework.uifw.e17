@@ -12,7 +12,6 @@ struct _Config
    E_Module        *module;
    E_Config_Dialog *config_dialog;
    Eina_List       *instances;
-   E_Menu          *menu;
    Eina_List       *handlers;
 };
 
@@ -23,6 +22,7 @@ struct _Config_Item
    int show_label;
    int eap_label;
    int lock_move;
+   unsigned char dont_track_launch;
 };
 
 EAPI extern E_Module_Api e_modapi;

@@ -498,12 +498,17 @@ _config_free(void)
    Gadget_Config *gc;
 
    EINA_LIST_FREE (evry_conf->collections, pc)
-     EINA_LIST_FREE (pc->plugins, pc2)
-       {
-          IF_RELEASE(pc2->name);
-          IF_RELEASE(pc2->trigger);
-          E_FREE(pc2);
-       }
+     {
+        EINA_LIST_FREE (pc->plugins, pc2)
+          {
+             IF_RELEASE(pc2->name);
+             IF_RELEASE(pc2->trigger);
+             E_FREE(pc2);
+          }
+        eina_stringshare_del(pc->name);
+        eina_stringshare_del(pc->trigger);
+        free(pc);
+     }
    EINA_LIST_FREE (evry_conf->conf_subjects, pc)
      {
         IF_RELEASE(pc->name);
@@ -511,6 +516,12 @@ _config_free(void)
         E_FREE(pc);
      }
    EINA_LIST_FREE (evry_conf->conf_actions, pc)
+     {
+        IF_RELEASE(pc->name);
+        IF_RELEASE(pc->trigger);
+        E_FREE(pc);
+     }
+   EINA_LIST_FREE (evry_conf->conf_views, pc)
      {
         IF_RELEASE(pc->name);
         IF_RELEASE(pc->trigger);

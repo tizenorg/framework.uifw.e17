@@ -24,7 +24,7 @@ e_resist_container_border_position(E_Container *con, Eina_List *skiplist,
    E_Desk *desk;
    E_Shelf *es;
    E_Zone *zone;
-   
+
    if (!e_config->use_resist)
      {
 	*rx = x;
@@ -33,7 +33,7 @@ e_resist_container_border_position(E_Container *con, Eina_List *skiplist,
 	*rh = h;
 	return 0;
      }
-   
+
    /* edges of screen */
 #define OBSTACLE(_x, _y, _w, _h, _resist) \
    { \
@@ -61,6 +61,10 @@ e_resist_container_border_position(E_Container *con, Eina_List *skiplist,
    bl = e_container_border_list_first(con);
    while ((bd = e_container_border_list_next(bl)))
      {
+#ifdef _F_USE_RESIST_MAGNETIC_EFFECT_
+        //no resist for e-wins
+        if (bd->internal) continue;
+#endif
 	if (bd->visible)
 	  {
 	     int ok;
@@ -73,6 +77,14 @@ e_resist_container_border_position(E_Container *con, Eina_List *skiplist,
 		       ok = 0;
 		       break;
 		    }
+#ifdef _F_USE_RESIST_MAGNETIC_EFFECT_
+                  //no resist for e-wins
+                  if (bd2->internal)
+                    {
+                       ok = 0;
+                       break;
+                    }
+#endif
 	       }
 	     if (ok && bd->offer_resistance)
 	       {
@@ -85,14 +97,14 @@ e_resist_container_border_position(E_Container *con, Eina_List *skiplist,
    desk = e_desk_current_get(e_zone_current_get(con));
    EINA_LIST_FOREACH(e_shelf_list(), l, es)
      {
-	Eina_List *ll;
+	Eina_List *ll2;
 	E_Config_Shelf_Desk *sd;
 
 	if (es->zone->container == con)
 	  {
 	     if (es->cfg->desk_show_mode)
 	       {
-		  EINA_LIST_FOREACH(es->cfg->desk_list, ll, sd)
+		  EINA_LIST_FOREACH(es->cfg->desk_list, ll2, sd)
 		    {
 		       if (!sd) continue;
 		       if ((sd->x == desk->x) && (sd->y == desk->y))
@@ -114,8 +126,8 @@ e_resist_container_border_position(E_Container *con, Eina_List *skiplist,
      {
 	_e_resist_rects(rects,
 			px, py, pw, ph,
-		       	x, y, w, h,
-		       	rx, ry, rw, rh);
+			x, y, w, h,
+			rx, ry, rw, rh);
 
 	E_FREE_LIST(rects, E_FREE);
      }
@@ -147,13 +159,13 @@ e_resist_container_gadman_position(E_Container *con, Eina_List *skiplist __UNUSE
 		      e_config->gadget_resist);
 	  }
      }
-   
+
    if (rects)
      {
 	_e_resist_rects(rects,
 			px, py, pw, ph,
-		       	x, y, w, h,
-		       	rx, ry, NULL, NULL);
+			x, y, w, h,
+			rx, ry, NULL, NULL);
 
 	E_FREE_LIST(rects, E_FREE);
      }
@@ -163,14 +175,21 @@ e_resist_container_gadman_position(E_Container *con, Eina_List *skiplist __UNUSE
 static void
 _e_resist_rects(Eina_List *rects,
 		int px, int py, int pw, int ph,
-	       	int x, int y, int w, int h,
-	       	int *rx, int *ry, int *rw, int *rh)
+		int x, int y, int w, int h,
+		int *rx, int *ry, int *rw, int *rh)
 {
    int dx, dy, dw, dh, d, pd;
    int resist_x = 0, resist_y = 0;
    int resist_w = 0, resist_h = 0;
    Eina_List *l;
    E_Resist_Rect *r;
+
+#ifdef _F_USE_RESIST_MAGNETIC_EFFECT_
+   const int magnet_eff_margin = 30;
+   int gap = 0;
+   int magnet_gain_x = 0;
+   int magnet_gain_y = 0;
+#endif
 
    dx = x - px;
    dy = y - py;
@@ -181,6 +200,40 @@ _e_resist_rects(Eina_List *rects,
      {
 	if (E_SPANS_COMMON(r->y, r->h, y, h))
 	  {
+#ifdef _F_USE_RESIST_MAGNETIC_EFFECT_
+             if (r->resist_out)
+               {
+                  gap = (r->x + r->w) - (x + w);
+                  if (gap >= 0 && gap <= magnet_eff_margin)
+                    {
+                       if (magnet_gain_x == 0 || magnet_gain_x > gap)
+                         magnet_gain_x = gap;
+                    }
+
+                  gap = x - r->x;
+                  if (gap >= 0 && gap <= magnet_eff_margin)
+                    {
+                       if (magnet_gain_x == 0 || magnet_gain_x > gap)
+                         magnet_gain_x = -gap;
+                    }
+               }
+             else
+               {
+                  gap = r->x - (x + w);
+                  if (gap >= 0 && gap <= magnet_eff_margin)
+                    {
+                       if (magnet_gain_x == 0 || magnet_gain_x > gap)
+                         magnet_gain_x = gap;
+                    }
+
+                  gap = x - (r->x + r->w);
+                  if (gap >= 0 && gap <= magnet_eff_margin)
+                    {
+                       if (magnet_gain_x == 0 || magnet_gain_x > gap)
+                         magnet_gain_x = -gap;
+                    }
+               }
+#endif
 	     if (dx > 0)
 	       {
 		  /* moving right */
@@ -268,6 +321,40 @@ _e_resist_rects(Eina_List *rects,
 	  }
 	if (E_SPANS_COMMON(r->x, r->w, x, w))
 	  {
+#ifdef _F_USE_RESIST_MAGNETIC_EFFECT_
+             if (r->resist_out)
+               {
+                  gap = (r->y + r->h) - (y + h);
+                  if (gap >= 0 && gap <= magnet_eff_margin)
+                    {
+                       if (magnet_gain_y == 0 || magnet_gain_y > gap)
+                         magnet_gain_y = gap;
+                    }
+
+                  gap = y - r->y;
+                  if (gap >= 0 && gap <= magnet_eff_margin)
+                    {
+                       if (magnet_gain_y == 0 || magnet_gain_y > gap)
+                         magnet_gain_y = -gap;
+                    }
+               }
+             else
+               {
+                  gap = r->y - (y + h);
+                  if (gap >= 0 && gap <= magnet_eff_margin)
+                    {
+                       if (magnet_gain_y == 0 || magnet_gain_y > gap)
+                         magnet_gain_y = gap;
+                    }
+
+                  gap = y - (r->y + r->h);
+                  if (gap >= 0 && gap <= magnet_eff_margin)
+                    {
+                       if (magnet_gain_y == 0 || magnet_gain_y >gap)
+                         magnet_gain_y = -gap;
+                    }
+               }
+#endif
 	     if (dy > 0)
 	       {
 		  /* moving down */
@@ -357,14 +444,24 @@ _e_resist_rects(Eina_List *rects,
    if (rx)
      {
 	if (dx != 0)
-	  *rx = x + resist_x;
+#ifdef _F_USE_RESIST_MAGNETIC_EFFECT_
+	  *rx = x + (abs(resist_x) > abs(magnet_gain_x) ?
+                     resist_x : magnet_gain_x);
+#else
+          *rx = x + resist_x;
+#endif
 	else
 	  *rx = x;
      }
    if (ry)
      {
 	if (dy != 0)
-	  *ry = y + resist_y;
+#ifdef _F_USE_RESIST_MAGNETIC_EFFECT_
+	  *ry = y + (abs(resist_y) > abs(magnet_gain_y) ?
+                     resist_y : magnet_gain_y);
+#else
+          *ry = y + resist_y;
+#endif
 	else
 	  *ry = y;
      }

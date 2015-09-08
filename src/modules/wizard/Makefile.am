@@ -11,14 +11,6 @@ desks_DATA = \
 data/extra_desktops/mplayer.desktop \
 data/extra_desktops/xterm.desktop
 
-favsdir = $(libdir)/enlightenment/modules/$(MODULE)/favorites
-favs_DATA = \
-data/favorites/.order \
-data/favorites/desktop.desktop \
-data/favorites/home.desktop \
-data/favorites/root.desktop \
-data/favorites/tmp.desktop
-
 desktopdir = $(libdir)/enlightenment/modules/$(MODULE)/desktop
 desktop_DATA = \
 data/desktop/home.desktop \
@@ -47,6 +39,7 @@ pkgdir                 = $(libdir)/enlightenment/modules/$(MODULE)/$(MODULE_ARCH
 pkg_LTLIBRARIES        = module.la \
                          page_000.la \
                          page_010.la \
+                         page_011.la \
                          page_020.la \
                          page_030.la \
                          page_040.la \
@@ -56,7 +49,6 @@ pkg_LTLIBRARIES        = module.la \
                          page_080.la \
                          page_090.la \
                          page_100.la \
-                         page_110.la \
                          page_120.la \
                          page_130.la \
                          page_140.la \
@@ -64,6 +56,10 @@ pkg_LTLIBRARIES        = module.la \
                          page_160.la \
                          page_170.la \
                          page_200.la
+
+if USE_MODULE_CONNMAN
+pkg_LTLIBRARIES +=       page_110.la
+endif
 
 module_la_SOURCES      = e_mod_main.c \
                          e_mod_main.h \
@@ -85,6 +81,12 @@ page_010_la_SOURCES      = page_010.c
 page_010_la_LIBADD       = @e_libs@ @dlopen_libs@
 page_010_la_LDFLAGS      = -module -avoid-version
 page_010_la_DEPENDENCIES = $(top_builddir)/config.h
+
+#Choose kbd layout
+page_011_la_SOURCES      = page_011.c
+page_011_la_LIBADD       = @e_libs@ @dlopen_libs@
+page_011_la_LDFLAGS      = -module -avoid-version
+page_011_la_DEPENDENCIES = $(top_builddir)/config.h
 
 #Choose Profile
 page_020_la_SOURCES      = page_020.c
@@ -140,11 +142,13 @@ page_100_la_LIBADD       = @e_libs@ @dlopen_libs@
 page_100_la_LDFLAGS      = -module -avoid-version
 page_100_la_DEPENDENCIES = $(top_builddir)/config.h
 
+if USE_MODULE_CONNMAN
 #Auto+feedback - do we need connman?
 page_110_la_SOURCES      = page_110.c
 page_110_la_LIBADD       = @e_libs@ @dlopen_libs@ @ECONNMAN_LIBS@
 page_110_la_LDFLAGS      = -module -avoid-version
 page_110_la_DEPENDENCIES = $(top_builddir)/config.h
+endif
 
 #Auto - do we need temperature?
 page_120_la_SOURCES      = page_120.c

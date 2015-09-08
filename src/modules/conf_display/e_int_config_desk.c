@@ -15,8 +15,10 @@ struct _E_Config_Dialog_Data
    int desk_y;
    char *bg;
    char *name;
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
    char *profile;
-   
+#endif
+
    Evas_Object *preview;
    Ecore_Event_Handler *hdl;
 };
@@ -62,8 +64,10 @@ _fill_data(E_Config_Dialog_Data *cfdata)
    const char *bg;
    char name[40];
    int ok = 0;
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
    E_Config_Desktop_Window_Profile *prof;
-   
+#endif
+
    bg = e_bg_file_get(cfdata->con_num, cfdata->zone_num, cfdata->desk_x, cfdata->desk_y);
    if (!bg)
      bg = e_theme_edje_file_get("base/theme/backgrounds", "e/desktop/background");
@@ -91,6 +95,7 @@ _fill_data(E_Config_Dialog_Data *cfdata)
 	cfdata->name = strdup(name);
      }
 
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
    EINA_LIST_FOREACH(e_config->desktop_window_profiles, l, prof)
      {
         if (!((prof->container == cfdata->con_num) &&
@@ -107,6 +112,7 @@ _fill_data(E_Config_Dialog_Data *cfdata)
 
    if (!ok)
      cfdata->profile = strdup(e_config->desktop_default_window_profile);
+#endif
 }
 
 static void *
@@ -129,8 +135,10 @@ _free_data(E_Config_Dialog *cfd __UNUSED__, E_Config_Dialog_Data *cfdata)
      E_FREE(cfdata->bg);
    if (cfdata->name)
      E_FREE(cfdata->name);
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
    if (cfdata->profile)
      E_FREE(cfdata->profile);
+#endif
    E_FREE(cfdata);
 }
 
@@ -146,8 +154,10 @@ _basic_apply(E_Config_Dialog *cfd __UNUSED__, E_Config_Dialog_Data *cfdata)
 	cfdata->name = strdup(name);
      }
 
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
    if (!cfdata->profile[0]) 
      cfdata->profile = strdup(e_config->desktop_default_window_profile); 
+#endif
 
    e_desk_name_del(cfdata->con_num, cfdata->zone_num, 
                    cfdata->desk_x, cfdata->desk_y);
@@ -155,12 +165,14 @@ _basic_apply(E_Config_Dialog *cfd __UNUSED__, E_Config_Dialog_Data *cfdata)
                    cfdata->desk_x, cfdata->desk_y, cfdata->name);
    e_desk_name_update();
 
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
    e_desk_window_profile_del(cfdata->con_num, cfdata->zone_num, 
                              cfdata->desk_x, cfdata->desk_y);
    e_desk_window_profile_add(cfdata->con_num, cfdata->zone_num, 
                              cfdata->desk_x, cfdata->desk_y, cfdata->profile);
    e_desk_window_profile_update();
-   
+#endif
+
    e_bg_del(cfdata->con_num, cfdata->zone_num, cfdata->desk_x, cfdata->desk_y);
    e_bg_add(cfdata->con_num, cfdata->zone_num, 
             cfdata->desk_x, cfdata->desk_y, cfdata->bg);
@@ -187,12 +199,14 @@ _basic_create(E_Config_Dialog *cfd, Evas *evas, E_Config_Dialog_Data *cfdata)
    e_widget_frametable_object_append(of, ob, 1, 0, 2, 1, 1, 1, 1, 0);
    e_widget_list_object_append(o, of, 1, 1, 0.5);
 
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
    of = e_widget_frametable_add(evas, _("Desktop Window Profile"), 0);
    ob = e_widget_label_add(evas, _("Profile Name:"));
    e_widget_frametable_object_append(of, ob, 0, 0, 1, 1, 1, 1, 1, 0);
    ob = e_widget_entry_add(evas, &(cfdata->profile), NULL, NULL, NULL);
    e_widget_frametable_object_append(of, ob, 1, 0, 2, 1, 1, 1, 1, 0);
    e_widget_list_object_append(o, of, 1, 1, 0.5);
+#endif
    
    of = e_widget_frametable_add(evas, _("Desktop Wallpaper"), 0);
    ob = e_widget_preview_add(evas, 240, (240 * zone->h) / zone->w);

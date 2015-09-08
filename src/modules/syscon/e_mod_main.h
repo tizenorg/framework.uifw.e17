@@ -9,11 +9,13 @@
 #include "e_syscon.h"
 #include "e_int_config_syscon.h"
 
-EAPI extern E_Module_Api e_modapi;
-
 EAPI void *e_modapi_init     (E_Module *m);
 EAPI int   e_modapi_shutdown (E_Module *m);
 EAPI int   e_modapi_save     (E_Module *m);
+
+void e_syscon_gadget_init(E_Module *m);
+void e_syscon_gadget_shutdown(void);
+void e_syscon_menu_fill(E_Menu *m);
 
 /**
  * @addtogroup Optional_Control

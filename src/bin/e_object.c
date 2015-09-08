@@ -16,7 +16,7 @@ EAPI void *
 e_object_alloc(int size, int type, E_Object_Cleanup_Func cleanup_func)
 {
    E_Object *obj;
-   
+
    obj = calloc(1, size);
    if (!obj) return NULL;
    obj->magic = E_OBJECT_MAGIC;
@@ -63,6 +63,7 @@ e_object_free(E_Object *obj)
 {
    E_OBJECT_CHECK(obj);
    if (obj->free_att_func) obj->free_att_func(obj);
+   obj->free_att_func = NULL;
    obj->walking_list++;
    while (obj->del_fn_list)
      {
@@ -73,13 +74,14 @@ e_object_free(E_Object *obj)
         free(dfn);
      }
    obj->walking_list--;
+   if (obj->references) return;
    /*
     * FIXME:
     * although this is good - if during cleanup the cleanup func calls
     * other generic funcs to do cleanups on the same object... we get bitching.
     * disable for now (the final free of the struct should probably happen after
     * the cleanup func and be done by the object system - set the magic after
-    * cleanup :)  
+    * cleanup :)
     */
 #if 0
    obj->magic = E_OBJECT_MAGIC_FREED;
@@ -99,8 +101,9 @@ EAPI int
 e_object_unref(E_Object *obj)
 {
    int ref;
-   
+
    E_OBJECT_CHECK_RETURN(obj, -1);
+   if (!obj->references) return 0;
    obj->references--;
    ref = obj->references;
    if (obj->references == 0) e_object_free(obj);
@@ -114,7 +117,7 @@ e_object_ref_get(E_Object *obj)
    return obj->references;
 }
 
-#if 0   
+#if 0
 EAPI void
 e_bt(void)
 {
@@ -128,19 +131,19 @@ e_bt(void)
         for (i = 1; i < trace_num; i++)
           {
              int j;
-             
+
              for (j = 1; j < i; j++) putchar(' ');
              printf("%s\n", messages[i]);
           }
         free(messages);
      }
 }
-#endif   
+#endif
 
 EAPI int
 e_object_error(E_Object *obj)
 {
-#ifdef OBJECT_PARANOIA_CHECK   
+#ifdef OBJECT_PARANOIA_CHECK
    char buf[4096];
    char bt[8192];
    void *trace[128];
@@ -175,7 +178,7 @@ e_object_error(E_Object *obj)
      {
 	struct sigaction act, oact;
 	int magic = 0, segv = 0;
-	
+
 	/* setup segv handler */
 	act.sa_handler = _e_object_segv;
 	act.sa_flags   = SA_RESETHAND;
@@ -251,14 +254,14 @@ e_object_error(E_Object *obj)
 	return 1;
      }
    return 0;
-#endif   
+#endif
 }
 
 EAPI void
-e_object_data_set(E_Object *obj, void *data)
+e_object_data_set(E_Object *obj, const void *data)
 {
    E_OBJECT_CHECK(obj);
-   obj->data = data;
+   obj->data = (void*)data;
 }
 
 EAPI void *
@@ -280,6 +283,24 @@ e_object_del_attach_func_set(E_Object *obj, E_Object_Cleanup_Func func)
 {
    E_OBJECT_CHECK(obj);
    obj->del_att_func = func;
+}
+
+EAPI void
+e_object_delfn_clear(E_Object *obj)
+{
+   E_OBJECT_CHECK(obj);
+   while (obj->del_fn_list)
+     {
+        E_Object_Delfn *dfn = (E_Object_Delfn *)obj->del_fn_list;
+        if (obj->walking_list)
+          dfn->delete_me = 1;
+        else
+          {
+             obj->del_fn_list = eina_inlist_remove(obj->del_fn_list,
+                                                   EINA_INLIST_GET(dfn));
+             free(dfn);
+          }
+     }
 }
 
 EAPI E_Object_Delfn *
@@ -321,7 +342,7 @@ e_object_breadcrumb_del(E_Object *obj, char *crumb)
 {
    Eina_List *l;
    char *key;
-   
+
    E_OBJECT_CHECK(obj);
    EINA_LIST_FOREACH(obj->crumbs, l, key)
      {
@@ -339,7 +360,7 @@ e_object_breadcrumb_debug(E_Object *obj)
 {
    Eina_List *l;
    char *key;
-   
+
    E_OBJECT_CHECK(obj);
    EINA_LISt_FOREACH(obj->crumbs, l, key)
      printf("CRUMB: %s\n", key);

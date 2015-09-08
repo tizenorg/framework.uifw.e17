@@ -175,6 +175,14 @@ if USE_MODULE_COMP
 SUBDIRS += comp
 endif
 
+if USE_MODULE_PHYSICS
+SUBDIRS += physics
+endif
+
+if USE_MODULE_QUICKACCESS
+SUBDIRS += quickaccess
+endif
+
 if USE_MODULE_OFONO
 SUBDIRS += ofono
 endif
@@ -190,3 +198,27 @@ endif
 if USE_MODULE_TASKS
 SUBDIRS += tasks
 endif
+
+if USE_MODULE_XKBSWITCH
+SUBDIRS += xkbswitch
+endif
+
+if USE_MODULE_TILING
+SUBDIRS += tiling
+endif
+
+if USE_MODULE_ACCESS
+SUBDIRS += access
+endif
+
+#if HAVE_WAYLAND_DRM
+# SUBDIRS += wl_drm
+#endif
+
+#if HAVE_WAYLAND_SHELL
+# SUBDIRS += wl_shell
+#endif
+
+#if HAVE_WAYLAND_SCREENSHOT
+# SUBDIRS += wl_screenshot
+#endif

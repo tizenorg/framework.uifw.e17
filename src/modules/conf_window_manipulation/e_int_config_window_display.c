@@ -19,6 +19,7 @@ struct _E_Config_Dialog_Data
    double border_shade_speed;
    int use_app_icon;
    int window_placement_policy;
+   int window_grouping;
    int desk_auto_switch;
 
    Eina_List *shading_list;
@@ -63,6 +64,7 @@ _create_data(E_Config_Dialog *cfd __UNUSED__)
 
    cfdata->window_placement_policy = 
      e_config->window_placement_policy;
+   cfdata->window_grouping = e_config->window_grouping;
    cfdata->desk_auto_switch = e_config->desk_auto_switch;
 
    cfdata->border_shade_animate = e_config->border_shade_animate;
@@ -83,6 +85,7 @@ static int
 _basic_apply(E_Config_Dialog *cfd __UNUSED__, E_Config_Dialog_Data *cfdata)
 {
    e_config->window_placement_policy = cfdata->window_placement_policy;
+   e_config->window_grouping = cfdata->window_grouping;
    e_config->move_info_visible = cfdata->move_info_visible;
    e_config->move_info_follows = cfdata->move_info_follows;
    e_config->resize_info_visible = cfdata->resize_info_visible;
@@ -101,6 +104,7 @@ static int
 _basic_check_changed(E_Config_Dialog *cfd __UNUSED__, E_Config_Dialog_Data *cfdata)
 {
    return ((e_config->window_placement_policy != cfdata->window_placement_policy) ||
+	   (e_config->window_grouping != cfdata->window_grouping) ||
 	   (e_config->move_info_visible != cfdata->move_info_visible) ||
 	   (e_config->move_info_follows != cfdata->move_info_follows) ||
 	   (e_config->resize_info_visible != cfdata->resize_info_visible) ||
@@ -122,6 +126,14 @@ _basic_create(E_Config_Dialog *cfd __UNUSED__, Evas *evas, E_Config_Dialog_Data 
 
    /* Display */
    ol = e_widget_list_add(evas, 0, 0);
+   of = e_widget_framelist_add(evas, _("Border Icon"), 0);
+   rg = e_widget_radio_group_new(&(cfdata->use_app_icon));
+   ow = e_widget_radio_add(evas, _("User defined"), 0, rg);
+   e_widget_framelist_object_append(of, ow);
+   ow = e_widget_radio_add(evas, _("Application provided"), 1, rg);
+   e_widget_framelist_object_append(of, ow);
+   e_widget_list_object_append(ol, of, 1, 1, 0.5);
+
    of = e_widget_framelist_add(evas, _("Move Geometry"), 0);
    oc = e_widget_check_add(evas, _("Display information"), 
                            &(cfdata->move_info_visible));
@@ -146,16 +158,6 @@ _basic_create(E_Config_Dialog *cfd __UNUSED__, Evas *evas, E_Config_Dialog_Data 
    e_widget_toolbook_page_append(otb, NULL, _("Display"), ol, 
                                  0, 0, 1, 0, 0.5, 0.0);
 
-   /* Border Icon */
-   ol = e_widget_list_add(evas, 0, 0);
-   rg = e_widget_radio_group_new(&(cfdata->use_app_icon));
-   ow = e_widget_radio_add(evas, _("User defined"), 0, rg);
-   e_widget_list_object_append(ol, ow, 1, 1, 0.5);
-   ow = e_widget_radio_add(evas, _("Application provided"), 1, rg);
-   e_widget_list_object_append(ol, ow, 1, 1, 0.5);
-   e_widget_toolbook_page_append(otb, NULL, _("Border Icon"), ol, 
-                                 0, 0, 1, 0, 0.5, 0.0);
-
    /* New Windows */
    ol = e_widget_list_add(evas, 0, 0);
    of = e_widget_framelist_add(evas, _("Placement"), 0);
@@ -172,6 +174,9 @@ _basic_create(E_Config_Dialog *cfd __UNUSED__, Evas *evas, E_Config_Dialog_Data 
    ow = e_widget_radio_add(evas, _("Place manually with the mouse"), 
                            E_WINDOW_PLACEMENT_MANUAL, rg);
    e_widget_framelist_object_append(of, ow);
+   ow = e_widget_check_add(evas, _("Group with windows of the same application"), 
+                           &(cfdata->window_grouping));
+   e_widget_framelist_object_append(of, ow);
    e_widget_list_object_append(ol, of, 1, 1, 0.5);
    ow = e_widget_check_add(evas, _("Switch to desktop of new window"), 
                            &(cfdata->desk_auto_switch));
@@ -184,7 +189,7 @@ _basic_create(E_Config_Dialog *cfd __UNUSED__, Evas *evas, E_Config_Dialog_Data 
    oc = e_widget_check_add(evas, _("Animate"), 
                            &(cfdata->border_shade_animate));
    e_widget_list_object_append(ol, oc, 1, 1, 0.5);
-   ow = e_widget_slider_add(evas, 1, 0, _("%4.0f pixels/sec"), 
+   ow = e_widget_slider_add(evas, 1, 0, _("%4.0f pixels/s"), 
                             100, 9900, 100, 0, 
                             &(cfdata->border_shade_speed), NULL, 100);
    e_widget_disabled_set(ow, !cfdata->border_shade_animate);
@@ -223,7 +228,7 @@ _basic_create(E_Config_Dialog *cfd __UNUSED__, Evas *evas, E_Config_Dialog_Data 
    cfdata->shading_list = eina_list_append(cfdata->shading_list, ow);
    e_widget_list_object_append(ol, ow, 1, 1, 0.5);
    
-   ow = e_widget_radio_add(evas, _("Pronounced Acceleratem then decelerate"), E_TRANSITION_SINUSOIDAL_LOTS, rg);
+   ow = e_widget_radio_add(evas, _("Pronounced Accelerate, then decelerate"), E_TRANSITION_SINUSOIDAL_LOTS, rg);
    e_widget_disabled_set(ow, !cfdata->border_shade_animate);
    cfdata->shading_list = eina_list_append(cfdata->shading_list, ow);
    e_widget_list_object_append(ol, ow, 1, 1, 0.5);

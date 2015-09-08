@@ -68,12 +68,15 @@ EXTRA_DIST = config.rpath  README AUTHORS COPYING \
              enlightenment.spec.in enlightenment.spec enlightenment.pc
 
 filesdir = $(datadir)/enlightenment/
-files_DATA = AUTHORS COPYING 
+files_DATA = AUTHORS COPYING
 
 ACLOCAL_AMFLAGS = -I m4
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = enlightenment.pc
+
+smackdir = /etc/smack/accesses.d/
+smack_DATA = e17.efl
 
 .PHONY: doc
 

@@ -73,11 +73,11 @@ void *alloca (size_t);
 static Efm_Mode mode = EFM_MODE_USING_RASTER_MOUNT;
 
 /* FIXME: things to add to the slave enlightenment_fm process and ipc to e:
- * 
+ *
  * * reporting results of fop's (current status - what has been don, what failed etc.)
  * * dbus removable device monitoring (in e17 itself now via e_dbus - move to enlightenment_fm and ipc removable device add/del and anything else)
  * * mount/umount of removable devices (to go along with removable device support - put it in here and message back mount success/failure and where it is now mounted - remove from e17 itself)
- * 
+ *
  */
 
 #ifndef EAPI
@@ -145,17 +145,16 @@ main(int argc, char **argv)
    ecore_file_init();
    ecore_ipc_init();
    _e_storage_volume_edd_init();
-   _e_fm_ipc_init();
+   if (!_e_fm_ipc_init()) return -1;
    efm_log_dom = eina_log_domain_register("efm", EINA_COLOR_GREEN);
-   eina_log_domain_level_set("efm", EINA_LOG_LEVEL_DBG);
    _e_fm_init();
 
    ecore_event_handler_add(ECORE_EXE_EVENT_DATA, _e_fm_ipc_slave_data_cb, NULL);
    ecore_event_handler_add(ECORE_EXE_EVENT_ERROR, _e_fm_ipc_slave_error_cb, NULL);
    ecore_event_handler_add(ECORE_EXE_EVENT_DEL, _e_fm_ipc_slave_del_cb, NULL);
-   
+
    ecore_main_loop_begin();
-  
+
    if (_e_fm_ipc_server)
      {
         ecore_ipc_server_del(_e_fm_ipc_server);
@@ -168,6 +167,7 @@ main(int argc, char **argv)
    ecore_file_shutdown();
    ecore_shutdown();
    eina_shutdown();
+   return 0;
 }
 
 #ifdef HAVE_HAL_MOUNT
@@ -237,6 +237,7 @@ e_volume_mount(E_Volume *v)
 #endif
      default:
        printf("raster can't mount disks by himself!\n");
+       (void)v;
     }
 }
 
@@ -263,6 +264,7 @@ e_volume_unmount(E_Volume *v)
 #endif
      default:
        printf("raster can't unmount disks by himself!\n");
+       (void)v;
     }
 }
 
@@ -288,6 +290,7 @@ e_volume_eject(E_Volume *v)
 #endif
      default:
        printf("raster can't eject disks by himself!\n");
+       (void)v;
     }
 }
 
@@ -310,6 +313,7 @@ e_volume_find(const char *udi)
 #endif
       default:
         printf("raster can't find disks by himself!\n");
+        (void)udi;
      }
    return NULL;
 }
@@ -336,6 +340,7 @@ e_storage_del(const char *udi)
 #endif
      default:
        printf("raster can't delete disks by himself!\n");
+       (void)udi;
     }
 }
 
@@ -358,6 +363,7 @@ e_storage_find(const char *udi)
 #endif
      default:
        printf("raster can't find disks by himself!\n");
+       (void)udi;
     }
   return NULL;
 }

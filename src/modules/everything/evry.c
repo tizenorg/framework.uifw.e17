@@ -165,7 +165,7 @@ evry_show(E_Zone *zone, E_Zone_Edge edge, const char *params, Eina_Bool popup)
 
    if (popup)
      {
-        e_win_layer_set(win->ewin, 255);
+        e_win_layer_set(win->ewin, 350);
         ecore_x_netwm_window_type_set(win->ewin->evas_win,
                                       ECORE_X_WINDOW_TYPE_UTILITY);
 
@@ -1942,14 +1942,12 @@ _evry_cb_key_down(void *data, int type __UNUSED__, void *event)
    else if (ev->modifiers)
      {
         Eina_List *l;
-        E_Config_Binding_Key *bind;
+        E_Config_Binding_Key *binding;
         E_Binding_Modifier mod;
 
-        for (l = e_config->key_bindings; l; l = l->next)
+	EINA_LIST_FOREACH(e_config->key_bindings, l, binding)
           {
-             bind = l->data;
-
-             if (bind->action && strcmp(bind->action, "everything")) continue;
+             if (binding->action && strcmp(binding->action, "everything")) continue;
 
              mod = 0;
 
@@ -1962,14 +1960,14 @@ _evry_cb_key_down(void *data, int type __UNUSED__, void *event)
              if (ev->modifiers & ECORE_EVENT_MODIFIER_WIN)
                mod |= E_BINDING_MODIFIER_WIN;
 
-             if (!(bind->key && (!strcmp(bind->key, ev->keyname)) &&
-                   (((unsigned int)bind->modifiers == mod) || (bind->any_mod))))
+             if (!(binding->key && (!strcmp(binding->key, ev->keyname)) &&
+                   (((unsigned int)binding->modifiers == mod) || (binding->any_mod))))
                continue;
 
              if (win->level > 0)
                return ECORE_CALLBACK_PASS_ON;
 
-             if (!(bind->params) && (CUR_SEL == OBJ_SEL) &&
+             if (!(binding->params) && (CUR_SEL == OBJ_SEL) &&
                  ((CUR_SEL)->state && (CUR_SEL)->state->cur_item))
                {
                   _evry_selectors_shift(win, 1);
@@ -1979,13 +1977,13 @@ _evry_cb_key_down(void *data, int type __UNUSED__, void *event)
              evry_hide(win, 1);
 
 #if 0 /* FIXME this causes segv when triggering a plugin keybinding twice */
-             if (win && CUR_SEL && bind->params)
+             if (win && CUR_SEL && binding->params)
                {
                   Eina_List *ll;
                   Evry_Plugin *p;
 
                   EINA_LIST_FOREACH ((SUBJ_SEL)->plugins, ll, p)
-                    if (!strcmp(bind->params, p->name)) break;
+                    if (!strcmp(binding->params, p->name)) break;
 
                   if (p)
                     {
@@ -2815,12 +2813,14 @@ _evry_matches_update(Evry_Selector *sel, int async)
    /* check if input matches plugin trigger */
    if (input)
      {
-        int len_trigger = 0;
+        size_t len_trigger = 0;
 
         EINA_LIST_FOREACH (s->plugins, l, p)
           {
+             size_t len;
+
              if (!p->config->trigger) continue;
-             int len = strlen(p->config->trigger);
+             len = strlen(p->config->trigger);
 
              if (len_trigger && len != len_trigger)
                continue;
@@ -2884,7 +2884,7 @@ _evry_matches_update(Evry_Selector *sel, int async)
 
              /* skip non-toplevel plugins when input < min_query */
              if ((!p->config->top_level) &&
-                 (p->config->min_query > len_inp))
+                 ((size_t) p->config->min_query > len_inp))
                goto next;
           }
 

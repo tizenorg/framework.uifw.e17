@@ -46,7 +46,7 @@ static inline Ecore_X_Randr_Mode_Info *_find_matching_mode_info(Ecore_X_Randr_Mo
  */
 //"Free" helper functions
 
-   void
+void
 _serialized_output_free(E_Randr_Serialized_Output *so)
 {
    EINA_SAFETY_ON_NULL_RETURN(so);
@@ -56,7 +56,7 @@ _serialized_output_free(E_Randr_Serialized_Output *so)
    free(so);
 }
 
-   void
+void
 _serialized_output_policy_free(E_Randr_Serialized_Output_Policy *sop)
 {
    EINA_SAFETY_ON_NULL_RETURN(sop);
@@ -71,7 +71,7 @@ e_randr_12_serialized_output_policy_free(E_Randr_Serialized_Output_Policy *polic
    _serialized_output_policy_free(policy);
 }
 
-   void
+void
 _mode_info_free(Ecore_X_Randr_Mode_Info *mode_info)
 {
    EINA_SAFETY_ON_NULL_RETURN(mode_info);
@@ -80,7 +80,7 @@ _mode_info_free(Ecore_X_Randr_Mode_Info *mode_info)
    free(mode_info);
 }
 
-   void
+void
 _serialized_crtc_free(E_Randr_Serialized_Crtc *sc)
 {
    E_Randr_Serialized_Output *so;
@@ -142,8 +142,7 @@ Ecore_X_Randr_Mode_Info
    mi->vTotal = src->vTotal;
    if (src->nameLength > 0)
      {
-        mi->name = malloc(src->nameLength + 1);
-        strncpy(mi->name, src->name, src->nameLength);
+        mi->name = (char*)eina_stringshare_add(src->name);
      }
    mi->nameLength = src->nameLength;
    mi->modeFlags = src->modeFlags;
@@ -165,7 +164,7 @@ E_Randr_Edid_Hash
    return edid_hash;
 }
 
-   Eina_List *
+Eina_List *
 _outputs_policies_list_new(Eina_List *outputs)
 {
    E_Randr_Serialized_Output_Policy *sop;
@@ -179,8 +178,7 @@ _outputs_policies_list_new(Eina_List *outputs)
         if (!oi->name) continue;
 
         sop = E_NEW(E_Randr_Serialized_Output_Policy, 1);
-        sop->name = malloc(oi->name_length + 1);
-        strncpy(sop->name, oi->name, oi->name_length);
+        sop->name = eina_stringshare_add(oi->name);
         sop->policy = oi->policy;
         list = eina_list_append(list, sop);
      }
@@ -188,7 +186,7 @@ _outputs_policies_list_new(Eina_List *outputs)
    return list;
 }
 
-   E_Randr_Serialized_Output *
+E_Randr_Serialized_Output *
 _serialized_output_new(E_Randr_Output_Info *output_info)
 {
    E_Randr_Serialized_Output *so;
@@ -198,8 +196,7 @@ _serialized_output_new(E_Randr_Output_Info *output_info)
 
    so = E_NEW(E_Randr_Serialized_Output, 1);
 
-   so->name = malloc(output_info->name_length + 1);
-   strncpy(so->name, output_info->name, output_info->name_length);
+   so->name = eina_stringshare_add(output_info->name);
    if (output_info->monitor)
      {
         so->backlight_level = output_info->monitor->backlight_level;
@@ -212,7 +209,7 @@ _serialized_output_new(E_Randr_Output_Info *output_info)
    return so;
 }
 
-   E_Randr_Serialized_Crtc *
+E_Randr_Serialized_Crtc *
 _serialized_crtc_new(E_Randr_Crtc_Info *crtc_info)
 {
    E_Randr_Serialized_Crtc *sc = NULL;
@@ -233,7 +230,7 @@ _serialized_crtc_new(E_Randr_Crtc_Info *crtc_info)
         if (!(so = _serialized_output_new(output_info)))
           continue;
         sc->outputs = eina_list_append(sc->outputs, so);
-        fprintf(stderr, "E_RANDR:\t Serialized output %s.\n", so->name);
+        INF("E_RANDR:\t Serialized output %s.", so->name);
      }
    sc->pos.x = crtc_info->geometry.x;
    sc->pos.y = crtc_info->geometry.y;
@@ -244,7 +241,7 @@ _serialized_crtc_new(E_Randr_Crtc_Info *crtc_info)
    return sc;
 }
 
-   E_Randr_Serialized_Setup_12 *
+E_Randr_Serialized_Setup_12 *
 _12_serialized_setup_new(void)
 {
    E_Randr_Serialized_Setup_12 *ss = NULL;
@@ -269,7 +266,7 @@ _12_serialized_setup_new(void)
         if (!sc)
           continue;
         ss->crtcs = eina_list_append(ss->crtcs, sc);
-        fprintf(stderr, "E_RANDR: Serialized CRTC %d (index %d) in mode %s.\n", ci->xid, sc->index, (sc->mode_info ? sc->mode_info->name : "(disabled)"));
+        INF("E_RANDR: Serialized CRTC %d (index %d) in mode %s.", ci->xid, sc->index, (sc->mode_info ? sc->mode_info->name : "(disabled)"));
      }
 
    /*
@@ -290,7 +287,7 @@ _12_serialized_setup_new(void)
 
 //Update (also retrieval) helper functions
 
-   E_Randr_Serialized_Setup_12 *
+E_Randr_Serialized_Setup_12 *
 _matching_serialized_setup_get(Eina_List *setups_12)
 {
    E_Randr_Serialized_Setup_12 *ss_12;
@@ -329,7 +326,7 @@ _setup_12_skip:
    return NULL;
 }
 
-   Eina_List *
+Eina_List *
 _outputs_policies_update(Eina_List *sops)
 {
    E_Randr_Serialized_Output_Policy *sop;
@@ -342,7 +339,7 @@ _outputs_policies_update(Eina_List *sops)
    return _outputs_policies_list_new(e_randr_screen_info.rrvd_info.randr_info_12->outputs);
 }
 
-   Eina_List *
+Eina_List *
 _12_serialized_setup_update(Eina_List *setups_12)
 {
    E_Randr_Serialized_Setup_12 *ss_12;
@@ -355,8 +352,9 @@ _12_serialized_setup_update(Eina_List *setups_12)
          */
         if ((ss_12 = _matching_serialized_setup_get(setups_12)))
           {
-             _12_serialized_setup_free(ss_12);
+             INF("E_RANDR: Found stored configuration that matches current setup. It was created at %f. Freeing it...", ss_12->timestamp);
              setups_12 = eina_list_remove(setups_12, ss_12);
+             _12_serialized_setup_free(ss_12);
           }
      }
    ss_12 = _12_serialized_setup_new();
@@ -365,7 +363,7 @@ _12_serialized_setup_update(Eina_List *setups_12)
    return setups_12;
 }
 
-   void
+void
 _12_policies_restore(void)
 {
    E_Randr_Output_Info *output;
@@ -384,13 +382,13 @@ _12_policies_restore(void)
              if (!strncmp(sop->name, output->name, output->name_length))
                {
                   output->policy = sop->policy;
-                  fprintf(stderr, "E_RANDR: Policy \"%s\" for output \"%s\" restored.\n", _POLICIES_STRINGS[sop->policy - 1], output->name);
+                  INF("E_RANDR: Policy \"%s\" for output \"%s\" restored.", _POLICIES_STRINGS[sop->policy - 1], output->name);
                }
           }
      }
 }
 
-   Eina_Bool
+Eina_Bool
 _12_try_restore_configuration(void)
 {
    E_Randr_Serialized_Setup_12 *ss_12;
@@ -399,7 +397,7 @@ _12_try_restore_configuration(void)
    Ecore_X_Randr_Output *outputs_array;
    E_Randr_Output_Info *output_info;
    Ecore_X_Randr_Mode_Info *mi = NULL;
-   Ecore_X_Randr_Mode mode;
+   Ecore_X_Randr_Mode mode = 0;
    Eina_List *iter, *outputs_list, *outputs_iter;
    Eina_Bool ret = EINA_TRUE;
 
@@ -409,48 +407,34 @@ _12_try_restore_configuration(void)
    if (!(ss_12 = _matching_serialized_setup_get(e_config->randr_serialized_setup->serialized_setups_12)))
      return EINA_FALSE;
 
-   fprintf(stderr, "E_RANDR: Found matching serialized setup.\n");
+   INF("E_RANDR: Found matching serialized setup.");
    EINA_LIST_FOREACH(ss_12->crtcs, iter, sc)
      {
         ci = _find_matching_crtc(sc);
+        if (!ci)
+          {
+             ERR("E_RANDR: Cannot find a matching CRTC for serialized CRTC index %d.", sc->index);
+             return EINA_FALSE;
+          }
         outputs_list = _find_matching_outputs(sc->outputs);
         outputs_array = _outputs_to_array(outputs_list);
-        fprintf(stderr, "E_RANDR: \tSerialized mode ");
+
         if (!sc->mode_info)
           {
-             fprintf(stderr, "was disabled.\n");
+             INF("E_RANDR: \tSerialized mode was disabled.");
              mode = Ecore_X_Randr_None;
           }
         else if ((mi = _find_matching_mode_info(sc->mode_info)))
           {
-             fprintf(stderr, "is now known under the name %s.\n", mi->name);
+             INF("E_RANDR: \tSerialized mode is now known under the name %s.", mi->name);
              mode = mi->xid;
           }
-        else
-          {
-             // The serialized mode is no longer available
-             mi->name = malloc(MODE_STR_LENGTH_MAX);
-             //IMPROVABLE: Use random string, like mktemp for files
-             snprintf(mi->name, (MODE_STR_LENGTH_MAX - 1), "%ux%u,%lu,%lu", sc->mode_info->width, sc->mode_info->height, sc->mode_info->dotClock, sc->mode_info->modeFlags);
-             mi = sc->mode_info;
-             mode = ecore_x_randr_mode_info_add(e_randr_screen_info.root, mi);
-             if (mode == Ecore_X_Randr_None)
-               {
-                  eina_list_free(outputs_list);
-                  free(outputs_array);
-                  continue;
-               }
-             EINA_LIST_FOREACH(outputs_list, outputs_iter, output_info)
-                ecore_x_randr_output_mode_add(output_info->xid, mode);
-             fprintf(stderr, "was now added to the server manually using the name %s.\n", mi->name);
-          }
-
         // DEBUG
-        fprintf(stderr, "E_RANDR: \tRestoring CRTC %d (index %d) in mode %s.\n", ci->xid, sc->index, (mode == Ecore_X_Randr_None) ? "(disabled)" : mi->name);
-        fprintf(stderr, "E_RANDR: \t\tUsed outputs:");
+        if (mi)
+          DBG("E_RANDR: \tRestoring CRTC %d (index %d) in mode %s.", ci->xid, sc->index, (mode == Ecore_X_Randr_None) ? "(disabled)" : mi->name);
+        DBG("E_RANDR: \t\tUsed outputs:");
         EINA_LIST_FOREACH(outputs_list, outputs_iter, output_info)
-            fprintf(stderr, " %s", output_info->name);
-        fprintf(stderr, ".\n");
+            DBG("\t\t%s", output_info->name);
         // DEBUG END
 
         ret &= ecore_x_randr_crtc_settings_set(e_randr_screen_info.root, ci->xid, outputs_array, eina_list_count(outputs_list), sc->pos.x, sc->pos.y, mode, sc->orientation);
@@ -460,7 +444,7 @@ _12_try_restore_configuration(void)
    return ret;
 }
 
-   void
+void
 _12_serialized_setup_free(E_Randr_Serialized_Setup_12 *ss_12)
 {
    E_Randr_Serialized_Crtc *sc;
@@ -484,7 +468,7 @@ e_randr_12_serialized_setup_free(E_Randr_Serialized_Setup_12 *ss_12)
     _12_serialized_setup_free(ss_12);
 }
 
-   void
+void
 _12_store_configuration(E_Randr_Configuration_Store_Modifier modifier)
 {
    if (modifier & (E_RANDR_CONFIGURATION_STORE_RESOLUTIONS | E_RANDR_CONFIGURATION_STORE_ARRANGEMENT | E_RANDR_CONFIGURATION_STORE_ORIENTATIONS))
@@ -502,12 +486,13 @@ _12_store_configuration(E_Randr_Configuration_Store_Modifier modifier)
 //Retrievel functions for the current e_randr_screen_info context
 
 // Find entities for restoration in current e_randr_screen_info context
-   static E_Randr_Crtc_Info *
+static E_Randr_Crtc_Info *
 _find_matching_crtc(E_Randr_Serialized_Crtc *sc)
 {
    EINA_SAFETY_ON_NULL_RETURN_VAL(sc, NULL);
    EINA_SAFETY_ON_TRUE_RETURN_VAL(E_RANDR_12_NO, NULL);
 
+   INF("E_RANDR: Setup restore.. Runtime system knows about %d CRTCs. Requested CRTC has index %d", eina_list_count(e_randr_screen_info.rrvd_info.randr_info_12->crtcs), sc->index);
    return eina_list_nth(e_randr_screen_info.rrvd_info.randr_info_12->crtcs, sc->index);
 }
 
@@ -518,7 +503,7 @@ _find_matching_crtc(E_Randr_Serialized_Crtc *sc)
  * @return List of E_Randr_Output* elements or NULL, if not all outputs could be
  * found or monitors are connected to different outputs
  */
-   static Eina_List *
+static Eina_List *
 _find_matching_outputs(Eina_List *sois)
 {
    Eina_List *r_output_iter, *s_output_iter, *list = NULL;
@@ -527,10 +512,10 @@ _find_matching_outputs(Eina_List *sois)
 
    EINA_LIST_FOREACH(sois, s_output_iter, so)
      {
-        fprintf(stderr, "E_RANDR: \tLooking for serialized output \"%s\"\n", so->name);
+        INF("E_RANDR: \tLooking for serialized output \"%s\"", so->name);
         EINA_LIST_FOREACH(e_randr_screen_info.rrvd_info.randr_info_12->outputs, r_output_iter, oi)
           {
-             fprintf(stderr, "E_RANDR: \t\tComparing to output \"%s\"\n", oi->name);
+             INF("E_RANDR: \t\tComparing to output \"%s\"", oi->name);
              if (!strncmp(so->name, oi->name, oi->name_length))
                {
 
@@ -548,7 +533,7 @@ _find_matching_outputs(Eina_List *sois)
    return list;
 }
 
-   static Ecore_X_Randr_Mode_Info *
+static Ecore_X_Randr_Mode_Info *
 _find_matching_mode_info(Ecore_X_Randr_Mode_Info *mode)
 {
    Eina_List *iter;
@@ -579,11 +564,11 @@ _find_matching_mode_info(Ecore_X_Randr_Mode_Info *mode)
    return NULL;
 }
 
-    static int
+static int
 _sort_by_number_of_edids(const void *d1, const void *d2)
 {
     const E_Randr_Serialized_Setup_12 *ss1 = (const E_Randr_Serialized_Setup_12*)d1;
-    const E_Randr_Serialized_Setup_12 *ss2 = (const E_Randr_Serialized_Setup_12*)d1;
+    const E_Randr_Serialized_Setup_12 *ss2 = (const E_Randr_Serialized_Setup_12*)d2;
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(ss1, 1);
    EINA_SAFETY_ON_NULL_RETURN_VAL(ss2, -1);

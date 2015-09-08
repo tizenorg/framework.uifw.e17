@@ -48,16 +48,17 @@ void *alloca(size_t);
 #include <E_DBus.h>
 #include <E_Hal.h>
 
-#include "e_fm_main.h"
+#include "e_fm_shared_device.h"
+#include "e_fm_shared_codec.h"
+#include "e_fm_ipc.h"
+#include "e_fm_device.h"
+
 #include "e_fm_main_hal.h"
 #ifdef HAVE_UDISKS_MOUNT
 # include "e_fm_main_udisks.h"
 #endif
 
-#include "e_fm_shared_codec.h"
-#include "e_fm_shared_device.h"
-#include "e_fm_ipc.h"
-#include "e_fm_device.h"
+#include "e_fm_main.h"
 
 static E_DBus_Signal_Handler *_hal_poll = NULL;
 static E_DBus_Connection *_e_fm_main_hal_conn = NULL;
@@ -1085,4 +1086,3 @@ _e_fm_main_hal_storage_find(const char *udi)
      }
    return NULL;
 }
-

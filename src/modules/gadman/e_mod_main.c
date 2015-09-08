@@ -9,7 +9,7 @@ static void _gadman_maug_add(void *data, E_Menu *m);
 static void _gadman_action_cb(E_Object *obj, const char *params);
 
 /* public module routines. all modules must have these */
-EAPI E_Module_Api e_modapi = 
+EAPI E_Module_Api e_modapi =
 {
    E_MODULE_API_VERSION,
    "Gadman"
@@ -22,13 +22,13 @@ e_modapi_init(E_Module *m)
 
    /* Set up a new configuration panel */
    snprintf(buf, sizeof(buf), "%s/e-module-gadman.edj", m->dir);
-   e_configure_registry_category_add("extensions", 90, _("Extensions"), NULL, 
+   e_configure_registry_category_add("extensions", 90, _("Extensions"), NULL,
                                      "preferences-extensions");
-   e_configure_registry_item_add("extensions/gadman", 150, _("Gadgets"), NULL, 
+   e_configure_registry_item_add("extensions/gadman", 150, _("Gadgets"), NULL,
                                  buf, _config_gadman_module);
 
    /* Set this module to be loaded after all other modules, or we don't see
-    modules loaded after this */
+      modules loaded after this */
    e_module_priority_set(m, 100);
 
    gadman_init(m);
@@ -47,19 +47,19 @@ e_modapi_init(E_Module *m)
    E_CONFIG_VAL(D, T, anim_bg, INT);
    E_CONFIG_VAL(D, T, anim_gad, INT);
    E_CONFIG_VAL(D, T, custom_bg, STR);
-   
+
    Man->conf = e_config_domain_load("module.gadman", Man->conf_edd);
    if (!Man->conf)
      {
-	Man->conf = E_NEW(Config, 1);
-	Man->conf->bg_type = 0;
-	Man->conf->color_r = 255;
-	Man->conf->color_g = 255;
-	Man->conf->color_b = 255;
-	Man->conf->color_a = 255;
-	Man->conf->anim_bg = 1;
-	Man->conf->anim_gad = 1;
-	Man->conf->custom_bg = NULL;
+        Man->conf = E_NEW(Config, 1);
+        Man->conf->bg_type = 0;
+        Man->conf->color_r = 255;
+        Man->conf->color_g = 255;
+        Man->conf->color_b = 255;
+        Man->conf->color_a = 255;
+        Man->conf->anim_bg = 1;
+        Man->conf->anim_gad = 1;
+        Man->conf->custom_bg = NULL;
      }
    E_CONFIG_LIMIT(Man->conf->bg_type, 0, 5);
    E_CONFIG_LIMIT(Man->conf->color_r, 0, 255);
@@ -72,28 +72,17 @@ e_modapi_init(E_Module *m)
    /* Menu augmentation */
    Man->icon_name = eina_stringshare_add(buf);
    Man->maug = NULL;
-   Man->maug = 
+   Man->maug =
      e_int_menus_menu_augmentation_add_sorted
-     ("config/1", _("Gadgets"), _gadman_maug_add, (void *)Man->icon_name,
-      NULL, NULL);
+       ("config/1", _("Gadgets"), _gadman_maug_add, (void *)Man->icon_name,
+       NULL, NULL);
    /* Create toggle action */
    Man->action = e_action_add("gadman_toggle");
    if (Man->action)
      {
-	Man->action->func.go = _gadman_action_cb;
-	e_action_predef_name_set(_("Gadgets"), _("Show/hide gadgets"),
-				 "gadman_toggle", NULL, NULL, 0);
-     }
-
-   /* Create a binding for the action (if not exists) */
-   if (!e_bindings_key_get("gadman_toggle"))
-     {
-        e_managers_keys_ungrab();
-        e_bindings_key_add(E_BINDING_CONTEXT_ANY, "g", E_BINDING_MODIFIER_CTRL|E_BINDING_MODIFIER_ALT,
-                           0, "gadman_toggle", NULL);
-
-        e_managers_keys_grab();
-        e_config_save_queue();
+        Man->action->func.go = _gadman_action_cb;
+        e_action_predef_name_set(_("Gadgets"), _("Show/hide gadgets"),
+                                 "gadman_toggle", NULL, NULL, 0);
      }
 
    gadman_update_bg();
@@ -117,12 +106,16 @@ e_modapi_shutdown(E_Module *m __UNUSED__)
      }
    if (Man->action)
      {
-	e_action_predef_name_del(_("Gadgets"), _("Show/hide gadgets"));
-	e_action_del("gadman_toggle");
-	Man->action = NULL;
+        e_action_predef_name_del(_("Gadgets"), _("Show/hide gadgets"));
+        e_action_del("gadman_toggle");
+        Man->action = NULL;
      }
    E_CONFIG_DD_FREE(Man->conf_edd);
-
+   if (Man->conf)
+     {
+        eina_stringshare_del(Man->conf->custom_bg);
+        E_FREE(Man->conf);
+     }
    gadman_shutdown();
 
    return 1;
@@ -135,7 +128,7 @@ e_modapi_save(E_Module *m __UNUSED__)
    return 1;
 }
 
-static void 
+static void
 _gadman_maug_cb(void *data __UNUSED__, E_Menu *m, E_Menu_Item *mi __UNUSED__)
 {
    e_configure_registry_call("extensions/gadman", m->zone->container, NULL);
@@ -157,3 +150,4 @@ _gadman_action_cb(E_Object *obj __UNUSED__, const char *params __UNUSED__)
 {
    gadman_gadgets_toggle();
 }
+

@@ -12,6 +12,7 @@ INCLUDES = \
 @cf_cflags@ \
 @VALGRIND_CFLAGS@ \
 @EDJE_DEF@ \
+@ELM_CFLAGS@ \
 -DPACKAGE_BIN_DIR=\"@PACKAGE_BIN_DIR@\" \
 -DPACKAGE_LIB_DIR=\"@PACKAGE_LIB_DIR@\" \
 -DPACKAGE_DATA_DIR=\"@PACKAGE_DATA_DIR@\" \
@@ -21,7 +22,9 @@ INCLUDES = \
 bin_PROGRAMS = \
 enlightenment \
 enlightenment_imc \
-enlightenment_start
+enlightenment_start \
+enlightenment_filemanager \
+enlightenment_open
 
 internal_bindir = $(libdir)/enlightenment/utils
 internal_bin_PROGRAMS = \
@@ -87,10 +90,13 @@ e_font.h \
 e_gadcon.h \
 e_gadcon_popup.h \
 e_grabinput.h \
+e_grab_dialog.h \
 e.h \
 e_hints.h \
 e_icon.h \
 e_ilist.h \
+e_import_config_dialog.h \
+e_import_dialog.h \
 e_includes.h \
 e_init.h \
 e_int_border_locks.h \
@@ -108,6 +114,7 @@ e_ipc_codec.h \
 e_ipc.h \
 e_layout.h \
 e_livethumb.h \
+e_log.h \
 e_manager.h \
 e_maximize.h \
 e_menu.h \
@@ -161,6 +168,7 @@ e_widget_csel.h \
 e_widget_cslider.h \
 e_widget_deskpreview.h \
 e_widget_entry.h \
+e_widget_filepreview.h \
 e_widget_flist.h \
 e_widget_font_preview.h \
 e_widget_framelist.h \
@@ -182,6 +190,7 @@ e_widget_toolbar.h \
 e_widget_toolbook.h \
 e_win.h \
 e_xinerama.h \
+e_xkb.h \
 e_xsettings.h \
 e_zone.h
 
@@ -237,9 +246,12 @@ e_font.c \
 e_gadcon.c \
 e_gadcon_popup.c \
 e_grabinput.c \
+e_grab_dialog.c \
 e_hints.c \
 e_icon.c \
 e_ilist.c \
+e_import_config_dialog.c \
+e_import_dialog.c \
 e_init.c \
 e_int_border_locks.c \
 e_int_border_menu.c \
@@ -256,6 +268,7 @@ e_ipc.c \
 e_ipc_codec.c \
 e_layout.c \
 e_livethumb.c \
+e_log.c \
 e_manager.c \
 e_maximize.c \
 e_menu.c \
@@ -281,6 +294,7 @@ e_randr_11_serialization.c \
 e_randr_12.c \
 e_randr_12_output.c \
 e_randr_12_crtc.c \
+e_randr_12_ask_dialog.c \
 e_randr_12_serialization.c \
 e_remember.c \
 e_resist.c \
@@ -316,6 +330,7 @@ e_widget_csel.c \
 e_widget_cslider.c \
 e_widget_deskpreview.c \
 e_widget_entry.c \
+e_widget_filepreview.c \
 e_widget_flist.c \
 e_widget_font_preview.c \
 e_widget_framelist.c \
@@ -336,16 +351,19 @@ e_widget_toolbar.c \
 e_widget_toolbook.c \
 e_win.c \
 e_xinerama.c \
+e_xkb.c \
 e_xsettings.c \
 e_zone.c \
 $(ENLIGHTENMENTHEADERS)
 
+enlightenment_CPPFLAGS = -DE_LOGGING=1
+enlightenment_CFLAGS = -fPIE
 enlightenment_SOURCES = \
 e_main.c \
 $(enlightenment_src)
 
-enlightenment_LDFLAGS = -export-dynamic
-enlightenment_LDADD = @e_libs@ @dlopen_libs@ @cf_libs@ @VALGRIND_LIBS@ -lm
+enlightenment_LDFLAGS = -export-dynamic -pie
+enlightenment_LDADD = @e_libs@ @ELM_LIBS@ @dlopen_libs@ @cf_libs@ @VALGRIND_LIBS@ -lm
 
 enlightenment_imc_SOURCES = \
 e.h \
@@ -354,11 +372,14 @@ e_imc_main.c \
 e_intl_data.c
 
 enlightenment_imc_LDADD = @E_IMC_LIBS@
+enlightenment_imc_CFLAGS = -fPIE
+enlightenment_imc_LDFLAGS = -pie
 
 enlightenment_start_SOURCES = \
 e_start_main.c
-enlightenment_start_CFLAGS = $(INCLUDES) @E_START_CFLAGS@
+enlightenment_start_CFLAGS = $(INCLUDES) @E_START_CFLAGS@ -fPIE
 enlightenment_start_LDADD = @dlopen_libs@ @E_START_LIBS@
+enlightenment_start_LDFLAGS = -pie
 
 enlightenment_thumb_SOURCES = \
 e_sha1.c \
@@ -376,14 +397,15 @@ enlightenment_fm_op_CFLAGS = $(INCLUDES)
 enlightenment_sys_SOURCES = \
 e_sys_main.c
 
-enlightenment_sys_LDADD = @E_SYS_LIBS@
+enlightenment_sys_LDADD = @SUID_LDFLAGS@ @E_SYS_LIBS@
+enlightenment_sys_CFLAGS = @SUID_CFLAGS@ @E_SYS_CFLAGS@
 
 if HAVE_EEZE
 enlightenment_backlight_SOURCES = \
 e_backlight_main.c
 
-enlightenment_backlight_CFLAGS = @EEZE_CFLAGS@
-enlightenment_backlight_LDADD = @EEZE_LIBS@
+enlightenment_backlight_CFLAGS = @SUID_CFLAGS@ @EEZE_CFLAGS@
+enlightenment_backlight_LDADD = @SUID_LDFLAGS@ @EEZE_LIBS@
 endif
 
 enlightenment_init_SOURCES = \
@@ -397,6 +419,14 @@ enlightenment_init_LDADD = @E_INIT_LIBS@
 
 #enlightenment_alert_LDADD = @E_ALERT_LIBS@
 #enlightenment_alert_CFLAGS = @E_ALERT_CFLAGS@
+
+enlightenment_filemanager_SOURCES = e_fm_cmdline.c
+enlightenment_filemanager_LDADD = @E_FM_CMDLINE_LIBS@
+enlightenment_filemanager_CFLAGS = @E_FM_CMDLINE_CFLAGS@
+
+enlightenment_open_SOURCES = e_open.c
+enlightenment_open_LDADD = @E_OPEN_LIBS@
+enlightenment_open_CFLAGS = @E_OPEN_CFLAGS@
 
 # HACK! why install-data-hook? install-exec-hook is run after bin_PROGRAMS
 # and before internal_bin_PROGRAMS are installed. install-data-hook is

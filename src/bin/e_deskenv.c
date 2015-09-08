@@ -3,8 +3,8 @@
 EINTERN int
 e_deskenv_init(void)
 {
-   char buf[PATH_MAX], buf2[PATH_MAX];
-   
+   char buf[PATH_MAX], buf2[4096];
+
    // run xdrb -load .Xdefaults & .Xresources
    // NOTE: one day we should replace this with an e based config + service
    if (e_config->deskenv.load_xrdb)

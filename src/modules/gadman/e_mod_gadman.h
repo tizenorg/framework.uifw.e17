@@ -51,6 +51,8 @@ struct _Manager
    Evas_Object *movers[GADMAN_LAYER_COUNT];
    Evas_Object *full_bg;
    const char  *icon_name;
+
+   Eina_List *drag_handlers;
    
    int             visible;
    int             use_composite;
@@ -74,12 +76,9 @@ extern Manager *Man;
 void             gadman_init(E_Module *m);
 void             gadman_shutdown(void);
 E_Gadcon_Client *gadman_gadget_add(const E_Gadcon_Client_Class *cc, Gadman_Layer_Type layer);
-void             gadman_gadget_del(E_Gadcon_Client *gcc);
-E_Gadcon_Client *gadman_gadget_place(E_Config_Gadcon_Client *cf, Gadman_Layer_Type layer, E_Zone *zone);
 void             gadman_gadget_edit_start(E_Gadcon_Client *gcc);
 void             gadman_gadget_edit_end(void *data, Evas_Object *obj, const char *emission, const char *source);
 void             gadman_gadgets_toggle(void);
 void             gadman_update_bg(void);
-E_Gadcon        *gadman_gadcon_get(const E_Zone *zone, Gadman_Layer_Type layer);
 
 #endif

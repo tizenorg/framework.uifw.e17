@@ -178,7 +178,7 @@ _notification_popup_merge(E_Notification *n)
 
    len = strlen(body_old);
    len += strlen(body_new);
-   len += 4; /* \xE2\x80\xA9 or <PS> */
+   len += 5; /* \xE2\x80\xA9 or <PS/> */
    if (len < 65536) body_final = alloca(len + 1);
    else body_final = malloc(len + 1);
    /* Hack to allow e to include markup */
@@ -368,7 +368,7 @@ _notification_popup_place(Popup_Data *popup,
 }
 
 static void
-_notification_popups_place()
+_notification_popups_place(void)
 {
    Popup_Data *popup;
    Eina_List *l;
@@ -516,6 +516,8 @@ _notification_popup_refresh(Popup_Data *popup)
    /* Compute the new size of the popup */
    edje_object_calc_force(popup->theme);
    edje_object_size_min_calc(popup->theme, &w, &h);
+   w = MIN(w, popup->zone->w / 2);
+   h = MIN(h, popup->zone->h / 2);
    e_popup_resize(popup->win, w, h);
    evas_object_resize(popup->theme, w, h);
 

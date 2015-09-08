@@ -18,6 +18,7 @@ typedef struct E_Mixer_Gadget_Config
    const char *card;
    const char *channel_name;
    const char *id;
+   Eina_Bool using_default;
    E_Config_Dialog *dialog;
    struct E_Mixer_Instance *instance;
 } E_Mixer_Gadget_Config;
@@ -35,7 +36,6 @@ typedef struct E_Mixer_Instance
    E_Gadcon_Client *gcc;
    E_Gadcon_Popup *popup;
    Ecore_Timer *popup_timer;
-   E_Menu *menu;
 
    struct
    {

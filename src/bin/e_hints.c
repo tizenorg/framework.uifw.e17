@@ -7,6 +7,10 @@ EAPI Ecore_X_Atom ATM_ENLIGHTENMENT_COMMS = 0;
 EAPI Ecore_X_Atom ATM_ENLIGHTENMENT_VERSION = 0;
 EAPI Ecore_X_Atom ATM_ENLIGHTENMENT_SCALE = 0;
 
+#ifdef _F_E_WIN_AUX_HINT_
+static Eina_List *aux_hints_supported = NULL;
+#endif /* end of _F_E_WIN_AUX_HINT_ */
+
 EINTERN void
 e_hints_init(void)
 {
@@ -295,9 +299,12 @@ e_hints_client_list_set(void)
              EINA_LIST_FOREACH(m->containers, cl, c)
                {
                   bl = e_container_border_list_first(c);
-                  while ((b = e_container_border_list_next(bl)))
-                    clients[i++] = b->client.win;
-                  e_container_border_list_free(bl);
+                  if (bl)
+                    {
+                       while ((b = e_container_border_list_next(bl)))
+                         clients[i++] = b->client.win;
+                       e_container_border_list_free(bl);
+                    }
                }
              if (i > 0)
                {
@@ -354,20 +361,23 @@ e_hints_client_stacking_set(void)
              EINA_LIST_FOREACH(m->containers, cl, c)
                {
                   bl = e_container_border_list_first(c);
-                  while ((b = e_container_border_list_next(bl)))
+                  if (bl)
                     {
-                       if (i >= num)
+                       while ((b = e_container_border_list_next(bl)))
                          {
-                            e_error_message_show("e_hints.c: e_hints_client_stacking_set()\n"
-                                                 "\n"
-                                                 "Window list size greater than window count.\n"
-                                                 "This is really bad.\n"
-                                                 "Please report this.\n");
-                            break;
+                            if (i >= num)
+                              {
+                                 e_error_message_show("e_hints.c: e_hints_client_stacking_set()\n"
+                                                      "\n"
+                                                      "Window list size greater than window count.\n"
+                                                      "This is really bad.\n"
+                                                      "Please report this.\n");
+                                 break;
+                              }
+                            clients[i++] = b->client.win;
                          }
-                       clients[i++] = b->client.win;
+                       e_container_border_list_free(bl);
                     }
-                  e_container_border_list_free(bl);
                }
           }
         if (i < num)
@@ -420,6 +430,35 @@ e_hints_window_init(E_Border *bd)
           bd->client.icccm.state = ECORE_X_WINDOW_STATE_HINT_NORMAL;
      }
 
+#ifdef _F_TRANSIENT_FOR_PATCH_
+   if ((!bd->parent) ||
+       (!e_config->transient.layer))
+     {
+        if ((rem) && (rem->prop.layer))
+          {
+             bd->layer = rem->prop.layer;
+             e_border_layer_set(bd, bd->layer);
+          }
+        else
+          {
+             if (!bd->lock_client_stacking)
+               {
+                  if (bd->client.netwm.type == ECORE_X_WINDOW_TYPE_DESKTOP)
+                    e_border_layer_set(bd, 0);
+                  else if (bd->client.netwm.state.stacking == E_STACKING_BELOW)
+                    e_border_layer_set(bd, 50);
+                  else if (bd->client.netwm.state.stacking == E_STACKING_ABOVE)
+                    e_border_layer_set(bd, 150);
+                  else if (bd->client.netwm.type == ECORE_X_WINDOW_TYPE_DOCK)
+                    e_border_layer_set(bd, 150);
+                  else
+                    e_border_layer_set(bd, 100);
+               }
+             else
+               e_border_raise(bd);
+          }
+     }
+#else
    if ((rem) && (rem->prop.layer))
      {
         bd->layer = rem->prop.layer;
@@ -437,10 +476,6 @@ e_hints_window_init(E_Border *bd)
                e_border_layer_set(bd, 150);
              else if (bd->client.netwm.type == ECORE_X_WINDOW_TYPE_DOCK)
                e_border_layer_set(bd, 150);
-#ifdef _F_NOTIFICATION_LAYER_POLICY_
-             else if (bd->client.netwm.type == ECORE_X_WINDOW_TYPE_NOTIFICATION)
-               e_border_layer_set(bd, 240);
-#endif
              else
                e_border_layer_set(bd, 100);
           }
@@ -450,6 +485,7 @@ e_hints_window_init(E_Border *bd)
 
    if ((bd->parent) && (e_config->transient.layer))
      e_border_layer_set(bd, bd->parent->layer);
+#endif
 
 #if 0
    /* Ignore this, E has incompatible desktop setup */
@@ -479,37 +515,6 @@ e_hints_window_init(E_Border *bd)
          e_hints_window_desktop_set(bd);
      }
 #endif
-
-   {
-      char *str = NULL;
-
-      if ((ecore_x_netwm_startup_id_get(bd->client.win, &str) && (str)) ||
-          ((bd->client.icccm.client_leader > 0) &&
-           ecore_x_netwm_startup_id_get(bd->client.icccm.client_leader, &str) && (str))
-          )
-        {
-           if (!strncmp(str, "E_START|", 8))
-             {
-                int id;
-
-                id = atoi(str + 8);
-                if (id > 0) bd->client.netwm.startup_id = id;
-             }
-           free(str);
-        }
-   }
-   /* It's ok not to have fetch flag, should only be set on startup
-    * and not changed. */
-   if (!ecore_x_netwm_pid_get(bd->client.win, &bd->client.netwm.pid))
-     {
-        if (bd->client.icccm.client_leader)
-          {
-             if (!ecore_x_netwm_pid_get(bd->client.icccm.client_leader, &bd->client.netwm.pid))
-               bd->client.netwm.pid = -1;
-          }
-        else
-          bd->client.netwm.pid = -1;
-     }
 
    if (bd->client.netwm.state.sticky)
      {
@@ -573,8 +578,10 @@ e_hints_window_init(E_Border *bd)
         else
           e_hints_window_visible_set(bd);
      }
+#ifndef _F_USE_EXTENDED_ICONIFY_
    else if ((bd->parent) && (e_config->transient.iconify) && (bd->parent->iconic))
      e_border_iconify(bd);
+#endif
    /* If a window isn't iconic, and is one the current desk,
     * show it! */
    else if (bd->desk == e_desk_current_get(bd->zone))
@@ -900,7 +907,7 @@ e_hints_window_state_update(E_Border                   *bd,
         break;
 
       case ECORE_X_WINDOW_STATE_HIDDEN:
-        /* Ignore */
+        /* XXX: fixme */
         break;
 
       case ECORE_X_WINDOW_STATE_FULLSCREEN:
@@ -1021,7 +1028,7 @@ e_hints_window_state_get(E_Border *bd)
              switch (state[i])
                {
                 case ECORE_X_WINDOW_STATE_ICONIFIED:
-     /* Ignore */
+                  /* Ignore */
                   break;
 
                 case ECORE_X_WINDOW_STATE_MODAL:
@@ -1069,11 +1076,11 @@ e_hints_window_state_get(E_Border *bd)
                   break;
 
                 case ECORE_X_WINDOW_STATE_DEMANDS_ATTENTION:
-     /* FIXME */
+                  /* FIXME */
                   break;
 
                 case ECORE_X_WINDOW_STATE_UNKNOWN:
-     /* Ignore */
+                  /* Ignore */
                   break;
                }
           }
@@ -1421,12 +1428,14 @@ e_hints_window_desktop_set(E_Border *bd)
      deskpos[1] = bd->desk->y;
      ecore_x_window_prop_card32_set(bd->client.win, E_ATOM_DESK, deskpos, 2);
 
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
      if (strcmp(bd->desk->window_profile,
                 e_config->desktop_default_window_profile) != 0)
        {
           ecore_x_e_window_profile_set(bd->client.win,
                                        bd->desk->window_profile);
        }
+#endif
 
 #if 0
      ecore_x_netwm_desktop_set(bd->client.win, current);
@@ -1447,7 +1456,7 @@ e_hints_window_e_state_get(E_Border *bd)
    /* ugly, but avoids possible future overflow if more states are added */
    size = (sizeof(state) / sizeof(state[0]));
 
-   num = 
+   num =
      ecore_x_window_prop_card32_get(bd->client.win, E_ATOM_WINDOW_STATE,
                                     state, size);
    if (!num) return;
@@ -1534,3 +1543,37 @@ e_hints_scale_update(void)
      }
 }
 
+#ifdef _F_E_WIN_AUX_HINT_
+EAPI void
+e_hints_aux_hint_supported_add(Ecore_X_Window root,
+                               const char    *hint)
+{
+   Eina_Strbuf *buf = NULL;
+   void *data;
+   Eina_List *l;
+   char *str;
+   int i = 0;
+
+   aux_hints_supported = eina_list_append(aux_hints_supported, hint);
+   buf = eina_strbuf_new();
+
+   EINA_LIST_FOREACH(aux_hints_supported, l, str)
+     {
+        /* delimiter */
+        if (i > 0) eina_strbuf_append_char(buf, ',');
+        eina_strbuf_append(buf, str);
+        i++;
+     }
+
+   data = (void *)eina_strbuf_string_get(buf);
+
+   if (data)
+     ecore_x_window_prop_property_set
+        (root, ECORE_X_ATOM_E_WINDOW_AUX_HINT_SUPPORTED_LIST,
+         ECORE_X_ATOM_STRING, 8,
+         data,
+         eina_strbuf_length_get(buf) + 1);
+
+   eina_strbuf_free(buf);
+}
+#endif /* end of _F_E_WIN_AUX_HINT_ */

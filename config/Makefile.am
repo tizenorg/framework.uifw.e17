@@ -1,5 +1,5 @@
 MAINTAINERCLEANFILES = Makefile.in
-SUBDIRS = default samsung
+SUBDIRS = default
 
 EET_EET = @eet_eet@
 

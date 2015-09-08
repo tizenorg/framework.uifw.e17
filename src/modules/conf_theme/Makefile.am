@@ -26,12 +26,8 @@ module_la_SOURCES      = e_mod_main.c \
                          e_int_config_borders.h \
                          e_int_config_color_classes.c \
                          e_int_config_color_classes.h \
-                         e_int_config_cursor.c \
-                         e_int_config_cursor.h \
                          e_int_config_fonts.c \
                          e_int_config_fonts.h \
-                         e_int_config_icon_themes.c \
-                         e_int_config_icon_themes.h \
                          e_int_config_scale.c \
                          e_int_config_scale.h \
                          e_int_config_startup.c \
@@ -46,8 +42,6 @@ module_la_SOURCES      = e_mod_main.c \
                          e_int_config_transitions.h \
                          e_int_config_wallpaper.c \
                          e_int_config_wallpaper.h \
-                         e_int_config_wallpaper_import.c \
-                         e_int_config_wallpaper_import.h \
                          e_int_config_wallpaper_web.c \
                          e_int_config_wallpaper_web.h \
                          e_int_config_xsettings.c

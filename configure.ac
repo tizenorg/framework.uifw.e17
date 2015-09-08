@@ -159,7 +159,7 @@ AC_ARG_ENABLE(simple-x11,
   AC_HELP_STRING([--enable-simple-x11], [enable simple x11 linking]),
   [ want_evas_simple_x11=$enableval ]
 )
-    
+
 x_dir=""
 x_cflags=""
 x_libs=""
@@ -256,7 +256,7 @@ AM_GNU_GETTEXT_VERSION([0.17])
 ])
 
 m4_ifdef([AM_GNU_GETTEXT], [
-AM_GNU_GETTEXT([external])
+AM_GNU_GETTEXT([external], [need-ngettext])
 po_makefile_in=po/Makefile.in
 have_po="yes"
 ],[
@@ -319,7 +319,7 @@ AC_MSG_CHECKING([whether the UDEV device backend is enabled])
 AC_MSG_RESULT([${e_cv_want_device_udev}])
 
 if test "x$e_cv_want_device_udev" != "xno";then
-  PKG_CHECK_MODULES([EEZE], [eeze >= 1.0.0 ecore >= 1.0.999 eina >= 1.0.999],
+  PKG_CHECK_MODULES([EEZE], [eeze >= 1.2.0 ecore >= 1.2.0 eina >= 1.2.0],
     [
       device_backend=eeze
       AC_DEFINE_UNQUOTED([HAVE_EEZE],[1],[enable udev support])
@@ -338,8 +338,8 @@ test "x${device_backend}" = "xeeze" || AC_DEFINE_UNQUOTED([HAVE_HAL],[1],[enable
 
 DBUS_MOUNT_CONFIG=1
 dbus_mount="dbus-1"
-hal_mount="ehal >= 1.0.0, edbus >= 1.0.0"
-udisks_mount="eukit >= 1.0.0"
+hal_mount="ehal >= 1.2.0, edbus >= 1.2.0"
+udisks_mount="eukit >= 1.2.0"
 AC_ARG_ENABLE([mount-hal],
   AS_HELP_STRING([--enable-mount-hal],[enable hal mounting support @<:@default=enabled@:>@]),
   [e_cv_want_mount_hal=$enableval],
@@ -352,7 +352,7 @@ AC_MSG_RESULT([${e_cv_want_mount_hal}])
 e_cv_want_mount_hal=no
 
 if test "x$e_cv_want_mount_hal" != "xno";then
-  PKG_CHECK_EXISTS([ehal >= 1.0.0],
+  PKG_CHECK_EXISTS([ehal >= 1.2.0],
     [],[
       hal_mount=
       AC_MSG_NOTICE([HAL mounting disabled])
@@ -371,7 +371,7 @@ AC_MSG_CHECKING([whether the UDISKS mounting support is enabled])
 AC_MSG_RESULT([${e_cv_want_mount_udisks}])
 
 if test "x$e_cv_want_mount_udisks" != "xno";then
-  PKG_CHECK_EXISTS([eukit >= 1.0.0],
+  PKG_CHECK_EXISTS([eukit >= 1.2.0],
     [],[
       udisks_mount=
       AC_MSG_NOTICE([udisks mounting disabled])
@@ -385,28 +385,28 @@ fi
 if test "x${e_cv_want_mount_udisks}" = "xno" && test "x${e_cv_want_mount_hal}" = "xno" ; then
   DBUS_MOUNT_CONFIG=0
   dbus_mount=
-  test "x${e_cv_want_mount_udisks}" = "xno" && udisks_mount=
-  test "x${e_cv_want_mount_hal}" = "xno" && hal_mount=
+  udisks_mount=
+  hal_mount=
 fi
 
 AC_ARG_ENABLE([mount-eeze],
-  AS_HELP_STRING([--enable-mount-eeze],[enable eeze mounting support @<:@default=enabled@:>@]),
+  AS_HELP_STRING([--enable-mount-eeze],[enable eeze mounting support @<:@default=disabled@:>@]),
   [e_cv_want_mount_eeze=$enableval],
-  [e_cv_want_mount_eeze=yes])
+  [e_cv_want_mount_eeze=no])
 
 AC_MSG_CHECKING([whether the Eeze mounting support is enabled])
 AC_MSG_RESULT([${e_cv_want_mount_eeze}])
 
 eeze_mount=
 EEZE_MOUNT_CONFIG=0
-if test "x$e_cv_want_mount_eeze" != "xno" ; then
+if test "x$e_cv_want_mount_eeze" != "xno" && test -z "$dbus_mount" ; then
       CPPFLAGS_save="$CPPFLAGS"
       LIBS_save="$LIBS"
       CPPFLAGS="$EEZE_CFLAGS $CPPFLAGS"
       LIBS="$EEZE_LIBS $LIBS"
       AC_CHECK_LIB([eeze], [eeze_disk_function],
         [
-           eeze_mount="eeze >= 1.0.999 ecore-con >= 1.0.999"
+           eeze_mount="eeze >= 1.2.0 ecore-con >= 1.2.0"
            EEZE_MOUNT_CONFIG=1
            AC_DEFINE_UNQUOTED([HAVE_EEZE_MOUNT], [1], [enable eeze mounting])
            AC_MSG_NOTICE([eeze mounting enabled])
@@ -437,72 +437,82 @@ EFL_CHECK_DOXYGEN([build_doc="yes"], [build_doc="no"])
 
 # explicit libs for each binary to reduce linkage requirements
 PKG_CHECK_MODULES(E_REMOTE, [
-  ecore >= 1.0.999
-  ecore-ipc >= 1.0.999
-  eet >= 1.4.0
-  eina >= 1.0.999
+  ecore >= 1.2.0
+  ecore-ipc >= 1.2.0
+  eet >= 1.6.0
+  eina >= 1.2.0
 ])
 
 PKG_CHECK_MODULES(E_START, [
-  eina >= 1.0.999
+  eina >= 1.2.0
 ])
 
 PKG_CHECK_MODULES(E_IMC, [
-  ecore-file >= 1.0.999
-  eet >= 1.4.0
-  eina >= 1.0.999
+  ecore-file >= 1.2.0
+  eet >= 1.6.0
+  eina >= 1.2.0
 ])
 
 PKG_CHECK_MODULES(E_THUMB, [
-  eina >= 1.0.999
-  evas >= 1.0.999
-  ecore >= 1.0.999
-  ecore-evas >= 1.0.999
-  edje >= 1.0.999
-  ecore-file >= 1.0.999
-  ecore-ipc >= 1.0.999
-  eet >= 1.4.0
-  efreet >= 1.0.999
+  eina >= 1.2.0
+  evas >= 1.2.0
+  ecore >= 1.2.0
+  ecore-evas >= 1.2.0
+  edje >= 1.2.0
+  ecore-file >= 1.2.0
+  ecore-ipc >= 1.2.0
+  eet >= 1.6.0
+  efreet >= 1.2.99
 ])
 
 efm_requires="\
-ecore >= 1.0.999 \
-ecore-file >= 1.0.999 \
-ecore-ipc >= 1.0.999 \
-eet >= 1.4.0 \
-efreet >= 1.0.999 \
-edbus >= 1.0.999 \
-eina >= 1.0.999"
+ecore >= 1.2.0 \
+ecore-file >= 1.2.0 \
+ecore-ipc >= 1.2.0 \
+eet >= 1.6.0 \
+efreet >= 1.2.0 \
+edbus >= 1.2.0 \
+eina >= 1.2.0"
 efm_requires="$efm_requires $eeze_mount $dbus_mount $hal_mount $udisks_mount"
+
+AC_MSG_WARN([EFM requirements : $efm_requires])
 
 PKG_CHECK_MODULES(E_FM, [$efm_requires])
 
+PKG_CHECK_MODULES(E_FM_CMDLINE, [
+  ecore >= 1.2.0
+  ecore-file >= 1.2.0
+  edbus >= 1.2.0
+  eina >= 1.2.0
+  dbus-1
+])
+
 PKG_CHECK_MODULES(E_FM_OP, [
-  ecore >= 1.0.999
-  ecore-file >= 1.0.999
-  eina >= 1.0.999
+  ecore >= 1.2.0
+  ecore-file >= 1.2.0
+  eina >= 1.2.0
 ])
 
 PKG_CHECK_MODULES(E_FM_OPEN, [
-  ecore >= 1.0.999
-  ecore-ipc >= 1.0.999
-  ecore-con >= 1.0.999
-  eet >= 1.4.0
-  eina >= 1.0.999
+  ecore >= 1.2.0
+  ecore-ipc >= 1.2.0
+  ecore-con >= 1.2.0
+  eet >= 1.6.0
+  eina >= 1.2.0
 ])
 
 PKG_CHECK_MODULES(E_SYS, [
-  eina >= 1.0.999
+  eina >= 1.2.0
 ])
 
 PKG_CHECK_MODULES(E_INIT, [
-  evas >= 1.0.999
-  ecore >= 1.0.999
-  ecore-evas >= 1.0.999
-  ecore-x >= 1.0.999
-  edje >= 1.0.999
-  ecore-ipc >= 1.0.999
-  eina >= 1.0.999
+  evas >= 1.2.0
+  ecore >= 1.2.0
+  ecore-evas >= 1.2.0
+  ecore-x >= 1.2.0
+  edje >= 1.2.0
+  ecore-ipc >= 1.2.0
+  eina >= 1.2.0
 ])
 
 #PKG_CHECK_MODULES(E_ALERT, [
@@ -514,49 +524,78 @@ PKG_CHECK_MODULES(E_INIT, [
 #])
 
 PKG_CHECK_MODULES(E, [
-  evas >= 1.0.999
-  ecore >= 1.0.999
-  ecore-x >= 1.0.999
-  ecore-evas >= 1.0.999
-  ecore-input >= 1.0.999
-  ecore-input-evas >= 1.0.999
-  ecore-con >= 1.0.999
-  ecore-ipc >= 1.0.999
-  ecore-file >= 1.0.999
-  eet >= 1.4.0
-  edje >= 1.0.999
-  efreet >= 1.0.999
-  efreet-mime >= 1.0.999
-  efreet-trash >= 1.0.999
-  eina >= 1.0.999
+  evas >= 1.2.0
+  ecore >= 1.2.0
+  ecore-x >= 1.2.99
+  ecore-evas >= 1.2.0
+  ecore-input >= 1.2.0
+  ecore-input-evas >= 1.2.0
+  ecore-con >= 1.2.0
+  ecore-ipc >= 1.2.0
+  ecore-file >= 1.2.0
+  eet >= 1.6.0
+  edje >= 1.2.0
+  efreet >= 1.2.0
+  efreet-mime >= 1.2.0
+  eina >= 1.2.0
   dbus-1
-  edbus >= 1.0.999
+  edbus >= 1.2.0
+  eio >= 1.0.0
   $hal_mount
   $eeze_mount
   $udisks_mount
-  $device_backend
+  $device_backend,
+  dlog
 ])
 requirements_e="\
-evas >= 1.0.999 \
-ecore >= 1.0.999 \
-ecore-x >= 1.0.999 \
-ecore-evas >= 1.0.999 \
-ecore-con >= 1.0.999 \
-ecore-ipc >= 1.0.999 \
-ecore-file >= 1.0.999 \
-eet >= 1.4.0 \
-edje >= 1.0.999 \
-efreet >= 1.0.999 \
-efreet-mime >= 1.0.999 \
-eina >= 1.0.999 \
+evas >= 1.2.0 \
+ecore >= 1.2.0 \
+ecore-x >= 1.2.99 \
+ecore-evas >= 1.2.0 \
+ecore-con >= 1.2.0 \
+ecore-ipc >= 1.2.0 \
+ecore-file >= 1.2.0 \
+eet >= 1.6.0 \
+edje >= 1.2.0 \
+efreet >= 1.2.0 \
+efreet-mime >= 1.2.0 \
+eina >= 1.2.0 \
 dbus-1 \
-edbus >= 1.0.999 \
+edbus >= 1.2.0 \
+eio >= 1.0.0 \
 $hal_mount \
 $udisks_mount \
 $eeze_mount \
 $device_backend"
 
-AC_E_CHECK_PKG(ECORE_IMF, [ ecore-imf >= 1.0.999 ecore-imf-evas >= 1.0.999 ], [], [:])
+
+want_elementary=auto
+have_elementary=no
+AC_ARG_ENABLE(elementary,
+  AC_HELP_STRING([--enable-elementary], [enable Elementary support @<:@default=detect@:>@]),
+  [want_elementary=$enableval],
+  [want_elementary=auto]
+)
+if test "x$want_elementary" != "xno"; then
+   PKG_CHECK_MODULES(ELM, [elementary >= 1.6.9.0],
+                     [have_elementary=yes], [have_elementary=no])
+   if test "x$want_elementary" = "xyes" -a "x$have_elementary" = "xno"; then
+      AC_MSG_ERROR([Elementary support requested but it was not found])
+   fi
+   if test "x$have_elementary" = "xyes"; then
+      AC_DEFINE([HAVE_ELEMENTARY], 1, "Have Elementary support")
+      requirements_e="${requirements_e} elementary > 1.6.9.0"
+   fi
+fi
+
+PKG_CHECK_MODULES(E_OPEN, [
+  ecore >= 1.2.0
+  efreet >= 1.2.0
+  efreet-mime >= 1.2.0
+  eina >= 1.2.0
+])
+
+AC_E_CHECK_PKG(ECORE_IMF, [ ecore-imf >= 1.2.0 ecore-imf-evas >= 1.2.0 ], [], [:])
 
 e_libs=$E_LIBS" "$LIBINTL" "$fnmatch_libs" "$ECORE_IMF_LIBS" "$execinfo_libs
 e_cflags="-DUSE_E_CONFIG_H "$E_CFLAGS" "$ECORE_IMF_CFLAGS
@@ -570,8 +609,6 @@ e_extra_features+="-D_F_DO_NOT_USE_SIG_HANDLER_ "
 e_extra_features+="-D_F_FOCUS_WINDOW_IF_TOP_STACK_ "
 # enable window group raise
 e_extra_features+="-D_F_WINDOW_GROUP_RAISE_ "
-# enable notification layer policy - notification layer:240
-e_extra_features+="-D_F_NOTIFICATION_LAYER_POLICY_ "
 # enable screen lock / unlock
 e_extra_features+="-D_F_COMP_SCREEN_LOCK_ "
 # enable set compositor's input region
@@ -582,7 +619,58 @@ e_extra_features+="-D_F_COMP_MOVE_LOCK_ "
 e_extra_features+="-D_F_COMP_COMPOSITE_MODE_ "
 # using external elementary dialog util instead of e_dialog to display error message
 e_extra_features+="-D_F_USE_EXTN_DIALOG_ "
-
+# change the compositor module's name for additional compositor
+e_extra_features+="-D_F_ADD_EXTRA_COMPOSITE_NAME "
+# use desk window profile
+e_extra_features+="-D_F_USE_DESK_WINDOW_PROFILE_ "
+# enable to clip border within zone
+e_extra_features+="-D_F_BORDER_CLIP_TO_ZONE_ "
+# add shelf control feature
+e_extra_features+="-D_F_SHELF_INPUT_CONTROL_ "
+# add extended iconify
+e_extra_features+="-D_F_USE_EXTENDED_ICONIFY_ "
+# enable window rotation management per zone
+e_extra_features+="-D_F_ZONE_WINDOW_ROTATION_ "
+# add e logging buffer for debugging purpose
+e_extra_features+="-D_F_E_LOGBUF_ "
+# enable the resist effect and add the magnetic effect
+#e_extra_features+="-D_F_USE_RESIST_MAGNETIC_EFFECT_ "
+# add the type of maximize (E_MAXIMIZE_BOTTOM, E_MAXIMIZE_TOP)
+e_extra_features+="-D_F_USE_BOTTOM_TOP_MAXIMIZE "
+# add approved deiconify
+e_extra_features+="-D_F_DEICONIFY_APPROVE_ "
+# add transient_for patch
+e_extra_features+="-D_F_TRANSIENT_FOR_PATCH_ "
+# add border hook patch
+e_extra_features+="-D_F_BORDER_HOOK_PATCH_ "
+# add multi-layer feature of the compositor
+e_extra_features+="-D_F_COMP_LAYER_ "
+# enable to copy the directory for configuration files
+e_extra_features+="-D_F_COPY_FROM_DATA_DIR_ "
+# add comp object event beforehand
+e_extra_features+="-D_F_TEMPORARY_COMP_EVENT_ "
+# add move resize event send
+e_extra_features+="-D_F_MOVE_RESIZE_SEND_PATCH_ "
+# enable to kill hung processe through resourced
+# if you enable this feature, the E is going to send ping only for visible windows.
+# e_config->ping_clients configuration value must be enabled if you want to use it.
+e_extra_features+="-D_F_KILL_HUNG_PROCESS_THROUGH_RD_ "
+# enable patch to handling except case that a client will do consecutively the Map and Unmap repeatedly.
+e_extra_features+="-D_F_FIX_POSITION_PROBLEM_ "
+# enable tiled desk layout feature
+e_extra_features+="-D_F_USE_TILED_DESK_LAYOUT_ "
+# add e_manager_comp_object which supports control of input region on the comp canvas
+e_extra_features+="-D_F_E_MANAGER_COMP_OBJECT_ "
+# add support for window auxiliary hint
+e_extra_features+="-D_F_E_WIN_AUX_HINT_ "
+# add support for moving floating window keeping focus
+e_extra_features+="-D_F_MOVE_KEEPING_FOCUS_ "
+# add support for visibility calculated by wm
+e_extra_features+="-D_F_USE_WM_VISIBILITY_ "
+# enable patch for shape input mask
+e_extra_features+="-D_F_SHAPE_INPUT_PATCH_ "
+# add resizing window when the window is iconified
+e_extra_features+="-D_F_USE_ICONIFY_RESIZE_ "
 
 have_extra_features=no
 AC_ARG_ENABLE(extra_features,
@@ -603,7 +691,7 @@ AC_SUBST(requirements_e)
 
 profile="SLOW_PC"
 AC_ARG_WITH(profile,
-  AS_HELP_STRING([--with-profile=TARGET_PROFILE], 
+  AS_HELP_STRING([--with-profile=TARGET_PROFILE],
   [specify a target format profile of:
                                     LOWRES_PDA, MEDIUMRES_PDA, HIRES_PDA, SLOW_PC, MEDIUM_PC, FAST_PC]),
   [profile=$withval])
@@ -623,7 +711,7 @@ AC_ARG_WITH(edje-cc,
 ])
 AC_SUBST(edje_cc)
 
-PKG_CHECK_MODULES(EET, [eet >= 1.4.0])
+PKG_CHECK_MODULES(EET, [eet >= 1.6.0])
 AC_ARG_WITH(eet-eet,
 [  --with-eet-eet=PATH              specify a specific path to eet utility],
 [
@@ -640,7 +728,7 @@ AC_DEFINE(E_INTERNAL, 1, "This define can be used to wrap internal E stuff, as c
 AM_CONDITIONAL(HAVE_BATTERY, false)
 define([CHECK_MODULE_BATTERY],
 [
-  AC_E_CHECK_PKG(BATTERY, [ ecore >= 1.0.999 ecore-file >= 1.0.999 ecore-con >= 1.0.999 eina >= 1.0.999 ], [], [BATTERY=false])
+  AC_E_CHECK_PKG(BATTERY, [ ecore >= 1.2.0 ecore-file >= 1.2.0 ecore-con >= 1.2.0 eina >= 1.2.0 ], [], [BATTERY=false])
 ])
 
 have_openbsd="no"
@@ -660,7 +748,7 @@ AM_CONDITIONAL([HAVE_OPENBSD], [test "x${have_openbsd}" = "xyes"])
 AM_CONDITIONAL(HAVE_TEMPERATURE, false)
 define([CHECK_MODULE_TEMPERATURE],
 [
-  AC_E_CHECK_PKG(TEMPERATURE, [ ecore >= 1.0.999 ecore-file >= 1.0.999 eina >= 1.0.999 ], [], [TEMPERATURE=false])
+  AC_E_CHECK_PKG(TEMPERATURE, [ ecore >= 1.2.0 ecore-file >= 1.2.0 eina >= 1.2.0 ], [], [TEMPERATURE=false])
 ])
 
 have_exchange=no
@@ -689,10 +777,10 @@ AC_ARG_ENABLE([enotify],
   AC_CACHE_VAL([e_cv_want_enotify], [e_cv_want_enotify=yes])
 )
 if test "x$e_cv_want_enotify" != "xno" ; then
-  AC_E_CHECK_PKG(ENOTIFY, [ edbus >= 1.0.999 enotify >= 1.0.999 ], 
+  AC_E_CHECK_PKG(ENOTIFY, [ edbus >= 1.2.0 enotify >= 1.2.0 ],
   [
     AC_DEFINE_UNQUOTED([HAVE_ENOTIFY], [1], [enable enotify])
-  ], 
+  ],
   [
     AC_MSG_NOTICE([enotify disabled])
     e_cv_want_enotify=no
@@ -709,6 +797,37 @@ define([CHECK_MODULE_NOTIFICATION],
 [
   if test "x$e_cv_want_enotify" = "xno" ; then
     NOTIFICATION=false
+  fi
+])
+
+have_ephysics=no
+AM_CONDITIONAL([HAVE_EPHYSICS], [false])
+AC_ARG_ENABLE([ephysics],
+  AC_HELP_STRING([--disable-ephysics], [disable Ephysics support @<:@default=detect@:>@]),
+  [e_cv_want_ephysics=$enableval],
+  AC_CACHE_VAL([e_cv_want_ephysics], [e_cv_want_ephysics=yes])
+)
+if test "x$e_cv_want_ephysics" != "xno" ; then
+  AC_E_CHECK_PKG(EPHYSICS, [ ephysics ],
+  [
+    AC_DEFINE_UNQUOTED([HAVE_EPHYSICS], [1], [enable ephysics])
+  ],
+  [
+    AC_MSG_NOTICE([ephysics disabled])
+    e_cv_want_ephysics=no
+  ])
+else
+  AC_MSG_NOTICE([ephysics disabled])
+    e_cv_want_ephysics=no
+fi
+AC_SUBST([EPHYSICS_CFLAGS])
+AC_SUBST([EPHYSICS_LIBS])
+
+AM_CONDITIONAL(HAVE_PHYSICS, false)
+define([CHECK_MODULE_PHYSICS],
+[
+  if test "x$e_cv_want_ephysics" = "xno" ; then
+    PHYSICS=false
   fi
 ])
 
@@ -741,9 +860,11 @@ AC_SUBST(SOUND_CFLAGS)
 AC_SUBST(SOUND_LIBS)
 
 AM_CONDITIONAL(HAVE_ECONNMAN, false)
+AM_CONDITIONAL(HAVE_DUMMY, false)
 define([CHECK_MODULE_CONNMAN],
 [
-  AC_E_CHECK_PKG(ECONNMAN, [ edbus >= 1.0.999 econnman-0.7x >= 1.0.999 ], [], [CONNMAN=false])
+  AC_E_CHECK_PKG(ECONNMAN, [ edbus >= 1.2.0 ], [], [CONNMAN=false])
+dnl  AC_E_CHECK_PKG(DUMMY, [ connman >= 1.0 ], [], [CONNMAN=false])
 ])
 AC_SUBST(ECONNMAN_CFLAGS)
 AC_SUBST(ECONNMAN_LIBS)
@@ -751,7 +872,7 @@ AC_SUBST(ECONNMAN_LIBS)
 AM_CONDITIONAL(HAVE_EBLUEZ, false)
 define([CHECK_MODULE_BLUEZ],
 [
-  AC_E_CHECK_PKG(EBLUEZ, [ edbus >= 1.0.999 ebluez >= 1.0.999 ], [], [BLUEZ=false])
+  AC_E_CHECK_PKG(EBLUEZ, [ edbus >= 1.2.0 ebluez >= 1.2.0 ], [], [BLUEZ=false])
 ])
 AC_SUBST(EBLUEZ_CFLAGS)
 AC_SUBST(EBLUEZ_LIBS)
@@ -759,7 +880,7 @@ AC_SUBST(EBLUEZ_LIBS)
 AM_CONDITIONAL(HAVE_EOFONO, false)
 define([CHECK_MODULE_OFONO],
 [
-  AC_E_CHECK_PKG(EOFONO, [ edbus >= 1.0.999 eofono >= 1.0.999 ], [], [OFONO=false])
+  AC_E_CHECK_PKG(EOFONO, [ edbus >= 1.2.0 eofono >= 1.2.0 ], [], [OFONO=false])
 ])
 AC_SUBST(EOFONO_CFLAGS)
 AC_SUBST(EOFONO_LIBS)
@@ -828,10 +949,15 @@ AC_E_OPTIONAL_MODULE([syscon], true)
 AC_E_OPTIONAL_MODULE([everything], true)
 AC_E_OPTIONAL_MODULE([systray], true)
 AC_E_OPTIONAL_MODULE([comp], true)
+AC_E_OPTIONAL_MODULE([physics], true, [CHECK_MODULE_PHYSICS])
+AC_E_OPTIONAL_MODULE([quickaccess], true)
 AC_E_OPTIONAL_MODULE([shot], true)
 AC_E_OPTIONAL_MODULE([backlight], true)
 AC_E_OPTIONAL_MODULE([tasks], true)
 AC_E_OPTIONAL_MODULE([conf_randr], true)
+AC_E_OPTIONAL_MODULE([xkbswitch], true)
+AC_E_OPTIONAL_MODULE([tiling], true)
+AC_E_OPTIONAL_MODULE([access], true)
 
 SUSPEND=""
 HIBERNATE=""
@@ -858,6 +984,18 @@ case "$host_os" in
       fi
       ;;
 esac
+
+m4_ifdef([v_mic],
+   [
+    EFL_COMPILER_FLAG([-Wshadow])
+    EFL_COMPILER_FLAG([-Wall])
+    EFL_COMPILER_FLAG([-W])
+   ])
+
+SUID_CFLAGS=-fPIE
+SUID_LDFLAGS=-pie
+AC_SUBST([SUID_CFLAGS])
+AC_SUBST([SUID_LDFLAGS])
 
 AC_OUTPUT([
 Makefile
@@ -980,15 +1118,28 @@ src/modules/systray/Makefile
 src/modules/systray/module.desktop
 src/modules/comp/Makefile
 src/modules/comp/module.desktop
+src/modules/physics/Makefile
+src/modules/physics/module.desktop
+src/modules/quickaccess/Makefile
+src/modules/quickaccess/module.desktop
 src/modules/shot/Makefile
 src/modules/shot/module.desktop
 src/modules/backlight/Makefile
 src/modules/backlight/module.desktop
 src/modules/tasks/Makefile
 src/modules/tasks/module.desktop
+src/modules/xkbswitch/Makefile
+src/modules/xkbswitch/module.desktop
+src/modules/tiling/Makefile
+src/modules/tiling/module.desktop
+src/modules/access/Makefile
+src/modules/access/module.desktop
 src/preload/Makefile
 data/Makefile
 data/images/Makefile
+data/flags/Makefile
+data/favorites/Makefile
+data/desktop/Makefile
 data/input_methods/Makefile
 data/themes/Makefile
 data/themes/images/Makefile
@@ -1004,7 +1155,6 @@ doc/Doxyfile
 doc/e.dox
 config/Makefile
 config/default/Makefile
-config/samsung/Makefile
 $po_makefile_in
 ])
 

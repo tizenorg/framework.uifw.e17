@@ -52,6 +52,10 @@ EAPI void e_hints_openoffice_kde_fake(Ecore_X_Window root);
 
 EAPI void e_hints_scale_update(void);
 
+#ifdef _F_E_WIN_AUX_HINT_
+EAPI void e_hints_aux_hint_supported_add(Ecore_X_Window root, const char *hint);
+#endif /* end of _F_E_WIN_AUX_HINT_ */
+
 extern EAPI Ecore_X_Atom ATM__QTOPIA_SOFT_MENU;
 extern EAPI Ecore_X_Atom ATM__QTOPIA_SOFT_MENUS;
 extern EAPI Ecore_X_Atom ATM_GNOME_SM_PROXY;

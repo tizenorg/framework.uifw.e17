@@ -16,9 +16,9 @@ typedef struct _Instance
 static E_Gadcon_Client *_gc_init    (E_Gadcon *gc, const char *name, const char *id, const char *style);
 static void             _gc_shutdown(E_Gadcon_Client *gcc);
 static void             _gc_orient  (E_Gadcon_Client *gcc, E_Gadcon_Orient orient);
-static const char      *_gc_label   (E_Gadcon_Client_Class *client_class);
-static Evas_Object     *_gc_icon    (E_Gadcon_Client_Class *client_class, Evas *evas);
-static const char      *_gc_id_new  (E_Gadcon_Client_Class *client_class);
+static const char      *_gc_label   (const E_Gadcon_Client_Class *client_class);
+static Evas_Object     *_gc_icon    (const E_Gadcon_Client_Class *client_class, Evas *evas);
+static const char      *_gc_id_new  (const E_Gadcon_Client_Class *client_class);
 
 static const E_Gadcon_Client_Class _gadcon_class = {
    GADCON_CLIENT_CLASS_VERSION, "efm_info",
@@ -53,7 +53,7 @@ static void
 _opinfo_op_registry_listener(void *data, const E_Fm2_Op_Registry_Entry *ere)
 {
    Evas_Object *o = data;
-   char *total, buf[PATH_MAX];
+   char *total, buf[4096];
 
    if (!o || !ere) return;
    
@@ -107,13 +107,13 @@ _opinfo_op_registry_listener(void *data, const E_Fm2_Op_Registry_Entry *ere)
                if (ere->finished)
                   snprintf(buf, sizeof(buf), _("Copy of %s done"), total);
                else
-                  snprintf(buf, sizeof(buf), _("Copying %s (eta: %d sec)"), total, ere->eta);
+                  snprintf(buf, sizeof(buf), _("Copying %s (eta: %d s)"), total, ere->eta);
                break;
             case E_FM_OP_MOVE:
                if (ere->finished)
                   snprintf(buf, sizeof(buf), _("Move of %s done"), total);
                else
-                  snprintf(buf, sizeof(buf), _("Moving %s (eta: %d sec)"), total, ere->eta);
+                  snprintf(buf, sizeof(buf), _("Moving %s (eta: %d s)"), total, ere->eta);
                break;
             case E_FM_OP_REMOVE:
                if (ere->finished)
@@ -321,7 +321,7 @@ _opinfo_op_registry_update_status(Instance *inst)
    cnt = e_fm2_op_registry_count();
    if (cnt)
      {
-        snprintf(buf, sizeof(buf), _("Processing %d operation(s)"), cnt);
+        snprintf(buf, sizeof(buf), P_("Processing %d operation", "Processing %d operations", cnt), cnt);
         edje_object_part_text_set(inst->o_status, "e.text.info", buf);
      }
    else
@@ -410,13 +410,13 @@ _gc_orient(E_Gadcon_Client *gcc, E_Gadcon_Orient orient __UNUSED__)
 }
 
 static const char *
-_gc_label(E_Gadcon_Client_Class *client_class __UNUSED__)
+_gc_label(const E_Gadcon_Client_Class *client_class __UNUSED__)
 {
    return _("EFM Operation Info");
 }
 
 static Evas_Object *
-_gc_icon(E_Gadcon_Client_Class *client_class __UNUSED__, Evas *evas)
+_gc_icon(const E_Gadcon_Client_Class *client_class __UNUSED__, Evas *evas)
 {
    Evas_Object *o;
    char buf[PATH_MAX];
@@ -430,7 +430,7 @@ _gc_icon(E_Gadcon_Client_Class *client_class __UNUSED__, Evas *evas)
 }
 
 static const char *
-_gc_id_new(E_Gadcon_Client_Class *client_class __UNUSED__)
+_gc_id_new(const E_Gadcon_Client_Class *client_class __UNUSED__)
 {
    return _gadcon_class.name;
 }

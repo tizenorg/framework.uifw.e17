@@ -52,7 +52,7 @@ e_exehist_init(void)
    E_CONFIG_VAL(D, T, normalized_exe, STR);
    E_CONFIG_VAL(D, T, launch_method, STR);
    E_CONFIG_VAL(D, T, exetime, DOUBLE);
-   
+
    _e_exehist_config_edd = E_CONFIG_DD_NEW("E_Exehist", E_Exehist);
 #undef T
 #undef D
@@ -150,7 +150,7 @@ e_exehist_popularity_get(const char *exe)
    E_Exehist_Item *ei;
    const char *normal;
    int count = 0;
-   
+
    _e_exehist_load();
    if (!_e_exehist) return 0;
    normal = _e_exehist_normalize_exe(exe);
@@ -171,7 +171,7 @@ e_exehist_newest_run_get(const char *exe)
    Eina_List *l;
    E_Exehist_Item *ei;
    const char *normal;
-   
+
    _e_exehist_load();
    if (!_e_exehist) return 0.0;
    normal = _e_exehist_normalize_exe(exe);
@@ -222,7 +222,7 @@ e_exehist_sorted_list_get(E_Exehist_Sort sort_type, int max)
    EINA_ITERATOR_FOREACH(iter, ei)
      {
 	int bad = 0;
-	
+
 	if (!(ei->normalized_exe)) continue;
 	if (sort_type == E_EXEHIST_SORT_BY_POPULARITY)
 	  {
@@ -278,14 +278,35 @@ e_exehist_mime_desktop_add(const char *mime, Efreet_Desktop *desktop)
    const char *f;
    E_Exehist_Item *ei;
    Eina_List *l;
-   
+   char buf[PATH_MAX];
+   Efreet_Ini *ini;
+
    if ((!mime) || (!desktop)) return;
    if (!desktop->orig_path) return;
    _e_exehist_load();
    if (!_e_exehist) return;
-   
+
    f = efreet_util_path_to_file_id(desktop->orig_path);
    if (!f) return;
+   
+   snprintf(buf, sizeof(buf), "%s/applications/defaults.list",
+            efreet_data_home_get());
+   ini = efreet_ini_new(buf);
+   fprintf(stderr, "try open %s = %p\n", buf, ini);
+   if (ini)
+     {
+        fprintf(stderr, "SAVE mime %s with %s\n", mime, desktop->orig_path);
+        if (!efreet_ini_section_set(ini, "Default Applications"))
+          {
+             efreet_ini_section_add(ini, "Default Applications");
+             efreet_ini_section_set(ini, "Default Applications");
+          }
+        if (desktop->orig_path)
+          efreet_ini_string_set(ini, mime, ecore_file_file_get(desktop->orig_path));
+        efreet_ini_save(ini, buf);
+        efreet_ini_free(ini);
+     }
+   
    EINA_LIST_FOREACH(_e_exehist->mimes, l, ei)
      {
 	if ((ei->launch_method) && (!strcmp(mime, ei->launch_method)))
@@ -324,16 +345,20 @@ e_exehist_mime_desktop_get(const char *mime)
    Efreet_Desktop *desktop;
    E_Exehist_Item *ei;
    Eina_List *l;
-   
+
+   fprintf(stderr, "e_exehist_mime_desktop_get(%s)\n", mime);
    if (!mime) return NULL;
    _e_exehist_load();
+   fprintf(stderr, "x\n");
    if (!_e_exehist) return NULL;
    EINA_LIST_FOREACH(_e_exehist->mimes, l, ei)
      {
+        fprintf(stderr, "look for %s == %s\n", mime, ei->launch_method);
 	if ((ei->launch_method) && (!strcmp(mime, ei->launch_method)))
 	  {
 	     desktop = NULL;
 	     if (ei->exe) desktop = efreet_util_desktop_file_id_find(ei->exe);
+             fprintf(stderr, "  desk = %p\n", desktop);
 	     if (desktop)
 	       {
 		  _e_exehist_unload_queue();
@@ -351,7 +376,7 @@ _e_exehist_unload_queue(void)
 {
    if (_e_exehist_unload_defer)
      e_powersave_deferred_action_del(_e_exehist_unload_defer);
-   _e_exehist_unload_defer = 
+   _e_exehist_unload_defer =
      e_powersave_deferred_action_add(_e_exehist_cb_unload, NULL);
 }
 
@@ -398,7 +423,7 @@ _e_exehist_limit(void)
 {
    /* go from first item in hist on and either delete all items before a
     * specific timestamp, or if the list count > limit then delete items
-    * 
+    *
     * for now - limit to 500
     */
    if (_e_exehist)
@@ -406,7 +431,7 @@ _e_exehist_limit(void)
 	while (eina_list_count(_e_exehist->history) > 500)
 	  {
 	     E_Exehist_Item *ei;
-	     
+
 	     ei = eina_list_data_get(_e_exehist->history);
 	     eina_stringshare_del(ei->exe);
 	     eina_stringshare_del(ei->normalized_exe);
@@ -417,7 +442,7 @@ _e_exehist_limit(void)
 	while (eina_list_count(_e_exehist->mimes) > 500)
 	  {
 	     E_Exehist_Item *ei;
-	     
+
 	     ei = eina_list_data_get(_e_exehist->mimes);
 	     eina_stringshare_del(ei->exe);
 	     eina_stringshare_del(ei->launch_method);

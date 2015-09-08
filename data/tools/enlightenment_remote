@@ -8,7 +8,7 @@
 #-------------------------------------------------------------------------------
 show_help(){
    # Actual implemented features:
-echo -e "
+/bin/echo -e "
 OPTIONS:
   -h This help
   -help This help
@@ -39,7 +39,23 @@ OPTIONS:
   -desktop-bg-list List all current desktop bg definitions
   -desktop-lock Lock the desktop
 
-  -efm-open-dir OPT1 Open dir in OPT1 in EFileManager. Opens /home/$USER if no path is given or it doesn't exist 
+  -efm-open-dir OPT1 Open dir in OPT1 in EFileManager. Opens /home/$USER if no path is given or it doesn't exist
+
+  -window-list List all window names and ids
+  -window-close OPT1 Request the close of window with xwin id OPT1
+  -window-kill OPT1 Request the kill of window with xwin id OPT1
+  -window-focus OPT1 Request the focus of window with xwin id OPT1
+  -window-iconify OPT1 Request iconify of window with xwin id OPT1
+  -window-uniconify OPT1 Request uniconify of window with xwin id OPT1
+  -window-maximize OPT1 Request maximize of window with xwin id OPT1
+  -window-unmaximize OPT1 Request unmaximize of window with xwin id OPT1
+
+  -zone-rotation OPT1 OPT2 Request rotation of zone OPT1 with angle OPT2 (in degree)
+
+  -log-enable Enable log
+  -log-disable Disable log
+  -log-dump OPT1 Write message to OPT1 file
+  -log-clear Clear logging messages from the logging buffer
 
 Note: This is a new implementation of enlightenment_remote,
       for more information about it see the '--help-new' option.
@@ -52,7 +68,7 @@ Note: This is a new implementation of enlightenment_remote,
 #   Show info about the new implementation of enlightenment_remote
 #-------------------------------------------------------------------------------
 show_help_new_tool(){
-   echo -e "
+   /bin/echo -e "
 This is a new implementation of enlightenment_remote, it uses dbus calls to
 enlightenment so it is using the new system, this tool is a front-end just like
 the original tool, created for the ease-to-use of the users and in order to
@@ -61,7 +77,7 @@ maintain a bit of compatibility with possible scripts from the users too.
 The original tool is not (at the date of today) not removed and you can still
 have access to it, it is renamed to enlightenment_remote_old
 
-This tool depends of the command dbus-send, normally included in the main 
+This tool depends of the command /usr/bin/dbus-send, normally included in the main
 dbus package
 
 This tool is just a front-end and may be not updated, you should
@@ -80,7 +96,7 @@ run: qdbus org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject
 #       RETURNS:  
 #===============================================================================
 ERC(){
-   dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1"
+   /usr/bin/dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1"
 }
 
 #===  FUNCTION  ================================================================
@@ -90,7 +106,7 @@ ERC(){
 #       RETURNS:  
 #===============================================================================
 ERCS(){
-   dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" string:"$2"
+   /usr/bin/dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" string:"$2"
 }
 
 #===  FUNCTION  ================================================================
@@ -100,8 +116,8 @@ ERCS(){
 #       RETURNS:  value (string)
 #===============================================================================
 ERGS(){
-   result="$( dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" )"
-   echo $result
+   result="$( /usr/bin/dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" )"
+   /bin/echo $result
    unset result
 }
 
@@ -112,14 +128,14 @@ ERGS(){
 #       RETURNS:  values (string)
 #===============================================================================
 ERGM(){
-   result="$( dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" )"
+   result="$( /usr/bin/dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" )"
    result="${result##*[}"
    result="${result%%]*}"
    for value in $result
    do
-      echo -n "$value "
+      /bin/echo -n "$value "
    done
-   echo ""
+   /bin/echo ""
    unset result value
 }
 
@@ -130,13 +146,13 @@ ERGM(){
 #       RETURNS:  values (integer)
 #===============================================================================
 ERGMI(){
-   result="$( dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" )"
-   result="$( echo "$result" | sed 's/int32//g' )"
+   result="$( /usr/bin/dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" )"
+   result="$( /bin/echo "$result" | /bin/sed 's/int32//g' )"
    for value in $result
    do
-      echo -n "$value "
+      /bin/echo -n "$value "
    done
-   echo ""
+   /bin/echo ""
    unset result value
 }
 
@@ -147,19 +163,19 @@ ERGMI(){
 #       RETURNS:  struct values
 #===============================================================================
 ERGMST(){
-   result="$( dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" )"
+   result="$( /usr/bin/dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" )"
    result="${result##*array \[}"
    result="${result%%]*}"
-   result="$( echo "$result" | sed -e 's/int32//g' -e 's/struct {//g' )"
+   result="$( /bin/echo "$result" | /bin/sed -e 's/int32//g' -e 's/struct {//g' )"
    for value in $result
    do
       if test "$value" = "}"; then
-         echo
+         /bin/echo
       else
-         echo -n "$value "
+         /bin/echo -n "$value "
       fi
    done
-   echo ""
+   /bin/echo ""
    unset result value
 }
 
@@ -170,7 +186,7 @@ ERGMST(){
 #       RETURNS:  
 #===============================================================================
 ERCIIIIS(){
-   dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" int32:"$2" int32:"$3" int32:"$4" int32:"$5" string:"$6"
+   /usr/bin/dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" int32:"$2" int32:"$3" int32:"$4" int32:"$5" string:"$6"
 }
 
 #===  FUNCTION  ================================================================
@@ -180,7 +196,7 @@ ERCIIIIS(){
 #       RETURNS:  
 #===============================================================================
 ERCIIII(){
-   dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" int32:"$2" int32:"$3" int32:"$4" int32:"$5"
+   /usr/bin/dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" int32:"$2" int32:"$3" int32:"$4" int32:"$5"
 }
 
 #===  FUNCTION  ================================================================
@@ -190,7 +206,17 @@ ERCIIII(){
 #       RETURNS:  
 #===============================================================================
 ERCII(){
-   dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" int32:"$2" int32:"$3"
+   /usr/bin/dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" int32:"$2" int32:"$3"
+}
+
+#===  FUNCTION  ================================================================
+#          NAME:  ERCI
+#   DESCRIPTION:  eremote call with int parameter
+#    PARAMETERS:  interface/method call, int
+#       RETURNS:  
+#===============================================================================
+ERCI(){
+   /usr/bin/dbus-send --print-reply=literal --dest=org.enlightenment.wm.service /org/enlightenment/wm/RemoteObject "$1" int32:"$2"
 }
 
 #-------------------------------------------------------------------------------
@@ -233,9 +259,9 @@ er_module_enable(){
 #   E Module List
 #-------------------------------------------------------------------------------
 er_module_list(){
-   echo 'Module -- Status'
+   /bin/echo 'Module -- Status'
    ERGMST org.enlightenment.wm.Module.List | \
-      sed -e 's/ 1/ -- Enabled/' -e 's/ 0/ -- Disabled/'
+      /bin/sed -e 's/ 1/ -- Enabled/' -e 's/ 0/ -- Disabled/'
 }
 #-------------------------------------------------------------------------------
 #   E Module Load
@@ -340,10 +366,100 @@ er_efm_open_dir(){
 		EFM_DIR="$2"
 	fi
 	
-   dbus-send --session --type=method_call --print-reply=literal --dest=org.enlightenment.FileManager /org/enlightenment/FileManager org.enlightenment.FileManager.OpenDirectory "string:$EFM_DIR"
+   /usr/bin/dbus-send --session --type=method_call --print-reply=literal --dest=org.enlightenment.FileManager /org/enlightenment/FileManager org.enlightenment.FileManager.OpenDirectory "string:$EFM_DIR"
 }
 
+#-------------------------------------------------------------------------------
+#   E Window list
+#-------------------------------------------------------------------------------
+er_window_list(){
+   /bin/echo 'Window -- ID'
+   ERGMST org.enlightenment.wm.Window.List
+}
 
+#-------------------------------------------------------------------------------
+#   E Window close
+#-------------------------------------------------------------------------------
+er_window_close(){
+   ERCI org.enlightenment.wm.Window.Close "$2"
+}
+
+#-------------------------------------------------------------------------------
+#   E Window kill
+#-------------------------------------------------------------------------------
+er_window_kill(){
+   ERCI org.enlightenment.wm.Window.Kill "$2"
+}
+
+#-------------------------------------------------------------------------------
+#   E Window focus
+#-------------------------------------------------------------------------------
+er_window_focus(){
+   ERCI org.enlightenment.wm.Window.Focus "$2"
+}
+
+#-------------------------------------------------------------------------------
+#   E Window iconify
+#-------------------------------------------------------------------------------
+er_window_iconify(){
+   ERCI org.enlightenment.wm.Window.Iconify "$2"
+}
+
+#-------------------------------------------------------------------------------
+#   E Window uniconify
+#-------------------------------------------------------------------------------
+er_window_uniconify(){
+   ERCI org.enlightenment.wm.Window.Uniconify "$2"
+}
+
+#-------------------------------------------------------------------------------
+#   E Window maximize
+#-------------------------------------------------------------------------------
+er_window_maximize(){
+   ERCI org.enlightenment.wm.Window.Maximize "$2"
+}
+
+#-------------------------------------------------------------------------------
+#   E Window unmaximize
+#-------------------------------------------------------------------------------
+er_window_unmaximize(){
+   ERCI org.enlightenment.wm.Window.Unmaximize "$2"
+}
+
+#-------------------------------------------------------------------------------
+#   E Zone rotation
+#-------------------------------------------------------------------------------
+er_zone_rotation(){
+   ERCII org.enlightenment.wm.Zone.Rotation "$2" "$3"
+}
+
+#-------------------------------------------------------------------------------
+#   E Log enable
+#-------------------------------------------------------------------------------
+er_log_enable(){
+   ERC org.enlightenment.wm.Log.Enable
+}
+
+#-------------------------------------------------------------------------------
+#   E Log disable
+#-------------------------------------------------------------------------------
+er_log_disable(){
+   ERC org.enlightenment.wm.Log.Disable
+}
+
+#-------------------------------------------------------------------------------
+#   E Log dump
+#-------------------------------------------------------------------------------
+er_log_dump(){
+   ERCS org.enlightenment.wm.Log.Dump "$2"
+}
+
+#-------------------------------------------------------------------------------
+#   E Log clear
+#-------------------------------------------------------------------------------
+er_log_clear(){
+   ERC org.enlightenment.wm.Log.Clear
+}
 
 
 #===  FUNCTION  ================================================================
@@ -353,8 +469,8 @@ er_efm_open_dir(){
 #       RETURNS:  just finishes and exit
 #===============================================================================
 
-if ! type dbus-send > /dev/null 2>&1; then
-   echo "E: dbus-send command not found, please install it first"
+if ! type /usr/bin/dbus-send > /dev/null 2>&1; then
+   /bin/echo "E: /usr/bin/dbus-send command not found, please install it first"
    exit 1
 fi
 
@@ -422,6 +538,45 @@ case "$1" in
    -efm-open-dir)
       er_efm_open_dir "$@"
    ;;
+   -window-list)
+      er_window_list
+   ;;
+   -window-close)
+      er_window_close "$@"
+   ;;
+   -window-kill)
+      er_window_kill "$@"
+   ;;
+   -window-focus)
+      er_window_focus "$@"
+   ;;
+   -window-iconify)
+      er_window_iconify "$@"
+   ;;
+   -window-uniconify)
+      er_window_uniconify "$@"
+   ;;
+   -window-maximize)
+      er_window_maximize "$@"
+   ;;
+   -window-unmaximize)
+      er_window_unmaximize "$@"
+   ;;
+   -zone-rotation)
+      er_zone_rotation "$@"
+   ;;
+   -log-enable)
+      er_log_enable
+   ;;
+   -log-disable)
+      er_log_disable
+   ;;
+   -log-dump)
+      er_log_dump "$@"
+   ;;
+   -log-clear)
+      er_log_clear
+   ;;
 
    # This entry needs to be always the last option of the list (*)
    -h|-help|--help|--h|*)
@@ -438,7 +593,7 @@ ignore_this(){
 # think at it just like as a TODO list or a list where are listed all the old options of enlightenment_remote
 # Remember that the elements of this next list are removed every time they are implemented on this tool
 
-echo "
+/bin/echo "
   -module-list List all loaded modules
   -default-bg-set OPT1 Set the default background edje to the desktop background in the file 'OPT1' (must be a full path)
   -default-bg-get Get the default background edje file path

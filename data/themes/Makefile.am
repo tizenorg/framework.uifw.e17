@@ -12,15 +12,15 @@ EDJE_FLAGS = $(EDJE_FLAGS_$(V)) \
 
 filesdir = $(datadir)/enlightenment/data/themes
 files_DATA = \
-samsung.edj
+default.edj
 
 EXTRA_DIST = \
-samsung.edc
+default.edc
 
-samsung.edj: Makefile $(EXTRA_DIST)
+default.edj: Makefile $(EXTRA_DIST)
 	$(EDJE_CC) $(EDJE_FLAGS) \
-	$(top_srcdir)/data/themes/samsung.edc \
-	$(top_builddir)/data/themes/samsung.edj
+	$(top_srcdir)/data/themes/default.edc \
+	$(top_builddir)/data/themes/default.edj
 
 clean-local:
 	rm -f *.edj

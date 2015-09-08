@@ -123,7 +123,7 @@ _basic_create(E_Config_Dialog *cfd __UNUSED__, Evas *evas, E_Config_Dialog_Data 
                            &(cfdata->remember_fm_wins));
    e_widget_list_object_append(ol, ow, 1, 0, 0.0);
 
-   ow = e_widget_button_add(evas, _("Delete Remember(s)"), "list-remove",
+   ow = e_widget_button_add(evas, _("Delete"), "list-remove",
 			    _cb_delete, cfdata, NULL);
    cfdata->btn = ow;
 
@@ -266,7 +266,7 @@ static void
 _cb_delete(void *data, void *data2 __UNUSED__)
 {
    E_Config_Dialog_Data *cfdata;
-   Eina_List *l = NULL;
+   const Eina_List *l = NULL;
    int i = 0, changed = 0, deleted = 0;
    int last_selected = -1;
 

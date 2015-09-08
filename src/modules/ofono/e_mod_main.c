@@ -4,7 +4,7 @@
 #include "e_mod_main.h"
 
 static E_Module *ofono_mod = NULL;
-static char tmpbuf[PATH_MAX];
+static char tmpbuf[4096];
 
 const char _e_ofono_name[] = "ofono";
 const char _e_ofono_Name[] = N_("Mobile Modems Info");
@@ -217,20 +217,6 @@ _ofono_popup_new(E_Ofono_Instance *inst)
 }
 
 static void
-_ofono_menu_cb_post(void        *data,
-                    E_Menu *menu __UNUSED__)
-{
-   E_Ofono_Instance *inst = data;
-   if ((!inst) || (!inst->menu))
-     return;
-   if (inst->menu)
-     {
-        e_object_del(E_OBJECT(inst->menu));
-        inst->menu = NULL;
-     }
-}
-
-static void
 _ofono_menu_new(E_Ofono_Instance      *inst,
                 Evas_Event_Mouse_Down *ev)
 {
@@ -242,8 +228,6 @@ _ofono_menu_new(E_Ofono_Instance      *inst,
 
    m = e_menu_new();
    m = e_gadcon_client_util_menu_items_append(inst->gcc, m, 0);
-   e_menu_post_deactivate_callback_set(m, _ofono_menu_cb_post, inst);
-   inst->menu = m;
    e_gadcon_canvas_zone_geometry_get(inst->gcc->gadcon, &x, &y, NULL, NULL);
    e_menu_activate_mouse(m, zone, x + ev->output.x, y + ev->output.y,
                          1, 1, E_MENU_POP_DIRECTION_AUTO, ev->timestamp);
@@ -303,7 +287,7 @@ _ofono_cb_mouse_down(void            *data,
      }
    else if (ev->button == 2)
      _ofono_popup_cb_powered_changed(inst, inst->ui.powered, NULL);
-   else if ((ev->button == 3) && (!inst->menu))
+   else if (ev->button == 3)
      _ofono_menu_new(inst, ev);
 }
 
@@ -473,11 +457,6 @@ _gc_shutdown(E_Gadcon_Client *gcc)
    if (!inst)
      return;
 
-   if (inst->menu)
-     {
-        e_menu_post_deactivate_callback_set(inst->menu, NULL, NULL);
-        e_object_del(E_OBJECT(inst->menu));
-     }
    if (inst->popup)
      _ofono_popup_del(inst);
    if (inst->tip)
@@ -504,13 +483,13 @@ _gc_orient(E_Gadcon_Client       *gcc,
 }
 
 static const char *
-_gc_label(E_Gadcon_Client_Class *client_class __UNUSED__)
+_gc_label(const E_Gadcon_Client_Class *client_class __UNUSED__)
 {
    return _(_e_ofono_Name);
 }
 
 static Evas_Object *
-_gc_icon(E_Gadcon_Client_Class *client_class __UNUSED__,
+_gc_icon(const E_Gadcon_Client_Class *client_class __UNUSED__,
          Evas                               *evas)
 {
    Evas_Object *o;
@@ -521,7 +500,7 @@ _gc_icon(E_Gadcon_Client_Class *client_class __UNUSED__,
 }
 
 static const char *
-_gc_id_new(E_Gadcon_Client_Class *client_class __UNUSED__)
+_gc_id_new(const E_Gadcon_Client_Class *client_class __UNUSED__)
 {
    E_Ofono_Module_Context *ctxt;
    Eina_List *instances;

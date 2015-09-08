@@ -278,6 +278,7 @@ color_classes {
  * parts (images, text, rects etc.))
  */
 
+data.item: "gtk-theme" "B_and_W";
 collections {
 /* begin the collection of edje groups that are in this file */
 
@@ -289,131 +290,32 @@ collections {
       /* this section defines that images are to be included and how to
        * encode them */
       images {
-         image: "bg_shadow.png" COMP;
-         /* the encoding method is "COMP". this
-          * is lossless, but compressed */
-         image: "bg_over.png" LOSSY 80;
-         /* the encoding is "LOSSY". this loses quality (80% quality level)
-          * but uses less space in return. uses JPEG and can do alpha channels
-          * too */
-         image: "bg_base.png" COMP;
+         image: "bg_radgrad.png" COMP;
+         image: "bg_pattern.png" COMP;
       }
       /* this section actually contains the list of parts from bottom to top
        * (defining the layering/stacking order) */
       parts {
-         part {
-            name: "background_image";
+         part { name: "bg";
+            mouse_events: 0;
             /* this is the base background */
-            description {
-               state: "default" 0.0;
-               /* its default state */
-               /* note a part has 1 or more states described here. Each state
-                * has a name AND a value. If the value is not useful then set
-                * it to 0.0. The names do not need to be unique within a part
-                * but the name + value combination needs to be unique. At some
-                * points edje is able to select a state given a value other
-                * other than 0.0 - in that case Edje will find the state with
-                * the same name but closest value to the one being asked for.
-                * This allows you to create many states that act as a
-                * meticulously defined series of states from 0.0 to 1.0
-                * (example - a "fuel gauge") where the theme may provide as many
-                * or few as the designer wants, and edje will just chose the
-                * closest match to what it wants. In almost all cases you will
-                * not use this feature, but this explains the "0.0" you see
-                * everywhere */
-               /* nb - i am using a shortcut notation. you can use this
-                * parent.child: blah; in a key to avoid doing
-                * parent { child: blah; }
-                */
-               image.normal: "bg_base.png";
-               /* use the vgrad_dark.png im */
-               fill {
-                  /* now specify how the image is to fill the part */
-                  smooth: 0;
-                  /* set smooth swcaling off */
-                  size {
-                     relative: 0 1.0;
-                     /* X and Y point relative to the part
-                      * as a whole for the size (dont scale
-                      * in X but scale 100% in Y */
-                     offset: 761 0;
-                     /* offsets from the relative scale point
-                      * so here offset is 36 to the right in
-                      * X and at the Y relative point. this
-                      * means tile horizontally, but scale
-                      * vertically */
-                  }
-               }
-            }
-         }
-         part {
-            name: "over";
-            description {
-               state: "default" 0.0;
-               image.normal: "bg_over.png";
-               /* tiled at 800x600 */
-               fill.size.relative: 0 0;
-               fill.size.offset: 800 600;
-               fill.smooth: 0;
-            }
-         }
-         /* a circular shadow on top */
-         part { name: "shadow";
             description { state: "default" 0.0;
-               image.normal: "bg_shadow.png";
+               image {
+                  normal: "bg_radgrad.png";
+                  scale_hint: STATIC;
+               }
                fill.smooth: 0;
+               aspect: (1024/653) (1024/653);
+               aspect_preference: NONE;
             }
          }
-      }
-   }
-   group {
-      name: "e/desktop/background/scrollframe";
-      parts {
-         part {
-            name: "clipper";
-            type: RECT;
+         part { name: "pat";
             mouse_events: 0;
-            description {
-               state: "default" 0.0;
-            }
-         }
-         part {
-            name: "e.swallow.content";
-            clip_to: "clipper";
-            type: SWALLOW;
-            description {
-               state: "default" 0.0;
-               rel1.offset: 0 0;
-               rel2 {
-                  relative: 0.0  0.0;
-                  offset: -1   -1;
-               }
-            }
-         }
-      }
-   }
-   group {
-      name: "e/desktop/background/scrollframe";
-      parts {
-         part {
-            name: "clipper";
-            type: RECT;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-            }
-         }
-         part {
-            name: "e.swallow.content";
-            clip_to: "clipper";
-            type: SWALLOW;
-            description {
-               state: "default" 0.0;
-               rel1.offset: 0 0;
-               rel2 {
-                  relative: 0.0  0.0;
-                  offset: -1   -1;
-               }
+            /* this is the base background */
+            description { state: "default" 0.0;
+               image.normal: "bg_pattern.png";
+               fill.size.relative: 0.0 0.0;
+               fill.size.offset: 256 256;
             }
          }
       }
@@ -1769,16 +1671,12 @@ collections {
             target: "bottom";
             target: "e.swallow.client";
          }
-         // don't have any animation or stat change to do at the start of shading
-         //    program { name: "xx";
-         //       signal: "e,state,shading";
-         //       source: "e";
-         //    }
          program {
             name: "shade_end";
             /* run when the window finishes its
              * shading animation */
             signal: "e,state,shaded";
+            signal: "e,state,shading";
             source: "e";
             action: STATE_SET "shaded" 0.0;
             target: "bottom";
@@ -1794,6 +1692,7 @@ collections {
             name: "unshade_start";
             /* run when the window starts
              * unshading itself */
+            signal: "e,state,unshaded";
             signal: "e,state,unshading";
             source: "e";
             action: STATE_SET "default" 0.0;
@@ -1806,11 +1705,6 @@ collections {
             target: "e.event.resize.t";
             target: "e.event.resize.b";
          }
-         // don't have any animation or stat change to do at the end of unshading
-         //    program { name: "xx";
-         //       signal: "e,state,unshaded";
-         //       source: "e";
-         //    }
          program {
             name: "resize_b_on";
             signal: "mouse,in";
@@ -6337,12 +6231,40 @@ collections {
             signal: "mouse,down,1";
             source: "left_arrow";
             action: SIGNAL_EMIT "e,action,prev" "e";
+            after: "sb_left_repeat";
+         }
+         program {
+            name: "sb_left_repeat";
+            action: SIGNAL_EMIT "e,action,prev" "e";
+            in: 0.3 0.0;
+            after: "sb_left_repeat";
+         }
+         program {
+            name: "sb_left_repeat_stop";
+            signal: "mouse,up,1";
+            source: "left_arrow";
+            action: ACTION_STOP;
+            target: "sb_left_repeat";
          }
          program {
             name: "sb_right";
             signal: "mouse,down,1";
             source: "right_arrow";
             action: SIGNAL_EMIT "e,action,next" "e";
+            after: "sb_right_repeat";
+         }
+         program {
+            name: "sb_right_repeat";
+            action: SIGNAL_EMIT "e,action,next" "e";
+            in: 0.3 0.0;
+            after: "sb_right_repeat";
+         }
+         program {
+            name: "sb_right_repeat_stop";
+            signal: "mouse,up,1";
+            source: "right_arrow";
+            action: ACTION_STOP;
+            target: "sb_right_repeat";
          }
       }
    }
@@ -7949,158 +7871,354 @@ collections {
 /////////////////////////////////////////////////////////////////////////////
 /*** MOD: CONNMAN ***/
 
-   // ICONS: receive the following signals, all with source being "e"
-   //    e,favorite,{yes,no}
-   //    e,auto_connect,{yes,no}
-   //    e,pass_required,{yes,no}
-   //    e,state,{idle,association,configuration,ready,disconnect,failure}
-   //    e,mode,{managed,adhoc,gprs,edge,umts}
-   //    e,security,{none,wep,psk,ieee8021x,wpa,rsn}
-   // and also the following message:
-   //    id=1, type=MSG_INT, description=strength (0-100)
+#define MSG_ID_STRENGTH 1
+
+#define CONNMAN_STATE_PART_ADD() \
+         part { \
+            name: "state"; \
+            type: IMAGE; \
+            mouse_events: 0; \
+            description { \
+               state: "default" 0.0; \
+               aspect: 1 1; \
+               aspect_preference: BOTH; \
+               color: 255 255 255 0; \
+               image.normal: "connman_status_ready"; \
+               rel1.relative: 0.8 0.8; \
+               rel2.relative: 1 1; \
+               align: 1 1; \
+               min: 8 8; \
+            } \
+            description { \
+               state: "ready" 0.0; \
+               inherit: "default" 0.0; \
+               color: 255 255 255 255; \
+            } \
+            description { \
+               state: "online" 0.0; \
+               inherit: "default" 0.0; \
+               color: 255 255 255 255; \
+               image.normal: "connman_status_online"; \
+            } \
+         }
+
+#define CONNMAN_IMAGES_SET(_name, _min) \
+         images { \
+            set { \
+               name: "connman_"##_name; \
+               image { \
+                  image: "connman_"##_name##"_128.png" COMP; \
+                  size: (_min+1) (_min+1) 1000 1000; \
+               } \
+               image { \
+                  image: "connman_"##_name##"_32.png" COMP; \
+                  size: 1 1 _min _min; \
+               } \
+            } \
+         } \
+
+
+#define CONNMAN_ICON(_icon) \
+   group { \
+      name: "e/modules/connman/icon/"##_icon; \
+      script { \
+         public message(Msg_Type:type, id, ...) { \
+            if ((type == MSG_INT_SET) && (id == MSG_ID_STRENGTH)) { \
+               new state = getarg(2); \
+               /* Connecting if in association or configuration */ \
+               if ((state == 2)) \
+               { \
+                  set_state(PART:"state", "default", 0.0); \
+                  run_program(PROGRAM:"connecting"); \
+                  return; \
+               } \
+               if ((state == 3)) \
+                  return; \
+               if ((state == 4)) \
+                  set_state(PART:"state", "ready", 0.0); \
+               else if ((state == 5)) \
+                  set_state(PART:"state", "online", 0.0); \
+               else \
+                  set_state(PART:"state", "default", 0.0); \
+               set_state(PART:"icon", "default", 0.0); \
+            } \
+         } \
+      } \
+      parts { \
+         CONNMAN_IMAGES_SET(_icon, 32) \
+         part { \
+            name: "icon"; \
+            type: IMAGE; \
+            mouse_events: 0; \
+            description { \
+               state: "default" 0.0; \
+               aspect: 1 1; \
+               aspect_preference: BOTH; \
+               image.normal: "connman_"##_icon##; \
+            } \
+            description { \
+               state: "hidden" 0.0; \
+               inherit: "default" 0.0; \
+               color: 255 255 255 0; \
+            } \
+         } \
+         CONNMAN_STATE_PART_ADD() \
+      } \
+      programs { \
+         program { \
+            name: "connecting"; \
+            action: STATE_SET "hidden" 0.0; \
+            transition: ACCEL 0.3; \
+            target: "icon"; \
+            after: "connecting,2"; \
+         } \
+         program { \
+            name: "connecting,2"; \
+            action: STATE_SET "default" 0.0; \
+            transition: DECEL 0.3; \
+            target: "icon"; \
+            after: "connecting"; \
+         } \
+      } \
+   }
+
+CONNMAN_ICON(bluetooth)
+CONNMAN_ICON(cellular)
+CONNMAN_ICON(ethernet)
+
+#undef CONNMAN_ICON
 
    group {
-      name: "e/modules/connman/icon/ethernet";
-      max: 128 128;
-      min: 16 16;
-      parts {
-         part {
-            name: "icon";
-            type: IMAGE;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               aspect: 1.0 1.0;
-               aspect_preference: BOTH;
-               image.image: "connman-ethernet.png" COMP;
-               image.normal: "connman-ethernet.png";
-            }
-         }
-      }
-   }
-   group {
       name: "e/modules/connman/icon/wifi";
-      max: 128 128;
-      min: 16 16;
-      images {
-         image: "connman-wifi-good.png" COMP;
-         image: "connman-wifi-medium.png" COMP;
-         image: "connman-wifi-bad.png" COMP;
-      }
+
+#define CONNMAN_BAR_IMAGES_SET(_name) \
+         images { \
+            set { \
+               name: "wifi_bar_"##_name; \
+               image { \
+                  image: "connman_wifi_"##_name##"_128.png" COMP; \
+                  /* FIXME: check why it doesn't work */ \
+                  /* size: 33 33 128 128; \ */ \
+                  size: 33 33 1000 1000; \
+               } \
+               image { \
+                  image: "connman_wifi_"##_name##"_32.png" COMP; \
+                  size: 1 1 32 32; \
+               } \
+            } \
+         } \
+
+#define CONNMAN_BAR_ON(_name) \
+         CONNMAN_BAR_IMAGES_SET(_name) \
+         part { \
+            name: "bar_"##_name; \
+            type: IMAGE; \
+            mouse_events: 0; \
+            description { \
+               state: "default" 0.0; \
+               aspect: 1 1; \
+               aspect_preference: BOTH; \
+               color: 255 255 255 0; \
+               image.normal: "wifi_bar_"##_name; \
+            } \
+            description { \
+               state: "visible" 0.0; \
+               inherit: "default" 0.0; \
+               color: 255 255 255 255; \
+            } \
+         }
+
+#define CONNMAN_CONNECTING_ON(_cur, _next) \
+         program { \
+            name: "connecting,"##_cur##",on"; \
+            action: STATE_SET "visible" 0.0; \
+            transition: ACCELERATE 0.2; \
+            target: "bar_"##_cur##"_on"; \
+            after: "connecting,"##_cur##",off"; \
+            after: "connecting,"##_next##",on"; \
+         }
+
+#define CONNMAN_CONNECTING_OFF(_cur) \
+         program { \
+            name: "connecting,"##_cur##",off"; \
+            action: STATE_SET "default" 0.0; \
+            transition: DECELERATE 0.2; \
+            target: "bar_"##_cur##"_on"; \
+         }
+
       script {
          public message(Msg_Type:type, id, ...) {
-            if ((type == MSG_INT) && (id == 1)) {
-               new strength;
-               strength = getarg(2);
-               if (strength >= 65)
-                  run_program(PROGRAM:"strength,good"); 
-               else if (strength >= 35)
-                  run_program(PROGRAM:"strength,medium"); 
+            if ((type == MSG_INT_SET) && (id == MSG_ID_STRENGTH)) {
+               new state = getarg(2);
+               new Float:str = getarg(3);
+
+               /* Connecting if in association or configuration */
+               if ((state == 2))
+               {
+                  set_state(PART:"state", "default", 0.0);
+                  run_program(PROGRAM:"connecting");
+                  return;
+               }
+               if ((state == 3))
+                  return;
+
+               if ((state == 4))
+                  set_state(PART:"state", "ready", 0.0);
+               else if ((state == 5))
+                  set_state(PART:"state", "online", 0.0);
                else
-                  run_program(PROGRAM:"strength,bad");
+                  set_state(PART:"state", "default", 0.0);
+
+               set_state(PART:"bar_0_on", "visible", 0.0);
+               set_tween_state(PART:"bar_1_on", (str - (100/3) * 0) / (100/3),
+                     "default", 0.0, "visible", 0.0);
+               set_tween_state(PART:"bar_2_on", (str - (100/3) * 1) / (100/3),
+                     "default", 0.0, "visible", 0.0);
+               set_tween_state(PART:"bar_3_on", (str - (100/3) * 2) / (100/3),
+                     "default", 0.0, "visible", 0.0);
             }
          }
       }
+
       parts {
+
+         CONNMAN_BAR_IMAGES_SET(off)
+         CONNMAN_BAR_IMAGES_SET(not)
          part {
-            name: "icon";
+            name: "bar_off";
             type: IMAGE;
             mouse_events: 0;
             description {
                state: "default" 0.0;
-               aspect: 1.0 1.0;
+               aspect: 1 1;
                aspect_preference: BOTH;
-               image.normal: "connman-wifi-good.png";
+               image.normal: "wifi_bar_off";
             }
             description {
-               state: "medium" 0.0;
+               state: "disabled" 0.0;
                inherit: "default" 0.0;
-               image.normal: "connman-wifi-medium.png";
+               color: 255 255 255 0;
+            }
+         }
+
+         CONNMAN_BAR_ON(0_on)
+         CONNMAN_BAR_ON(1_on)
+         CONNMAN_BAR_ON(2_on)
+         CONNMAN_BAR_ON(3_on)
+
+         part {
+            name: "bar_not";
+            type: IMAGE;
+            mouse_events: 0;
+            description {
+               state: "default" 0.0;
+               aspect: 1 1;
+               aspect_preference: BOTH;
+               image.normal: "wifi_bar_not";
+               color: 255 255 255 0;
             }
             description {
-               state: "bad" 0.0;
+               state: "disabled" 0.0;
                inherit: "default" 0.0;
-               image.normal: "connman-wifi-bad.png";
+               color: 255 255 255 255;
             }
          }
-         programs {
-            program {
-               name: "strength,good";
-               action: STATE_SET "default" 0.0;
-               target: "icon";
-            }
-            program {
-               name: "strength,medium";
-               action: STATE_SET "medium" 0.0;
-               target: "icon";
-            }
-            program {
-               name: "strength,bad";
-               action: STATE_SET "bad" 0.0;
-               target: "icon";
-            }
-         }
+         CONNMAN_IMAGES_SET(status_ready, 8)
+         CONNMAN_IMAGES_SET(status_online, 8)
+         CONNMAN_STATE_PART_ADD()
       }
+      programs {
+         program {
+            name: "connman,enabled";
+            signal: "e,available";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "bar_not";
+            target: "bar_off";
+         }
+         program {
+            name: "connman,disabled";
+            signal: "e,unavailable";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "bar_0_on";
+            target: "bar_1_on";
+            target: "bar_2_on";
+            target: "bar_3_on";
+            after: "connman,disabled,2";
+         }
+         program {
+            name: "connman,disabled,2";
+            action: STATE_SET "disabled" 0.0;
+            target: "bar_not";
+            target: "bar_off";
+         }
+         program {
+            name: "connecting";
+            action: STATE_SET "default" 0.0;
+            target: "bar_1_on";
+            target: "bar_2_on";
+            target: "bar_3_on";
+            after: "connecting,2";
+         }
+         program {
+            name: "connecting,2";
+            action: STATE_SET "visible" 0.0;
+            target: "bar_0_on";
+            after: "connecting,1,on";
+         }
+         CONNMAN_CONNECTING_ON(1, 2)
+         CONNMAN_CONNECTING_ON(2, 3)
+         CONNMAN_CONNECTING_ON(3, 1)
+         CONNMAN_CONNECTING_OFF(1)
+         CONNMAN_CONNECTING_OFF(2)
+         CONNMAN_CONNECTING_OFF(3)
+      }
+
+#undef CONNMAN_BAR_IMAGES_SET
+#undef CONNMAN_BAR_ON
+#undef CONNMAN_CONNECTING_ON
+#undef CONNMAN_CONNECTING_OFF
+#undef MSG_ID_STRENGTH
+
    }
-   // GADGET and TIP all have the same parts and signals:
-   //
-   // SIGNALS:
-   //    e,unavailable: connmand is not running (nothing else works)
-   //    e,available: connmand is running
-   //
-   //    e,changed,offline_mode,{yes,no}
-   //    e,changed,connected,{yes,no}
-   //    e,changed,service,{system,ethernet,wifi,wimax,bluetooth,cellular,vpn}
-   //    e,changed,technology,{wifi,ethernet,bluetooth,wimax,cellular}
-   //    e,changed,state,{idle,association,configuration,ready,disconnect,failure}
-   //    e,changed,mode,{managed,adhoc,gprs,edge,umts}
-   //    e,changed,security,{none,wep,psk,ieee8021x,wpa,rsn}
-   //    e,changed,favorite,{yes,no}
-   //    e,changed,auto_connect,{yes,no}
-   //    e,changed,pass_required,{yes,no}
-   //    e,changed,error,{yes,no}
-   //    e,changed,ipv4_address,{yes,no}
-   //
-   // PARTS:
-   //    e.text.offline_mode (filled with offline message)
-   //    e.text.name
-   //    e.text.error
-   //    e.text.technology
-   //    e.text.state
-   //    e.text.ipv4_address
-   //
-   // MESSAGES:
-   //    id=1, type=MSG_INT, description=strength (0-100)
+
    group {
       name: "e/modules/connman/main";
-      images {
-         image: "connman-disconnect.png" COMP;
-         image: "connman-disconnect-offline.png" COMP;
-         image: "connman-connecting-1.png" COMP;
-         image: "connman-connecting-2.png" COMP;
-         image: "connman-connecting-3.png" COMP;
-         image: "connman-connecting-4.png" COMP;
-         image: "connman-ethernet.png" COMP;
-         image: "connman-wifi-good.png" COMP;
-         image: "connman-wifi-medium.png" COMP;
-         image: "connman-wifi-bad.png" COMP;
-      }
-      //max: 128 128;
-      min: 16 16;
-      script {
-         public message(Msg_Type:type, id, ...) {
-            if ((type == MSG_INT) && (id == 1)) {
-               new strength;
-               strength = getarg(2);
-               if (strength >= 65)
-                  run_program(PROGRAM:"strength,good"); 
-               else if (strength >= 35)
-                  run_program(PROGRAM:"strength,medium"); 
-               else
-                  run_program(PROGRAM:"strength,bad");
-            }
+
+#define CONNMAN_TECH_ICON_ADD(_tech) \
+         part { \
+            name: #_tech##"_icon"; \
+            type: GROUP; \
+            mouse_events: 0; \
+            source: "e/modules/connman/icon/"##_tech; \
+            description { \
+               state: "default" 0.0; \
+               visible: 0; \
+            } \
+            description { \
+               state: "visible" 0.0; \
+               inherit: "default" 0.0; \
+               visible: 1; \
+            } \
+         } \
+         program { \
+            name: "technology_"##_tech; \
+            signal: "e,changed,technology,"##_tech; \
+            source: "e"; \
+            action: STATE_SET "default" 0.0; \
+            target: "wifi_icon"; \
+            target: "ethernet_icon"; \
+            target: "cellular_icon"; \
+            target: "bluetooth_icon"; \
+            after: "technology_"##_tech##",2"; \
+         } \
+         program { \
+            name: "technology_"##_tech##",2"; \
+            action: STATE_SET "visible" 0.0; \
+            target: #_tech##"_icon"; \
          }
-      }
+
       parts {
          part {
             name: "eventarea";
@@ -8111,1255 +8229,109 @@ collections {
                color: 255 255 255 0;
             }
          }
-         part {
-            name: "availability";
-            type: RECT;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               color: 255 128 128 0;
-               visible: 0;
-            }
-            description {
-               state: "unavailable" 0.0;
-               inherit: "default" 0.0;
-               color: 255 128 128 255;
-               visible: 1;
-            }
+         CONNMAN_TECH_ICON_ADD(wifi)
+         CONNMAN_TECH_ICON_ADD(ethernet)
+         CONNMAN_TECH_ICON_ADD(cellular)
+         CONNMAN_TECH_ICON_ADD(bluetooth)
+      }
+      programs {
+         program {
+            name: "technology_other";
+            signal: "e,changed,technology,other";
+            source: "e";
+            after: "technology_wifi";
          }
-         programs {
-            program {
-               name: "e,available";
-               signal: "e,available";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "availability";
-               transition: LINEAR 0.2;
-            }
-            program {
-               name: "e,unavailable";
-               signal: "e,unavailable";
-               source: "e";
-               action: STATE_SET "unavailable" 0.0;
-               target: "availability";
-               transition: LINEAR 0.2;
-            }
+         program {
+            name: "connman,disabled";
+            signal: "e,unavailable";
+            source: "e";
+            after: "connman,enabled";
          }
-         part {
-            name: "state-clipper";
-            type: RECT;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               color: 255 255 255 255;
-            }
-            description {
-               state: "inverted" 0.0;
-               color: 255 255 255 0;
-               visible: 0;
-            }
+         program {
+            name: "connman,enabled";
+            signal: "e,available";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "wifi_icon";
+            target: "ethernet_icon";
+            target: "cellular_icon";
+            target: "bluetooth_icon";
+            after: "connman,enabled,2";
          }
-         part {
-            name: "state-inverted-clipper";
-            type: RECT;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               color: 255 255 255 0;
-               visible: 0;
-            }
-            description {
-               state: "inverted" 0.0;
-               color: 255 255 255 255;
-               visible: 1;
-            }
-         }
-         programs {
-            program {
-               name: "e,changed,state,online";
-               signal: "e,changed,state,online";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting-stop";
-            }
-            program {
-               name: "e,changed,state,ready";
-               signal: "e,changed,state,ready";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting-stop";
-            }
-            program {
-               name: "e,changed,state,failure";
-               signal: "e,changed,state,failure";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting-stop";
-            }
-            program {
-               name: "e,changed,state,disconnect";
-               signal: "e,changed,state,disconnect";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting-stop";
-            }
-            program {
-               name: "e,changed,state,idle";
-               signal: "e,changed,state,idle";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting-stop";
-            }
-            program {
-               name: "e,changed,state,association";
-               signal: "e,changed,state,association";
-               source: "e";
-               action: STATE_SET "inverted" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting";
-            }
-            program {
-               name: "e,changed,state,configuration";
-               signal: "e,changed,state,configuration";
-               source: "e";
-               action: STATE_SET "inverted" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting";
-            }
-            program {
-               name: "state-connecting-stop";
-               action: ACTION_STOP;
-               target: "state-connecting";
-               after: "state-connecting-stop2";
-            }
-            program {
-               name: "state-connecting-stop2";
-               action: STATE_SET "default" 0.0;
-               target: "connecting";
-            }
-            program {
-               name: "state-connecting";
-               action: STATE_SET "connecting" 0.0;
-               target: "connecting";
-               transition: LINEAR 0.5333;
-               after: "state-connecting";
-            }
-         }
-         part {
-            name: "disconnected-visibility";
-            type: RECT;
-            mouse_events: 0;
-            clip_to: "state-clipper";
-            description {
-               state: "default" 0.0;
-               color: 255 255 255 0;
-               visible: 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-               visible: 1;
-            }
-         }
-         part {
-            name: "disconnected";
-            type: IMAGE;
-            mouse_events: 0;
-            clip_to: "disconnected-visibility";
-            description {
-               state: "default" 0.0;
-               aspect: 1.0 1.0;
-               aspect_preference: BOTH;
-               fixed: 1 1;
-               image.normal: "connman-disconnect.png";
-            }
-            description {
-               state: "offline" 0.0;
-               inherit: "default" 0.0;
-               image.normal: "connman-disconnect-offline.png";
-            }
-         }
-         part {
-            name: "connecting";
-            type: IMAGE;
-            mouse_events: 0;
-            clip_to: "state-inverted-clipper";
-            description {
-               state: "default" 0.0;
-               aspect: 1.0 1.0;
-               aspect_preference: BOTH;
-               fixed: 1 1;
-               image.normal: "connman-disconnect.png";
-            }
-            description {
-               state: "connecting" 0.0;
-               inherit: "default" 0.0;
-               image.tween: "connman-connecting-1.png";
-               image.tween: "connman-connecting-2.png";
-               image.tween: "connman-connecting-3.png";
-               image.normal: "connman-connecting-4.png";
-            }
-         }
-         part {
-            name: "ethernet-visibility";
-            type: RECT;
-            mouse_events: 0;
-            clip_to: "state-clipper";
-            description {
-               state: "default" 0.0;
-               color: 255 255 255 0;
-               visible: 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-               visible: 1;
-            }
-         }
-         part {
-            name: "ethernet";
-            type: IMAGE;
-            mouse_events: 0;
-            clip_to: "ethernet-visibility";
-            description {
-               state: "default" 0.0;
-               aspect: 1.0 1.0;
-               aspect_preference: BOTH;
-               fixed: 1 1;
-               image.normal: "connman-ethernet.png";
-            }
-         }
-         part {
-            name: "wifi-visibility";
-            type: RECT;
-            mouse_events: 0;
-            clip_to: "state-clipper";
-            description {
-               state: "default" 0.0;
-               color: 255 255 255 0;
-               visible: 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-               visible: 1;
-            }
-         }
-         part {
-            name: "wifi";
-            type: IMAGE;
-            mouse_events: 0;
-            clip_to: "wifi-visibility";
-            description {
-               state: "default" 0.0;
-               aspect: 1.0 1.0;
-               aspect_preference: BOTH;
-               fixed: 1 1;
-               image.normal: "connman-wifi-good.png";
-            }
-            description {
-               state: "good" 0.0;
-               inherit: "default" 0.0;
-            }
-            description {
-               state: "medium" 0.0;
-               inherit: "default" 0.0;
-               image.normal: "connman-wifi-medium.png";
-            }
-            description {
-               state: "bad" 0.0;
-               inherit: "default" 0.0;
-               image.normal: "connman-wifi-bad.png";
-            }
-         }
-         // TODO: wimax, cellular, bluetooth
-         programs {
-            program {
-               name: "strength,good";
-               action: STATE_SET "good" 0.0;
-               target: "wifi";
-               // add wimax, cellular, bluetooth
-            }
-            program {
-               name: "strength,medium";
-               action: STATE_SET "medium" 0.0;
-               target: "wifi";
-               // add wimax, cellular, bluetooth
-            }
-            program {
-               name: "strength,bad";
-               action: STATE_SET "bad" 0.0;
-               target: "wifi";
-               // add wimax, cellular, bluetooth
-            }
-            program {
-               signal: "e,changed,offline_mode,yes";
-               source: "e";
-               action: STATE_SET "offline" 0.0;
-               target: "disconnected";
-            }
-            program {
-               signal: "e,changed,offline_mode,no";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "disconnected";
-            }
-            program {
-               name: "e,changed,technology,none";
-               signal: "e,changed,technology,none";
-               source: "e";
-               action: STATE_SET "visible" 0.0;
-               target: "disconnected-visibility";
-               after: "e,changed,technology,none,others";
-            }
-            program {
-               name: "e,changed,technology,none,others";
-               action: STATE_SET "default" 0.0;
-               target: "ethernet-visibility";
-               target: "wifi-visibility";
-               // add wimax, cellular, bluetooth
-            }
-            program {
-               name: "e,changed,technology,ethernet";
-               signal: "e,changed,technology,ethernet";
-               source: "e";
-               action: STATE_SET "visible" 0.0;
-               target: "ethernet-visibility";
-               after: "e,changed,technology,ethernet,others";
-            }
-            program {
-               name: "e,changed,technology,ethernet,others";
-               action: STATE_SET "default" 0.0;
-               target: "disconnected-visibility";
-               target: "wifi-visibility";
-               // add wimax, cellular, bluetooth
-            }
-            program {
-               name: "e,changed,technology,wifi";
-               signal: "e,changed,technology,wifi";
-               source: "e";
-               action: STATE_SET "visible" 0.0;
-               target: "wifi-visibility";
-               after: "e,changed,technology,wifi,others";
-            }
-            program {
-               name: "e,changed,technology,wifi,others";
-               action: STATE_SET "default" 0.0;
-               target: "disconnected-visibility";
-               target: "ethernet-visibility";
-               // add wimax, cellular, bluetooth
-            }
-         }
-         part {
-            name: "e.text.name";
-            type: TEXT;
-            mouse_events: 0;
-            effect: SOFT_SHADOW;
-            description {
-               state: "default" 0.0;
-               color: 224 224 224 255;
-               color3: 0 0 0 64;
-               align: 0.5 1.0;
-               rel1 {
-                  relative: 0.0 1.0;
-                  offset: 0 -20;
-               }
-               rel2 {
-                  relative: 1.0 1.0;
-                  offset: -1 -1;
-               }
-               text {
-                  font: "Sans";
-                  size: 8;
-                  align: 0.5 1.0;
-                  text: "";
-                  min: 0 1;
-               }
-            }
-            description {
-               state: "hidden" 0.0;
-               inherit: "default" 0.0;
-               visible: 0;
-            }
-         }
-         programs {
-            program {
-               name: "resize";
-               signal: "resize";
-               script {
-                  new x, y, w, h;
-                  get_geometry(PART:"eventarea", x, y, w, h);
-                  if (w <= 32)
-                     set_state(PART:"e.text.name", "hidden", 0.0); 
-                  else
-                     set_state(PART:"e.text.name", "default", 0.0);
-               }
-            }
-            program {
-               name: "e,changed,connected,no";
-               signal: "e,changed,connected,no";
-               source: "e";
-               action: STATE_SET "hidden" 0.0;
-               target: "e.text.name";
-            }
-            program {
-               name: "e,changed,connected,yes";
-               signal: "e,changed,connected,yes";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "e.text.name";
-            }
+         program {
+            name: "connman,enabled,2";
+            action: STATE_SET "visible" 0.0;
+            target: "wifi_icon";
          }
       }
+#undef CONNMAN_TECH_ICON_ADD
    }
+
    group {
-      /* This group is interesting in that it specifies programs
-       * after the part that they effect, instead of at the
-       * end of the group. It is a good demonstation of freestyle
-       * formatting in edje.
-       */
-      name: "e/modules/connman/tip";
-      images {
-         image: "inset_sunk.png" COMP;
-         image: "connman-disconnect.png" COMP;
-         image: "connman-disconnect-offline.png" COMP;
-         image: "connman-connecting-1.png" COMP;
-         image: "connman-connecting-2.png" COMP;
-         image: "connman-connecting-3.png" COMP;
-         image: "connman-connecting-4.png" COMP;
-         image: "connman-ethernet.png" COMP;
-         image: "connman-wifi.png" COMP;
-      }
-      min: 350 148;
-      script {
-         public message(Msg_Type:type, id, ...) {
-            if ((type == MSG_INT) && (id == 1)) {
-               new strength;
-               new buf[32];
-               new Float:val;
-               strength = getarg(2);
-               if (strength > 0) {
-                  val = float(strength) / 100.0;
-                  snprintf(buf, sizeof(buf), "%d%%", strength);
-                  set_text(PART:"strength", buf);
-                  set_drag(PART:"strength_gauge_knob", val, 0.0);
-                  run_program(PROGRAM:"strength,show");
-               } 
-               else run_program(PROGRAM:"strength,hide");
-               
-               if (strength >= 65)
-                  run_program(PROGRAM:"strength,good"); 
-               else if (strength >= 35)
-                  run_program(PROGRAM:"strength,medium"); 
-               else
-                  run_program(PROGRAM:"strength,bad");
-            }
-         }
-      }
+      name: "e/modules/connman/end";
+
+      CONNMAN_IMAGES_SET(security1, 32)
+      CONNMAN_IMAGES_SET(security2, 32)
+
       parts {
          part {
-            name: "state-clipper";
-            type: RECT;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               color: 255 255 255 255;
-            }
-            description {
-               state: "inverted" 0.0;
-               color: 255 255 255 0;
-               visible: 0;
-            }
-         }
-         part {
-            name: "state-inverted-clipper";
-            type: RECT;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               color: 255 255 255 0;
-               visible: 0;
-            }
-            description {
-               state: "inverted" 0.0;
-               color: 255 255 255 255;
-               visible: 1;
-            }
-         }
-         programs {
-            program {
-               name: "e,changed,state,online";
-               signal: "e,changed,state,online";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting-stop";
-            }
-            program {
-               name: "e,changed,state,ready";
-               signal: "e,changed,state,ready";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting-stop";
-            }
-            program {
-               name: "e,changed,state,failure";
-               signal: "e,changed,state,failure";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting-stop";
-            }
-            program {
-               name: "e,changed,state,disconnect";
-               signal: "e,changed,state,disconnect";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting-stop";
-            }
-            program {
-               name: "e,changed,state,idle";
-               signal: "e,changed,state,idle";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting-stop";
-            }
-            program {
-               name: "e,changed,state,association";
-               signal: "e,changed,state,association";
-               source: "e";
-               action: STATE_SET "inverted" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting";
-            }
-            program {
-               name: "e,changed,state,configuration";
-               signal: "e,changed,state,configuration";
-               source: "e";
-               action: STATE_SET "inverted" 0.0;
-               target: "state-clipper";
-               target: "state-inverted-clipper";
-               after: "state-connecting";
-            }
-            program {
-               name: "state-connecting-stop";
-               action: ACTION_STOP;
-               target: "state-connecting";
-               after: "state-connecting-stop2";
-            }
-            program {
-               name: "state-connecting-stop2";
-               action: STATE_SET "default" 0.0;
-               target: "connecting";
-            }
-            program {
-               name: "state-connecting";
-               action: STATE_SET "connecting" 0.0;
-               target: "connecting";
-               transition: LINEAR 0.5333;
-               after: "state-connecting";
-            }
-         }
-         part {
-            name: "technology";
-            type: RECT;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               color: 255 255 255 0;
-               min: 128 128;
-               max: 128 128;
-               align: 0.0 0.0;
-               fixed: 1 1;
-               rel1 {
-                  relative: 0.0 0.0;
-                  offset: 10 10;
-               }
-               rel2 {
-                  relative: 0.0 0.0;
-                  offset: 137 137;
-               }
-            }
-         }
-         part {
-            name: "disconnected-visibility";
-            type: RECT;
-            mouse_events: 0;
-            clip_to: "state-clipper";
-            description {
-               state: "default" 0.0;
-               color: 255 255 255 0;
-               visible: 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-               visible: 1;
-            }
-         }
-         part {
-            name: "disconnected";
+            name: "security";
             type: IMAGE;
             mouse_events: 0;
-            clip_to: "disconnected-visibility";
             description {
                state: "default" 0.0;
-               aspect: 1.0 1.0;
+               aspect: 1 1;
                aspect_preference: BOTH;
-               fixed: 1 1;
-               image.normal: "connman-disconnect.png";
-               rel1.to: "technology";
-               rel2.to: "technology";
-            }
-            description {
-               state: "offline" 0.0;
-               inherit: "default" 0.0;
-               image.normal: "connman-disconnect-offline.png";
-            }
-         }
-         programs {
-            program {
-               signal: "load";
-               after: "e,changed,technology,none";
-            }
-         }
-         part {
-            name: "connecting";
-            type: IMAGE;
-            mouse_events: 0;
-            clip_to: "state-inverted-clipper";
-            description {
-               state: "default" 0.0;
-               aspect: 1.0 1.0;
-               aspect_preference: BOTH;
-               fixed: 1 1;
-               image.normal: "connman-disconnect.png";
-               rel1.to: "technology";
-               rel2.to: "technology";
-            }
-            description {
-               state: "connecting" 0.0;
-               inherit: "default" 0.0;
-               image.tween: "connman-connecting-1.png";
-               image.tween: "connman-connecting-2.png";
-               image.tween: "connman-connecting-3.png";
-               image.normal: "connman-connecting-4.png";
-            }
-         }
-         part {
-            name: "ethernet-visibility";
-            type: RECT;
-            mouse_events: 0;
-            clip_to: "state-clipper";
-            description {
-               state: "default" 0.0;
                color: 255 255 255 0;
-               visible: 0;
+               image.normal: "connman_security1";
             }
             description {
-               state: "visible" 0.0;
+               state: "almost_secure" 0.0;
                inherit: "default" 0.0;
                color: 255 255 255 255;
-               visible: 1;
-            }
-         }
-         part {
-            name: "ethernet";
-            type: IMAGE;
-            mouse_events: 0;
-            clip_to: "ethernet-visibility";
-            description {
-               state: "default" 0.0;
-               aspect: 1.0 1.0;
-               aspect_preference: BOTH;
-               fixed: 1 1;
-               image.normal: "connman-ethernet.png";
-               rel1.to: "technology";
-               rel2.to: "technology";
-            }
-         }
-         part {
-            name: "wifi-visibility";
-            type: RECT;
-            mouse_events: 0;
-            clip_to: "state-clipper";
-            description {
-               state: "default" 0.0;
-               color: 255 255 255 0;
-               visible: 0;
             }
             description {
-               state: "visible" 0.0;
+               state: "secure" 0.0;
                inherit: "default" 0.0;
                color: 255 255 255 255;
-               visible: 1;
+               image.normal: "connman_security2";
             }
          }
-         part {
-            name: "wifi";
-            type: IMAGE;
-            mouse_events: 0;
-            clip_to: "wifi-visibility";
-            description {
-               state: "default" 0.0;
-               aspect: 1.0 1.0;
-               aspect_preference: BOTH;
-               fixed: 1 1;
-               image.normal: "connman-wifi-good.png";
-               rel1.to: "technology";
-               rel2.to: "technology";
-            }
-            description {
-               state: "good" 0.0;
-               inherit: "default" 0.0;
-            }
-            description {
-               state: "medium" 0.0;
-               inherit: "default" 0.0;
-               image.normal: "connman-wifi-medium.png";
-            }
-            description {
-               state: "bad" 0.0;
-               inherit: "default" 0.0;
-               image.normal: "connman-wifi-bad.png";
-            }
+      }
+      programs {
+         program {
+            name: "security,off";
+            signal: "e,security,off";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "security";
          }
-         // TODO: wimax, cellular, bluetooth
-         programs {
-            program {
-               name: "strength,good";
-               action: STATE_SET "good" 0.0;
-               target: "wifi";
-               // add wimax, cellular, bluetooth
-            }
-            program {
-               name: "strength,medium";
-               action: STATE_SET "medium" 0.0;
-               target: "wifi";
-               // add wimax, cellular, bluetooth
-            }
-            program {
-               name: "strength,bad";
-               action: STATE_SET "bad" 0.0;
-               target: "wifi";
-               // add wimax, cellular, bluetooth
-            }
-            program {
-               signal: "e,changed,offline_mode,yes";
-               source: "e";
-               action: STATE_SET "offline" 0.0;
-               target: "disconnected";
-            }
-            program {
-               signal: "e,changed,offline_mode,no";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "disconnected";
-            }
-            program {
-               name: "e,changed,technology,none";
-               signal: "e,changed,technology,none";
-               source: "e";
-               action: STATE_SET "visible" 0.0;
-               target: "disconnected-visibility";
-               after: "e,changed,technology,none,others";
-            }
-            program {
-               name: "e,changed,technology,none,others";
-               action: STATE_SET "default" 0.0;
-               target: "ethernet-visibility";
-               target: "wifi-visibility";
-               // add wimax, cellular, bluetooth
-            }
-            program {
-               name: "e,changed,technology,ethernet";
-               signal: "e,changed,technology,ethernet";
-               source: "e";
-               action: STATE_SET "visible" 0.0;
-               target: "ethernet-visibility";
-               after: "e,changed,technology,ethernet,others";
-            }
-            program {
-               name: "e,changed,technology,ethernet,others";
-               action: STATE_SET "default" 0.0;
-               target: "disconnected-visibility";
-               target: "wifi-visibility";
-               // add wimax, cellular, bluetooth
-            }
-            program {
-               name: "e,changed,technology,wifi";
-               signal: "e,changed,technology,wifi";
-               source: "e";
-               action: STATE_SET "visible" 0.0;
-               target: "wifi-visibility";
-               after: "e,changed,technology,wifi,others";
-            }
-            program {
-               name: "e,changed,technology,wifi,others";
-               action: STATE_SET "default" 0.0;
-               target: "disconnected-visibility";
-               target: "ethernet-visibility";
-               // add wimax, cellular, bluetooth
-            }
-            program {
-               name: "e,changed,connected,no";
-               signal: "e,changed,connected,no";
-               source: "e";
-               action: STATE_SET "visible" 0.0;
-               target: "disconnected-visibility";
-               after: "e,changed,technology,none,others";
-               after: "strength,hide";
-               after: "e,changed,connected,no,others";
-               after: "e,changed,ipv4_address,no";
-            }
-            program {
-               name: "e,changed,connected,no,others";
-               action: STATE_SET "hidden" 0.0;
-               target: "e.text.error";
-            }
+         program {
+            name: "security,none";
+            signal: "e,security,none";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "security";
          }
-         part {
-            name: "e.text.name";
-            type: TEXT;
-            mouse_events: 0;
-            effect: SOFT_SHADOW;
-            description {
-               state: "default" 0.0;
-               color: 240 240 240 255;
-               color3: 0 0 0 64;
-               align: 0.0 0.0;
-               fixed: 1 1;
-               rel1 {
-                  to_x: "technology";
-                  relative: 1.0 0.0;
-                  offset: 10 10;
-               }
-               rel2 {
-                  relative: 1.0 0.0;
-                  offset: -10 30;
-               }
-               text {
-                  font: "Sans:style=Bold";
-                  size: 16;
-                  align: 0.0 0.0;
-                  text: "";
-                  min: 1 1;
-               }
-            }
+         program {
+            name: "security,almost_secure";
+            signal: "e,security,wep";
+            source: "e";
+            action: STATE_SET "almost_secure" 0.0;
+            target: "security";
          }
-         part {
-            name: "e.text.state";
-            type: TEXT;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               color: 16 16 16 255;
-               align: 0.0 0.0;
-               fixed: 1 1;
-               rel1 {
-                  to_x: "technology";
-                  to_y: "e.text.name";
-                  relative: 1.0 1.0;
-                  offset: 10 10;
-               }
-               rel2 {
-                  to_y: "e.text.name";
-                  relative: 1.0 1.0;
-                  offset: -10 25;
-               }
-               text {
-                  font: "Sans:style=Bold";
-                  size: 12;
-                  align: 0.0 0.0;
-                  text: "";
-                  min: 1 1;
-               }
-            }
-         }
-         part {
-            name: "strength_gauge_bg";
-            type: IMAGE;
-            scale: 1;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               min: 100 10;
-               max: 99999 99999;
-               rel1 {
-                  to_x: "technology";
-                  to_y: "strength";
-                  relative: 1.0 0.0;
-                  offset: 10 -2;
-               }
-               rel2 {
-                  to_y: "strength";
-                  relative: 1.0 1.0;
-                  offset: -10 1;
-               }
-               image {
-                  normal: "inset_sunk.png";
-                  border: 6 6 6 6;
-               }
-            }
-            description {
-               state: "hidden" 0.0;
-               inherit: "default" 0.0;
-               visible: 0;
-               min: 0 0;
-               max: 0 0;
-            }
-         }
-         part {
-            name: "strength_gauge_confine";
-            type: RECT;
-            scale: 1;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               color: 0 255 0 0;
-               rel1 {
-                  to: "strength_gauge_bg";
-                  offset: 1 1;
-               }
-               rel2 {
-                  to: "strength_gauge_bg";
-                  offset: -2 -2;
-               }
-            }
-            description {
-               state: "hidden" 0.0;
-               inherit: "default" 0.0;
-               visible: 0;
-            }
-         }
-         part {
-            name: "strength_gauge_knob";
-            mouse_events: 0;
-            scale: 1;
-            type: RECT;
-            dragable {
-               x: 1 1 0;
-               y: 0 0 0;
-               confine: "strength_gauge_confine";
-            }
-            description {
-               state: "default" 0.0;
-               min: 0 0;
-               max: 0 0;
-            }
-            description {
-               state: "hidden" 0.0;
-               inherit: "default" 0.0;
-               visible: 0;
-            }
-         }
-         part {
-            name: "strength_gauge_fill";
-            mouse_events: 0;
-            type: RECT;
-            description {
-               state: "default" 0.0;
-               color: 55 55 55 100;
-               rel1.to: "strength_gauge_confine";
-               rel2 {
-                  to_x: "strength_gauge_knob";
-                  to_y: "strength_gauge_confine";
-               }
-            }
-            description {
-               state: "hidden" 0.0;
-               inherit: "default" 0.0;
-               visible: 0;
-            }
-         }
-         part {
-            name: "strength";
-            type: TEXT;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               color: 16 16 16 255;
-               align: 0.5 0.0;
-               fixed: 1 1;
-               rel1 {
-                  to_x: "strength_gauge_confine";
-                  to_y: "e.text.state";
-                  relative: 0.5 1.0;
-                  offset: -1 10;
-               }
-               rel2 {
-                  to_x: "strength_gauge_confine";
-                  to_y: "e.text.state";
-                  relative: 0.5 1.0;
-                  offset: 1 25;
-               }
-               text {
-                  font: "Sans";
-                  size: 10;
-                  align: 0.5 0.5;
-                  text: "";
-                  min: 1 1;
-               }
-            }
-            description {
-               state: "hidden" 0.0;
-               inherit: "default" 0.0;
-               visible: 0;
-               rel1 {
-                  to_x: "technology";
-                  to_y: "e.text.state";
-                  relative: 1.0 1.0;
-                  offset: 0 0;
-               }
-               rel2 {
-                  /* = rel1 */
-                  to_x: "technology";
-                  to_y: "e.text.state";
-                  relative: 1.0 1.0;
-                  offset: 0 0;
-               }
-            }
-         }
-         programs {
-            program {
-               name: "strength,show";
-               action: STATE_SET "default" 0.0;
-               target: "strength";
-               target: "strength_gauge_bg";
-               target: "strength_gauge_confine";
-               target: "strength_gauge_knob";
-               target: "strength_gauge_fill";
-            }
-            program {
-               name: "strength,hide";
-               action: STATE_SET "hidden" 0.0;
-               target: "strength";
-               target: "strength_gauge_bg";
-               target: "strength_gauge_confine";
-               target: "strength_gauge_knob";
-               target: "strength_gauge_fill";
-            }
-         }
-         part {
-            name: "e.text.error";
-            type: TEXT;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               color: 255 96 96 255;
-               align: 0.0 0.0;
-               fixed: 1 1;
-               rel1 {
-                  to_x: "technology";
-                  to_y: "strength";
-                  relative: 1.0 1.0;
-                  offset: 10 10;
-               }
-               rel2 {
-                  to_y: "strength";
-                  relative: 1.0 1.0;
-                  offset: -10 25;
-               }
-               text {
-                  font: "Sans";
-                  size: 10;
-                  align: 0.0 0.0;
-                  text: "";
-                  min: 1 1;
-               }
-            }
-            description {
-               state: "hidden" 0.0;
-               inherit: "default" 0.0;
-               visible: 0;
-               max: 0 0;
-               rel1 {
-                  to_x: "technology";
-                  to_y: "strength";
-                  relative: 1.0 1.0;
-                  offset: 0 0;
-               }
-               rel2 {
-                  /* = rel1 */
-                  to_x: "technology";
-                  to_y: "strength";
-                  relative: 1.0 1.0;
-                  offset: 0 0;
-               }
-            }
-         }
-         programs {
-            program {
-               name: "e,changed,error,yes";
-               signal: "e,changed,error,yes";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "e.text.error";
-            }
-            program {
-               name: "e,changed,error,no";
-               signal: "e,changed,error,no";
-               source: "e";
-               action: STATE_SET "hidden" 0.0;
-               target: "e.text.error";
-            }
-         }
-         part {
-            name: "e.text.ipv4_address";
-            type: TEXT;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               color: 96 96 96 255;
-               align: 0.0 0.0;
-               fixed: 1 1;
-               rel1 {
-                  to_x: "technology";
-                  to_y: "e.text.error";
-                  relative: 1.0 1.0;
-                  offset: 10 10;
-               }
-               rel2 {
-                  to_y: "e.text.error";
-                  relative: 1.0 1.0;
-                  offset: -10 25;
-               }
-               text {
-                  font: "Sans";
-                  size: 10;
-                  align: 0.0 0.0;
-                  text: "";
-                  min: 1 1;
-               }
-            }
-            description {
-               state: "hidden" 0.0;
-               inherit: "default" 0.0;
-               max: 0 0;
-               visible: 0;
-               rel1 {
-                  to_x: "technology";
-                  to_y: "e.text.error";
-                  relative: 1.0 1.0;
-                  offset: 0 0;
-               }
-               rel2 {
-                  /* = rel1 */
-                  to_x: "technology";
-                  to_y: "e.text.error";
-                  relative: 1.0 1.0;
-                  offset: 0 0;
-               }
-            }
-         }
-         programs {
-            program {
-               name: "e,changed,ipv4_address,yes";
-               signal: "e,changed,ipv4_address,yes";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "e.text.ipv4_address";
-            }
-            program {
-               name: "e,changed,ipv4_address,no";
-               signal: "e,changed,ipv4_address,no";
-               source: "e";
-               action: STATE_SET "hidden" 0.0;
-               target: "e.text.ipv4_address";
-            }
-         }
-         part {
-            name: "e.text.offline_mode";
-            type: TEXT;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               color: 16 16 16 255;
-               align: 0.0 0.0;
-               fixed: 1 1;
-               rel1 {
-                  to_x: "technology";
-                  to_y: "e.text.ipv4_address";
-                  relative: 1.0 1.0;
-                  offset: 10 10;
-               }
-               rel2 {
-                  to_y: "e.text.ipv4_address";
-                  relative: 1.0 1.0;
-                  offset: -10 25;
-               }
-               text {
-                  font: "Sans";
-                  size: 10;
-                  align: 0.0 0.0;
-                  text: "";
-                  min: 1 1;
-               }
-            }
-            description {
-               state: "hidden" 0.0;
-               inherit: "default" 0.0;
-               max: 0 0;
-               visible: 0;
-               rel1 {
-                  to_x: "technology";
-                  to_y: "e.text.ipv4_address";
-                  relative: 1.0 1.0;
-                  offset: 0 0;
-               }
-               rel2 {
-                  /* = rel1 */
-                  to_x: "technology";
-                  to_y: "e.text.ipv4_address";
-                  relative: 1.0 1.0;
-                  offset: 0 0;
-               }
-            }
-         }
-         programs {
-            program {
-               name: "e,changed,offline_mode,yes";
-               signal: "e,changed,offline_mode,yes";
-               source: "e";
-               action: STATE_SET "default" 0.0;
-               target: "e.text.offline_mode";
-            }
-            program {
-               name: "e,changed,offline_mode,no";
-               signal: "e,changed,offline_mode,no";
-               source: "e";
-               action: STATE_SET "hidden" 0.0;
-               target: "e.text.offline_mode";
-            }
+         program {
+            name: "security,secure";
+            signal: "e,security,psk";
+            source: "e";
+            action: STATE_SET "secure" 0.0;
+            target: "security";
          }
       }
    }
 
+#undef CONNMAN_STATE_PART_ADD
+#undef CONNMAN_IMAGES_SET
 
 /////////////////////////////////////////////////////////////////////////////
 /*** MOD: BLUEZ ***/
@@ -10335,7 +9307,7 @@ collections {
                }
                rel2 {
                   relative: 1 1;
-                  offset: -5 30;
+                  offset: -5 24;
                   to_y: "e.text.description";
                }
             }
@@ -10347,13 +9319,13 @@ collections {
                state: "default" 0.0;
                rel1 {
                   relative: 1 1;
-                  offset: 5 2;
-                  to_x: "e.swallow.background";
+                  offset: 5 1;
+                  to_x: "e.edge.bottom_right";
                   to_y: "e.swallow.check";
                }
                rel2 {
                   relative: 1 1;
-                  offset: -5 -5;
+                  offset: -5 -1;
                }
             }
          }
@@ -10497,7 +9469,7 @@ collections {
          image: "base_bg.png" COMP;
          image: "bd_top_hilight.png" COMP;
          image: "bd_title_bg.png" COMP;
-         image: "bd_title_over.png";
+         image: "bd_title_over.png" COMP;
       }
       parts {
          part {
@@ -10619,6 +9591,11 @@ collections {
          image: "pager_hi2.png" COMP;
          image: "pager_base_pattern.png" COMP;
       }
+      script {
+         public disable_live_preview = 0;
+         public show_desk_names = 0;
+         public mouse_in = 0;
+      }
       parts {
          part {
             name: "zoom";
@@ -10661,6 +9638,11 @@ collections {
                visible: 0;
                color: 255 255 255 0;
             }
+            description {
+               state: "hidden" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
+            }
          }
          part {
             name: "base2";
@@ -10687,6 +9669,52 @@ collections {
                color: 255 255 255 255;
                rel1.offset: -1 -1;
                rel2.offset: 0 0;
+            }
+            description {
+               state: "hidden" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
+            }
+         }
+         part {
+            name: "e.background";
+            type: SWALLOW;
+            clip_to: "bg_clip";
+            description {
+               state: "default" 0.0;
+               rel1 {
+                  to: "base";
+                  offset: 3 3;
+               }
+               rel2 {
+                  to: "base";
+                  offset: -4 -4;
+               }
+            }
+            description {
+               state: "hidden" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
+            }
+         }
+         part {
+            name: "bg_clip";
+            type: RECT;
+            description {
+               state: "default" 0.0;
+               color: 255 255 255 200;
+               rel1.to: "e.background";
+               rel2.to: "e.background";
+            }
+            description {
+               state: "active" 0.0;
+               inherit: "default" 0.0;
+               color: 255 255 255 255;
+            }
+            description {
+               state: "hidden" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
             }
          }
          part {
@@ -10833,30 +9861,67 @@ collections {
       }
       programs {
          program {
-            name: "on";
+            name: "select";
             signal: "e,state,selected";
             source: "e";
-            action: STATE_SET "active" 0.0;
+            script {
+               if (get_int(disable_live_preview) == 1) {
+                    set_state(PART:"base", "active", 0.0);
+                    set_state(PART:"base2", "active", 0.0);
+                    set_state(PART:"pattern", "active", 0.0);
+                    set_state(PART:"clip", "active", 0.0);
+                    set_state(PART:"over", "active", 0.0);
+                    set_state(PART:"over2", "active", 0.0);
+               } else
+                 set_state(PART:"bg_clip", "active", 0.0);
+            }
             transition: LINEAR 0.2;
-            target: "base";
-            target: "base2";
-            target: "pattern";
-            target: "clip";
-            target: "over";
-            target: "over2";
          }
          program {
-            name: "off";
+            name: "unselect";
             signal: "e,state,unselected";
             source: "e";
-            action: STATE_SET "default" 0.0;
+            script {
+               if (get_int(disable_live_preview) == 1) {
+                    set_state(PART:"base", "default", 0.0);
+                    set_state(PART:"base2", "default", 0.0);
+                    set_state(PART:"pattern", "default", 0.0);
+                    set_state(PART:"clip", "default", 0.0);
+                    set_state(PART:"over", "default", 0.0);
+                    set_state(PART:"over2", "default", 0.0);
+               } else
+                 set_state(PART:"bg_clip", "default", 0.0);
+            }
             transition: LINEAR 0.3;
-            target: "base";
-            target: "base2";
-            target: "pattern";
-            target: "clip";
-            target: "over";
-            target: "over2";
+         }
+         program {
+            name: "preview";
+            signal: "e,preview,on";
+            source: "e";
+            script {
+               set_int(disable_live_preview, 0);
+               set_state(PART:"bg_clip", "default", 0.0);
+               set_state(PART:"e.background", "default", 0.0);
+               set_state(PART:"base", "hidden", 0.0);
+               set_state(PART:"base2", "hidden", 0.0);
+               set_state(PART:"pattern", "default", 0.0);
+               set_state(PART:"over", "active", 0.0);
+               set_state(PART:"over2", "default", 0.0);
+            }
+            transition: LINEAR 0.3;
+         }
+         program {
+            name: "preview_off";
+            signal: "e,preview,off";
+            source: "e";
+            script {
+               set_int(disable_live_preview, 1);
+               set_state(PART:"bg_clip", "hidden", 0.0);
+               set_state(PART:"e.background", "hidden", 0.0);
+               set_state(PART:"base", "default", 0.0);
+               set_state(PART:"base2", "default", 0.0);
+            }
+            transition: LINEAR 0.3;
          }
          program {
             name: "drg";
@@ -10889,20 +9954,46 @@ collections {
             target: "zoom";
          }
          program {
+            name: "name_enable";
+            signal: "e,name,show";
+            source: "e";
+            script {
+               set_int(show_desk_names, 1);
+               set_state(PART:"e.text.label", "active", 0.0);
+            }
+         }
+         program {
+            name: "name_disable";
+            signal: "e,name,hide";
+            source: "e";
+            script {
+               set_int(show_desk_names, 0);
+               if (!get_int(mouse_in))
+                 set_state(PART:"e.text.label", "default", 0.0);
+            }
+         }
+         program {
             name: "name_show";
             signal: "mouse,in";
             source: "e.eventarea";
-            action: STATE_SET "active" 0.0;
+            script {
+               if (get_int(show_desk_names) != 1)
+                 set_state(PART:"e.text.label", "active", 0.0);
+               set_int(mouse_in, 1);
+            }
             transition: SINUSOIDAL 0.1;
-            target: "e.text.label";
          }
          program {
             name: "name_hide";
             signal: "mouse,out";
             source: "e.eventarea";
-            action: STATE_SET "default" 0.0;
+            script {
+               if (get_int(show_desk_names) != 1)
+                 set_state(PART:"e.text.label", "default", 0.0);
+               set_int(mouse_in, 0);
+            }
+
             transition: SINUSOIDAL 0.2;
-            target: "e.text.label";
          }
          // don't have any states/anim for urgent windows on a desktop
          //    program { name: "xx";
@@ -10997,6 +10088,7 @@ collections {
             type: SWALLOW;
             description {
                state: "default" 0.0;
+               visible: 1;
                align: 1.0 1.0;
                max: 24  24;
                aspect: 1.0 1.0;
@@ -11009,6 +10101,33 @@ collections {
                   to: "base";
                   offset: -5 -7;
                }
+            }
+            description {
+               state: "hidden" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
+            }
+         }
+         part {
+            name: "e.swallow.content";
+            type: SWALLOW;
+            mouse_events: 0;
+            description {
+               state: "default" 0.0;
+               visible: 1;
+               rel1 {
+                  to: "base";
+                  offset: 2 2;
+               }
+               rel2 {
+                  to: "base";
+                  offset: -3 -3;
+               }
+            }
+            description {
+               state: "hidden" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
             }
          }
          part {
@@ -11057,6 +10176,24 @@ collections {
          }
       }
       programs {
+         program {
+            name: "preview";
+            signal: "e,preview,on";
+            source: "e";
+            script {
+               set_state(PART:"e.swallow.content", "default", 0.0);
+               set_state(PART:"e.swallow.icon", "hidden", 0.0);
+            }
+         }
+         program {
+            name: "preview_off";
+            signal: "e,preview,off";
+            source: "e";
+            script {
+               set_state(PART:"e.swallow.content", "hidden", 0.0);
+               set_state(PART:"e.swallow.icon", "default", 0.0);
+            }
+         }
          program {
             name: "focus_in";
             signal: "e,state,focused";
@@ -12901,7 +12038,6 @@ collections {
             description {
                state: "default" 0.0;
                aspect: 1.0 1.0;
-               aspect_preference: BOTH;
                image.normal: "clock_base.png";
             }
          }
@@ -13130,6 +12266,7 @@ collections {
             type: TEXT;
             effect: SHADOW;
             mouse_events: 0;
+            scale: 1;
             description { state: "default" 0.0;
                align: 0.5 0.5;
                color: 0 0 0 64;
@@ -13192,6 +12329,7 @@ collections {
          part { name: "e.text.label";
             type: TEXT;
             mouse_events: 0;
+            scale: 1;
             clip_to: "hidden";
             description { state: "default" 0.0;
                align: 0.5 0.5;
@@ -13280,6 +12418,7 @@ collections {
             type: TEXT;
             effect: SOFT_SHADOW;
             mouse_events: 1;
+            scale: 1;
             description { state: "default" 0.0;
                fixed: 0 1;
                align: 0.0 0.0;
@@ -13305,6 +12444,7 @@ collections {
             type: TEXT;
             effect: SOFT_SHADOW;
             mouse_events: 0;
+            scale: 1;
             description { state: "default" 0.0;
                fixed: 0 1;
                align: 1.0 0.0;
@@ -13658,9 +12798,11 @@ collections {
                freq = (freq - min_freq) / (max_freq - min_freq);
                set_state(PART:"meter", "default", freq);
                if (f < 1000000) {
+                  f += 500;
                   snprintf(text, 100, "%i", f / 1000);
                } 
                else {
+                  f += 50000;
                   snprintf(text, 100, "%i.%i", f / 1000000,
                             (f % 1000000) / 100000);
                }
@@ -14055,9 +13197,15 @@ collections {
                new text[100];
 
                f = getarg(2);              
-               if (f < 1000000) snprintf(text, 100, "%i", f / 1000);
-               else snprintf(text, 100, "%i.%i", f / 1000000,
-                             (f % 1000000) / 100000);
+               if (f < 1000000) {
+                  f += 500;
+                  snprintf(text, 100, "%i", f / 1000);
+               } 
+               else {
+                  f += 50000;
+                  snprintf(text, 100, "%i.%i", f / 1000000,
+                            (f % 1000000) / 100000);
+               }
                set_text(PART:"readout", text);
               
                ani = get_int(cur_freq_anim);
@@ -14284,22 +13432,22 @@ collections {
             name: "item_clip";
             type: RECT;
             mouse_events: 0;
-            description {
-               state: "default" 0.0;
+            description { state: "default" 0.0;
                color: 255 255 255 255;
+            }
+            description { state: "disabled" 0.0;
+               color: 255 255 255 64;
             }
          }
          part {
             name: "e.swallow.content";
             type: SWALLOW;
             clip_to: "item_clip";
-            description {
-               state: "default" 0.0;
+            description { state: "default" 0.0;
                rel1.offset: 2   2;
                rel2.offset: -3   -3;
             }
-            description {
-               state: "bigger" 0.0;
+            description { state: "bigger" 0.0;
             }
          }
          part {
@@ -14381,12 +13529,18 @@ collections {
       }
       programs {
          program {
-            name: "hover_in";
-            signal: "mouse,in";
-            source: "over";
-            action: STATE_SET "bigger" 0.0;
-            transition: LINEAR 0.1;
-            target: "e.swallow.content";
+            name: "starting";
+            signal: "e,state,starting";
+            source: "e";
+            action: STATE_SET "disabled" 0.0;
+            target: "item_clip";
+         }
+         program {
+            name: "started";
+            signal: "e,state,started";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "item_clip";
          }
          program {
             name: "hover_out";
@@ -15522,28 +14676,28 @@ collections {
                name: "e,action,orient,corner_lt";
                signal: "e,action,orient,corner_lt";
                source: "e";
-               action: STATE_SET "default" 0.0;
+               action: STATE_SET "vertical" 0.0;
                target: "e.box";
             }
             program {
                name: "e,action,orient,corner_rt";
                signal: "e,action,orient,corner_rt";
                source: "e";
-               action: STATE_SET "default" 0.0;
+               action: STATE_SET "vertical" 0.0;
                target: "e.box";
             }
             program {
                name: "e,action,orient,corner_lb";
                signal: "e,action,orient,corner_lb";
                source: "e";
-               action: STATE_SET "default" 0.0;
+               action: STATE_SET "vertical" 0.0;
                target: "e.box";
             }
             program {
                name: "e,action,orient,corner_rb";
                signal: "e,action,orient,corner_rb";
                source: "e";
-               action: STATE_SET "default" 0.0;
+               action: STATE_SET "vertical" 0.0;
                target: "e.box";
             }
          }
@@ -15703,28 +14857,28 @@ collections {
                name: "e,action,orient,corner_lt";
                signal: "e,action,orient,corner_lt";
                source: "e";
-               action: STATE_SET "default" 0.0;
+               action: STATE_SET "vertical" 0.0;
                target: "e.box";
             }
             program {
                name: "e,action,orient,corner_rt";
                signal: "e,action,orient,corner_rt";
                source: "e";
-               action: STATE_SET "default" 0.0;
+               action: STATE_SET "vertical" 0.0;
                target: "e.box";
             }
             program {
                name: "e,action,orient,corner_lb";
                signal: "e,action,orient,corner_lb";
                source: "e";
-               action: STATE_SET "default" 0.0;
+               action: STATE_SET "vertical" 0.0;
                target: "e.box";
             }
             program {
                name: "e,action,orient,corner_rb";
                signal: "e,action,orient,corner_rb";
                source: "e";
-               action: STATE_SET "default" 0.0;
+               action: STATE_SET "vertical" 0.0;
                target: "e.box";
             }
          }
@@ -15744,7 +14898,7 @@ collections {
          image: "base_bg.png" COMP;
          image: "bd_top_hilight.png" COMP;
          image: "bd_title_bg.png" COMP;
-         image: "bd_title_over.png";
+         image: "bd_title_over.png" COMP;
       }
       parts {
          part {
@@ -15936,7 +15090,7 @@ collections {
          image: "menu_sel_fg.png" COMP;
          image: "pager_window.png" COMP;
          image: "pager_window_shaded.png" COMP;
-         image: "pager_base2.png";
+         image: "pager_base2.png" COMP;
       }
       parts {
          part {
@@ -16947,10 +16101,24 @@ collections {
       }
       programs {
          program {
+            name: "focus_in";
+            signal: "e,state,focused";
+            source: "e";
+            action: STATE_SET "clicked" 0.0;
+            target: "button_image";
+            target: "over3";
+         }
+         program {
             name: "button_click";
             signal: "mouse,down,1";
             source: "button_image";
-            action: STATE_SET "clicked" 0.0;
+            after: "focus_in";
+         }
+         program {
+            name: "focus_out";
+            signal: "e,state,unfocused";
+            source: "e";
+            action: STATE_SET "default" 0.0;
             target: "button_image";
             target: "over3";
          }
@@ -16958,9 +16126,7 @@ collections {
             name: "button_unclick";
             signal: "mouse,up,1";
             source: "button_image";
-            action: STATE_SET "default" 0.0;
-            target: "button_image";
-            target: "over3";
+            after: "focus_out";
          }
          program {
             name: "button_unclick2";
@@ -18125,6 +17291,14 @@ collections {
                   padding: 0 0;
                   align: 1.0 1.0;
                }
+            }
+         }
+         part {
+            name: "e.swallow.overlay";
+            type: SWALLOW;
+            mouse_events: 0;
+            description {
+               state: "default" 0.0;
             }
          }
       }
@@ -20251,6 +19425,19 @@ collections {
             }
          }
          part {
+            name: "label_event";
+            type: RECT;
+            mouse_events: 1;
+            repeat_events: 1;
+            ignore_flags: ON_HOLD;
+            description {
+               state: "default" 0.0;
+               color: 0 0 0 0;
+               rel1.to: "e.text.label";
+               rel2.to: "e.text.label";
+            }
+         }
+         part {
             name: "vol_state";
             type: IMAGE;
             mouse_events: 0;
@@ -20330,6 +19517,12 @@ collections {
          }
       }
       programs {
+         program {
+            name: "label_click";
+            signal: "mouse,clicked,1";
+            source: "label_event";
+            action: SIGNAL_EMIT "e,action,label,click" "e";
+         }
          program {
             name: "go_active";
             signal: "e,state,selected";
@@ -21286,6 +20479,19 @@ collections {
             }
          }
          part {
+            name: "label_event";
+            type: RECT;
+            mouse_events: 1;
+            repeat_events: 1;
+            ignore_flags: ON_HOLD;
+            description {
+               state: "default" 0.0;
+               color: 0 0 0 0;
+               rel1.to: "e.text.label";
+               rel2.to: "e.text.label";
+            }
+         }
+         part {
             name: "vol_state";
             type: IMAGE;
             mouse_events: 0;
@@ -21354,8 +20560,23 @@ collections {
                image.normal: "icon_efm_dnd_move.png";
             }
          }
+         part {
+            name: "e.swallow.entry";
+            type: SWALLOW;
+            description {
+               state: "default" 0.0;
+               rel1.to: "e.text.label";
+               rel2.to: "e.text.label";
+            }
+         }
       }
       programs {
+         program {
+            name: "label_click";
+            signal: "mouse,clicked,1";
+            source: "label_event";
+            action: SIGNAL_EMIT "e,action,label,click" "e";
+         }
          program {
             name: "go_active";
             signal: "e,state,selected";
@@ -21906,6 +21127,19 @@ collections {
             }
          }
          part {
+            name: "label_event";
+            type: RECT;
+            mouse_events: 1;
+            repeat_events: 1;
+            ignore_flags: ON_HOLD;
+            description {
+               state: "default" 0.0;
+               color: 0 0 0 0;
+               rel1.to: "e.text.label";
+               rel2.to: "e.text.label";
+            }
+         }
+         part {
             name: "e.swallow.entry";
             type: SWALLOW;
             description {
@@ -21916,6 +21150,12 @@ collections {
          }
       }
       programs {
+         program {
+            name: "label_click";
+            signal: "mouse,clicked,1";
+            source: "label_event";
+            action: SIGNAL_EMIT "e,action,label,click" "e";
+         }
          program {
             name: "go_active";
             signal: "e,state,selected";
@@ -22462,6 +21702,19 @@ collections {
             }
          }
          part {
+            name: "label_event";
+            type: RECT;
+            mouse_events: 1;
+            repeat_events: 1;
+            ignore_flags: ON_HOLD;
+            description {
+               state: "default" 0.0;
+               color: 0 0 0 0;
+               rel1.to: "e.text.label";
+               rel2.to: "e.text.label";
+            }
+         }
+         part {
             name: "e.swallow.entry";
             type: SWALLOW;
             description {
@@ -22472,6 +21725,12 @@ collections {
          }
       }
       programs {
+         program {
+            name: "label_click";
+            signal: "mouse,clicked,1";
+            source: "label_event";
+            action: SIGNAL_EMIT "e,action,label,click" "e";
+         }
          program {
             name: "go_active";
             signal: "e,state,selected";
@@ -22880,7 +22139,7 @@ collections {
                text {
                   font: "Sans";
                   size: 10;
-                  min: 0 1;
+                  min: 1 1;
                   align: 0.0 0.5;
                   text_class: "ilist_item";
                }
@@ -23020,6 +22279,19 @@ collections {
             }
          }
          part {
+            name: "label_event";
+            type: RECT;
+            mouse_events: 1;
+            repeat_events: 1;
+            ignore_flags: ON_HOLD;
+            description {
+               state: "default" 0.0;
+               color: 0 0 0 0;
+               rel1.to: "e.text.label";
+               rel2.to: "e.text.label";
+            }
+         }
+         part {
             name: "e.swallow.entry";
             type: SWALLOW;
             description {
@@ -23030,6 +22302,12 @@ collections {
          }
       }
       programs {
+         program {
+            name: "label_click";
+            signal: "mouse,clicked,1";
+            source: "label_event";
+            action: SIGNAL_EMIT "e,action,label,click" "e";
+         }
          program {
             name: "go_active";
             signal: "e,state,selected";
@@ -23437,7 +22715,7 @@ collections {
                text {
                   font: "Sans";
                   size: 10;
-                  min: 0 1;
+                  min: 1 1;
                   align: 0.0 0.5;
                   text_class: "ilist_item";
                }
@@ -23577,6 +22855,19 @@ collections {
             }
          }
          part {
+            name: "label_event";
+            type: RECT;
+            mouse_events: 1;
+            repeat_events: 1;
+            ignore_flags: ON_HOLD;
+            description {
+               state: "default" 0.0;
+               color: 0 0 0 0;
+               rel1.to: "e.text.label";
+               rel2.to: "e.text.label";
+            }
+         }
+         part {
             name: "e.swallow.entry";
             type: SWALLOW;
             description {
@@ -23587,6 +22878,12 @@ collections {
          }
       }
       programs {
+         program {
+            name: "label_click";
+            signal: "mouse,clicked,1";
+            source: "label_event";
+            action: SIGNAL_EMIT "e,action,label,click" "e";
+         }
          program {
             name: "go_active";
             signal: "e,state,selected";
@@ -24089,12 +23386,12 @@ collections {
                min: 16 2;
                rel1 {
                   relative: 0.0  1.0;
-                  offset: 4    -1;
+                  offset: 4    1;
                   to_y: "e.swallow.content";
                }
                rel2 {
                   relative: 1.0  1.0;
-                  offset: -5   0;
+                  offset: -5   2;
                   to_y: "e.swallow.content";
                }
                image {
@@ -26367,6 +25664,69 @@ collections {
          }
       }
    }
+   group {
+      name: "e/ilist";
+      parts {
+        part {
+           name: "typebuf_clip";
+           type: RECT;
+           mouse_events: 0;
+           scale: 1;
+           description {
+              state: "default" 0.0;
+              visible: 0;
+              color: 255 255 255 0;
+           }
+           description {
+              state: "active" 0.0;
+              visible: 1;
+              color: 255 255 255 255;
+           }
+        }
+        part {
+           name: "e.text.typebuf_label";
+           type: TEXT;
+           effect: SOFT_SHADOW;
+           clip_to: "typebuf_clip";
+           mouse_events: 0;
+           scale: 1;
+           description {
+              state: "default" 0.0;
+              align: 0.5 0.5;
+              rel1.offset: 4 4;
+              rel2.offset: -5 -5;
+              color: 255 255 255 255;
+              color3: 0 0 0 32;
+              text {
+                 font: "Sans:style=Bold";
+                 size: 10;
+                 min: 0 0;
+                 align: 0.5 0.5;
+                 elipsis: 1.0;
+                 text_class: "ilist_typebuf";
+              }
+           }
+        }
+     }
+     programs {
+        program {
+           name: "gob1";
+           signal: "e,state,typebuf,start";
+           source: "e";
+           action: STATE_SET "active" 0.0;
+           transition: SINUSOIDAL 0.25;
+           target: "typebuf_clip";
+        }
+        program {
+           name: "stopb1";
+           signal: "e,state,typebuf,stop";
+           source: "e";
+           action: STATE_SET "default" 0.0;
+           transition: SINUSOIDAL 1.0;
+           target: "typebuf_clip";
+        }
+     }
+   }
    /* e/widgets/ilist is used in the Module Config Dialog for the module list */
    group {
       name: "e/widgets/ilist";
@@ -26573,6 +25933,11 @@ collections {
                state: "default" 0.0;
                color: 0 0 0 0;
             }
+            description {
+               state: "disabled" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
+            }
          }
       }
       programs {
@@ -26596,6 +25961,20 @@ collections {
             target: "fg2";
             target: "e.text.label";
             transition: LINEAR 0.1;
+         }
+         program {
+            name: "disable";
+            signal: "e,state,disabled";
+            source: "e";
+            action: STATE_SET "disabled" 0.0;
+            target: "event";
+         }
+         program {
+            name: "enable";
+            signal: "e,state,enabled";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "event";
          }
       }
    }
@@ -26777,6 +26156,11 @@ collections {
                state: "default" 0.0;
                color: 0 0 0 0;
             }
+            description {
+               state: "disabled" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
+            }
          }
       }
       programs {
@@ -26800,6 +26184,20 @@ collections {
             target: "fg2";
             target: "e.text.label";
             transition: LINEAR 0.1;
+         }
+         program {
+            name: "disable";
+            signal: "e,state,disabled";
+            source: "e";
+            action: STATE_SET "disabled" 0.0;
+            target: "event";
+         }
+         program {
+            name: "enable";
+            signal: "e,state,enabled";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "event";
          }
       }
    }
@@ -27777,12 +27175,12 @@ collections {
                rel1 {
                   to: "e.swallow.content";
                   relative: 0.5 0.0;
-                  offset: 0 0;
+                  offset: 0 -2;
                }
                rel2 {
                   to: "e.swallow.content";
                   relative: 0.5 1.0;
-                  offset: 0 -1;
+                  offset: 0 +2;
                }
                color: 255 255 255 150;
             }
@@ -27794,12 +27192,12 @@ collections {
                rel1 {
                   to: "e.swallow.content";
                   relative: 0.0 0.5 ;
-                  offset: 0 0;
+                  offset: -2 0;
                }
                rel2 {
                   to: "e.swallow.content";
                   relative: 1.0 0.5;
-                  offset: -1 0;
+                  offset: +2 0;
                }
                color: 255 255 255 150;
             }
@@ -28185,15 +27583,17 @@ collections {
          }
          part {
             name: "label";
+            type: SPACER;
             mouse_events: 0;
             clip_to: "clip";
             description {
                state: "default" 0.0;
-               visible: 0;
+               fixed: 1 0;
             }
             description {
                state: "active" 0.0;
-               min: 20 0;
+               min: 19 0;
+               fixed: 1 0;
                rel1 {
                   to: "e.text.label";
                   offset: -4 -2;
@@ -28231,8 +27631,8 @@ collections {
                   text: "0.0";
                   font: "Sans";
                   size: 10;
-                  min: 1 1;
                   align: 0.5 0.5;
+                  min: 1 0;
                   text_class: "slider";
                }
             }
@@ -28630,33 +28030,18 @@ collections {
    group {
       name: "e/desklock/background";
       images {
-         image: "vgrad_dark.png" COMP;
-         image: "grill_dark_tiny_pattern.png" COMP;
+         image: "bg_shadow.png" COMP;
+         image: "wizard_pattern.png" COMP;
       }
       parts {
-         part {
-            name: "background_image";
-            description {
-               state: "default" 0.0;
-               image.normal: "vgrad_dark.png";
+         part { name: "base";
+            description { state: "default" 0.0;
+               image.normal: "wizard_pattern.png";
                fill {
                   smooth: 0;
                   size {
-                     relative: 0 1.0;
-                     offset: 36 0;
-                  }
-               }
-            }
-         }
-         part {
-            name: "grill";
-            description {
-               state: "default" 0.0;
-               image.normal: "grill_dark_tiny_pattern.png";
-               fill {
-                  size {
-                     relative: 0 0;
-                     offset: 144 144;
+                     relative: 0.0 0.0;
+                     offset: 200 200;
                   }
                }
             }
@@ -28666,6 +28051,13 @@ collections {
             type: SWALLOW;
             description {
                state: "default" 0.0;
+            }
+         }
+         part { name: "shadow2";
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               image.normal: "bg_shadow.png";
+               fill.smooth: 0;
             }
          }
       }
@@ -28811,6 +28203,24 @@ collections {
             }
          }
          part {
+            name: "selection";
+            type: GROUP;
+            mouse_events: 0;
+            clip_to: "passwd_entry_clip";
+            source: "e/widgets/entry/selection";
+            description {
+               state: "default" 0.0;
+               visible: 0;
+               rel1.to: "e.text.password";
+               rel2.to: "e.text.password";
+            }
+            description {
+               state: "visible" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+            }
+         }
+         part {
             name: "cursor";
             type: RECT;
             mouse_events: 0;
@@ -28909,6 +28319,20 @@ collections {
             action: STATE_SET "default" 0.0;
             target: "error_clip";
             transition: DECELERATE 1.5;
+         }
+         program {
+            name: "select";
+            signal: "e,state,selected";
+            source: "e";
+            action: STATE_SET "visible" 0.0;
+            target: "selection";
+         }
+         program {
+            name: "unselect";
+            signal: "e,state,unselected";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "selection";
          }
       }
    }
@@ -30151,203 +29575,109 @@ collections {
 /////////////////////////////////////////////////////////////////////////////
 /*** MOD: WIZARD ***/
 
-   group {
-      name: "e/wizard/extra";
+   group { name: "e/wizard/firstpage";
+      images {
+         image: "logo_black_128.png" COMP;
+      }
       parts {
-         part {
-            name: "base";
-            type: RECT;
-            description {
-               state: "default" 0.0;
-               color: 0 0 0 255;
+         part { name: "base";
+            description { state: "default" 0.0;
+               max: 128 128;
+               image.normal: "logo_black_128.png";
+               aspect: 1.0 1.0;
+               aspect_preference: BOTH;
             }
          }
       }
    }
-   group {
-      name: "e/wizard/main";
-      /* images used */
+   group { name: "e/wizard/extra";
       images {
-         image: "exq-bglight.png" COMP;
-         image: "exq-logo.png" COMP;
-         image: "exq-dot.png" COMP;
-         image: "exq-dot-glow.png" COMP;
-         image: "exq-vgrad.png" COMP;
+         image: "bg_shadow.png" COMP;
+         image: "wizard_pattern.png" COMP;
       }
       parts {
-         part {
-            name: "base";
-            type: RECT;
-            description {
-               state: "default" 0.0;
-               color: 0 0 0 255;
+         part { name: "base";
+            description { state: "default" 0.0;
+               image.normal: "wizard_pattern.png";
+               fill {
+                  smooth: 0;
+                  size {
+                     relative: 0.0 0.0;
+                     offset: 200 200;
+                  }
+               }
             }
          }
-         part {
-            name: "content";
-            type: RECT;
-            description {
-               state: "default" 0.0;
+         part { name: "shadow";
+            description { state: "default" 0.0;
+               image.normal: "bg_shadow.png";
+               fill.smooth: 0;
+            }
+         }
+         part { name: "fade"; type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               color: 0 0 0 255;
+            }
+            description { state: "hidden" 0.0;
+               inherit: "default" 0.0;
+               color: 0 0 0 0;
                visible: 0;
+            }
+         }
+      }
+      programs {
+         program { name: "fade_in";
+            signal: "show";
+            source: "";
+            action: STATE_SET "hidden" 0.0;
+            transition: DECELERATE 0.5;
+            target: "fade";
+         }
+      }
+   }
+   group { name: "e/wizard/main";
+      images {
+         image: "bg_shadow.png" COMP;
+         image: "wizard_pattern.png" COMP;
+         image: "wizard_bt1.png" COMP;
+         image: "wizard_bt2.png" COMP;
+      }
+      parts {
+         part { name: "base";
+            description { state: "default" 0.0;
+               image.normal: "wizard_pattern.png";
+               fill {
+                  smooth: 0;
+                  size {
+                     relative: 0.0 0.0;
+                     offset: 200 200;
+                  }
+               }
+            }
+         }
+         part { name: "e.swallow.content"; type: SWALLOW;
+            description { state: "default" 0.0;
                rel1 {
                   to_y: "e.text.title";
                   relative: 0.2 1.0;
                   offset: 8 8;
                }
                rel2 {
-                  to_y: "logo";
-                  relative: 0.8 (143/217);
-                  offset: -9 -9;
+                  to_y: "e.text.label";
+                  relative: 0.8 0.0;
+                  offset: -9 -21;
                }
             }
          }
-         part {
-            name: "swallow_center";
-            type: RECT;
-            description {
-               state: "default" 0.0;
-               visible: 0;
-               rel1 {
-                  to: "content";
-                  relative: 0.5 1.0;
-               }
-               rel2 {
-                  to: "content";
-                  relative: 0.5 1.0;
-               }
-            }
-         }
-         part {
-            name: "swallow_mirror";
-            type: PROXY;
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               source: "e.swallow.content";
-               rel1 {
-                  to: "content";
-               }
-               rel2 {
-                  to: "content";
-               }
-               perspective {
-                  zplane: 0;
-                  focal: 1000;
-               }
-               color: 255 255 255 64;
-               map {
-                  on: 1;
-                  smooth: 0;
-                  alpha: 1;
-                  rotation {
-                     center: "swallow_center";
-                     x: 180;
-                  }
-               }
-            }
-         }
-         part {
-            name: "mirror_fade";
-            description {
-               state: "default" 0.0;
-               rel1 {
-                  to_y: "content";
-                  relative: 0.0 1.0;
-               }
-               image {
-                  normal: "exq-vgrad.png";
-               }
-               fill.smooth: 0;
-            }
-            description {
-               state: "clicked" 0.0;
-               inherit: "default" 0.0;
-               image.normal: "bt_base1.png";
-            }
-            description {
-               state: "disabled" 0.0;
-               inherit: "default" 0.0;
-               image {
-                  normal: "bt_dis_base.png";
-                  border: 4 4 4 4;
-               }
-            }
-         }
-         part {
-            name: "light";
-            description {
-               state: "default" 0.0;
-               align: 0.5 0.5;
-               rel1.relative: 0.1 0.8;
-               rel2.relative: 0.9 1.2;
-               aspect: (380/180) (380/180);
-               aspect_preference: HORIZONTAL;
-               max: 380 180;
-               image.normal: "exq-bglight.png";
-               color: 255 255 255 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-         }
-         part {
-            name: "e.swallow.content";
-            type: SWALLOW;
-            description {
-               state: "default" 0.0;
-               rel1 {
-                  to: "content";
-               }
-               rel2 {
-                  to: "content";
-               }
-            }
-         }
-         part {
-            name: "logoclip";
-            type: RECT;
-            description {
-               state: "default" 0.0;
-               visible: 0;
-               color: 255 255 255 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               visible: 1;
-               color: 255 255 255 255;
-            }
-         }
-         part {
-            name: "logo";
-            clip_to: "logoclip";
-            mouse_events: 0;
-            description {
-               state: "default" 0.0;
-               align: 0.5 1.0;
-               rel1.relative: 0.2 0.6;
-               rel2.relative: 0.8 1.0;
-               aspect: (121/217) (121/217);
-               aspect_preference: BOTH;
-               max: 121 217;
-               image.normal: "exq-logo.png";
-            }
-         }
-         part {
-            name: "e.text.title";
-            type: TEXT;
+         part { name: "e.text.title"; type: TEXT;
+            effect: SOFT_SHADOW;
             scale: 1;
-            description {
-               state: "default" 0.0;
-               rel1 {
-                  relative: 0.05 0.05;
-               }
-               rel2 {
-                  relative: 0.95 0.10;
-               }
-               color: 255 255 255 0;
+            description { state: "default" 0.0;
+               rel1.relative: 0.05 0.05;
+               rel2.relative: 0.95 0.10;
+               color: 255 255 255 255;
+               color3: 0 0 0 32;
                text {
                   font: "Sans:style=Bold";
                   size: 16;
@@ -30355,592 +29685,36 @@ collections {
                   text_class: "init_title";
                }
             }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
          }
-         part {
-            name: "p0-0";
-            description {
-               state: "default" 0.0;
-               min: 22 22;
-               max: 22 22;
+         part { name: "button";
+            description { state: "default" 0.0;
+               image.normal: "wizard_bt1.png";
+               image.border: 12 12 12 12;
                rel1 {
-                  to: "logo";
-                  relative: -0.5 0.7;
+                  to: "e.text.label";
+                  offset: -12 -12;
                }
                rel2 {
-                  to: "logo";
-                  relative: -0.5 0.7;
+                  to: "e.text.label";
+                  offset: 11 11;
                }
-               image.normal: "exq-dot.png";
-               color: 255 255 255 0;
             }
-            description {
-               state: "visible" 0.0;
+            description { state: "clicked" 0.0;
                inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-               rel1.relative: -0.5 0.6;
-               rel2.relative: -0.5 0.6;
+               image.normal: "wizard_bt2.png";
             }
          }
-         part {
-            name: "p0-1";
-            description {
-               state: "default" 0.0;
-               image.normal: "exq-dot-glow.png";
-               color: 255 255 255 0;
-               rel1.to: "p0-0";
-               rel2.to: "p0-0";
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-         }
-         part {
-            name: "p0-0.1";
-            description {
-               state: "default" 0.0;
-               image.normal: "exq-dot-glow.png";
-               color: 255 255 255 0;
-               min: 22 11;
-               max: 22 11;
-               rel1 {
-                  to_x: "p0-0";
-                  to_y: "logo";
-                  relative: 0.0 0.8;
-               }
-               rel2 {
-                  to_x: "p0-0";
-                  to_y: "logo";
-                  relative: 1.0 0.8;
-               }
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 16;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 4;
-            }
-         }
-         part {
-            name: "p0-0.2";
-            description {
-               state: "default" 0.0;
-               min: 22 22;
-               max: 22 22;
-               rel1 {
-                  to_x: "p0-0";
-                  to_y: "logo";
-                  relative: 0.0 0.9;
-               }
-               rel2 {
-                  to_x: "p0-0";
-                  to_y: "logo";
-                  relative: 1.0 0.9;
-               }
-               image.normal: "exq-dot.png";
-               color: 255 255 255 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 16;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 4;
-               rel1.relative: 0.0 1.0;
-               rel2.relative: 1.0 1.0;
-            }
-         }
-         part {
-            name: "p1-0";
-            description {
-               state: "default" 0.0;
-               min: 22 22;
-               max: 22 22;
-               rel1 {
-                  to: "logo";
-                  relative: 0.0 0.7;
-               }
-               rel2 {
-                  to: "logo";
-                  relative: 0.0 0.7;
-               }
-               image.normal: "exq-dot.png";
-               color: 255 255 255 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-               rel1.relative: 0.0 0.6;
-               rel2.relative: 0.0 0.6;
-            }
-         }
-         part {
-            name: "p1-1";
-            description {
-               state: "default" 0.0;
-               image.normal: "exq-dot-glow.png";
-               color: 255 255 255 0;
-               rel1.to: "p1-0";
-               rel2.to: "p1-0";
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-         }
-         part {
-            name: "p1-0.1";
-            description {
-               state: "default" 0.0;
-               image.normal: "exq-dot-glow.png";
-               color: 255 255 255 0;
-               min: 22 11;
-               max: 22 11;
-               rel1 {
-                  to_x: "p1-0";
-                  to_y: "logo";
-                  relative: 0.0 0.8;
-               }
-               rel2 {
-                  to_x: "p1-0";
-                  to_y: "logo";
-                  relative: 1.0 0.8;
-               }
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 16;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 4;
-            }
-         }
-         part {
-            name: "p1-0.2";
-            description {
-               state: "default" 0.0;
-               min: 22 22;
-               max: 22 22;
-               rel1 {
-                  to_x: "p1-0";
-                  to_y: "logo";
-                  relative: 0.0 0.9;
-               }
-               rel2 {
-                  to_x: "p1-0";
-                  to_y: "logo";
-                  relative: 1.0 0.9;
-               }
-               image.normal: "exq-dot.png";
-               color: 255 255 255 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 16;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 4;
-               rel1.relative: 0.0 1.0;
-               rel2.relative: 1.0 1.0;
-            }
-         }
-         part {
-            name: "p2-0";
-            description {
-               state: "default" 0.0;
-               min: 22 22;
-               max: 22 22;
-               rel1 {
-                  to: "logo";
-                  relative: 0.5 0.7;
-               }
-               rel2 {
-                  to: "logo";
-                  relative: 0.5 0.7;
-               }
-               image.normal: "exq-dot.png";
-               color: 255 255 255 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-               rel1.relative: 0.5 0.6;
-               rel2.relative: 0.5 0.6;
-            }
-         }
-         part {
-            name: "p2-1";
-            description {
-               state: "default" 0.0;
-               image.normal: "exq-dot-glow.png";
-               color: 255 255 255 0;
-               rel1.to: "p2-0";
-               rel2.to: "p2-0";
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-         }
-         part {
-            name: "p2-0.1";
-            description {
-               state: "default" 0.0;
-               image.normal: "exq-dot-glow.png";
-               color: 255 255 255 0;
-               min: 22 11;
-               max: 22 11;
-               rel1 {
-                  to_x: "p2-0";
-                  to_y: "logo";
-                  relative: 0.0 0.8;
-               }
-               rel2 {
-                  to_x: "p2-0";
-                  to_y: "logo";
-                  relative: 1.0 0.8;
-               }
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 16;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 4;
-            }
-         }
-         part {
-            name: "p2-0.2";
-            description {
-               state: "default" 0.0;
-               min: 22 22;
-               max: 22 22;
-               rel1 {
-                  to_x: "p2-0";
-                  to_y: "logo";
-                  relative: 0.0 0.9;
-               }
-               rel2 {
-                  to_x: "p2-0";
-                  to_y: "logo";
-                  relative: 1.0 0.9;
-               }
-               image.normal: "exq-dot.png";
-               color: 255 255 255 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 16;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 4;
-               rel1.relative: 0.0 1.0;
-               rel2.relative: 1.0 1.0;
-            }
-         }
-         part {
-            name: "p3-0";
-            description {
-               state: "default" 0.0;
-               min: 22 22;
-               max: 22 22;
-               rel1 {
-                  to: "logo";
-                  relative: 1.0 0.7;
-               }
-               rel2 {
-                  to: "logo";
-                  relative: 1.0 0.7;
-               }
-               image.normal: "exq-dot.png";
-               color: 255 255 255 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-               rel1.relative: 1.0 0.6;
-               rel2.relative: 1.0 0.6;
-            }
-         }
-         part {
-            name: "p3-1";
-            description {
-               state: "default" 0.0;
-               image.normal: "exq-dot-glow.png";
-               color: 255 255 255 0;
-               rel1.to: "p3-0";
-               rel2.to: "p3-0";
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-         }
-         part {
-            name: "p3-0.1";
-            description {
-               state: "default" 0.0;
-               image.normal: "exq-dot-glow.png";
-               color: 255 255 255 0;
-               min: 22 11;
-               max: 22 11;
-               rel1 {
-                  to_x: "p3-0";
-                  to_y: "logo";
-                  relative: 0.0 0.8;
-               }
-               rel2 {
-                  to_x: "p3-0";
-                  to_y: "logo";
-                  relative: 1.0 0.8;
-               }
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 16;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 4;
-            }
-         }
-         part {
-            name: "p3-0.2";
-            description {
-               state: "default" 0.0;
-               min: 22 22;
-               max: 22 22;
-               rel1 {
-                  to_x: "p3-0";
-                  to_y: "logo";
-                  relative: 0.0 0.9;
-               }
-               rel2 {
-                  to_x: "p3-0";
-                  to_y: "logo";
-                  relative: 1.0 0.9;
-               }
-               image.normal: "exq-dot.png";
-               color: 255 255 255 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 16;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 4;
-               rel1.relative: 0.0 1.0;
-               rel2.relative: 1.0 1.0;
-            }
-         }
-         part {
-            name: "p4-0";
-            description {
-               state: "default" 0.0;
-               min: 22 22;
-               max: 22 22;
-               rel1 {
-                  to: "logo";
-                  relative: 1.5 0.7;
-               }
-               rel2 {
-                  to: "logo";
-                  relative: 1.5 0.7;
-               }
-               image.normal: "exq-dot.png";
-               color: 255 255 255 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-               rel1.relative: 1.5 0.6;
-               rel2.relative: 1.5 0.6;
-            }
-         }
-         part {
-            name: "p4-1";
-            description {
-               state: "default" 0.0;
-               image.normal: "exq-dot-glow.png";
-               color: 255 255 255 0;
-               rel1.to: "p4-0";
-               rel2.to: "p4-0";
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 255;
-            }
-         }
-         part {
-            name: "p4-0.1";
-            description {
-               state: "default" 0.0;
-               image.normal: "exq-dot-glow.png";
-               color: 255 255 255 0;
-               min: 22 11;
-               max: 22 11;
-               rel1 {
-                  to_x: "p4-0";
-                  to_y: "logo";
-                  relative: 0.0 0.8;
-               }
-               rel2 {
-                  to_x: "p4-0";
-                  to_y: "logo";
-                  relative: 1.0 0.8;
-               }
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 16;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 4;
-            }
-         }
-         part {
-            name: "p4-0.2";
-            description {
-               state: "default" 0.0;
-               min: 22 22;
-               max: 22 22;
-               rel1 {
-                  to_x: "p4-0";
-                  to_y: "logo";
-                  relative: 0.0 0.9;
-               }
-               rel2 {
-                  to_x: "p4-0";
-                  to_y: "logo";
-                  relative: 1.0 0.9;
-               }
-               image.normal: "exq-dot.png";
-               color: 255 255 255 0;
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 16;
-            }
-            description {
-               state: "visible2" 0.0;
-               inherit: "default" 0.0;
-               color: 255 255 255 4;
-               rel1.relative: 0.0 1.0;
-               rel2.relative: 1.0 1.0;
-            }
-         }
-         part {
-            name: "e.text.label";
-            type: TEXT;
-            effect: GLOW;
-            mouse_events: 1;
+         part { name: "e.text.label"; type: TEXT;
+            effect: SHADOW BOTTOM;
             scale: 1;
-            clip_to: "bdis";
-            description {
-               state: "default" 0.0;
+            mouse_events: 0;
+            description { state: "default" 0.0;
                min: 64 32;
                align: 0.5 1.0;
-               rel1 {
-                  relative: 0.5  0.95;
-               }
-               rel2 {
-                  relative: 0.5  0.95;
-               }
-               color: 180 180 180 255;
-               color2: 255 255 255 24;
-               color3: 255 255 255 6;
+               rel1.relative: 0.5  0.95;
+               rel2.relative: 0.5  0.95;
+               color: 32 32 32 255;
+               color3: 255 255 255 128;
                text {
                   text: "Next";
                   font: "Sans:style=Bold";
@@ -30948,359 +29722,82 @@ collections {
                   min: 1 1;
                }
             }
-            description {
-               state: "clicked" 0.0;
+            description { state: "disabled" 0.0;
                inherit: "default" 0.0;
-               color: 255 255 255 255;
-               color2: 255 255 255 40;
-               color3: 255 255 255 10;
+               color: 128 128 128 255;
+               color3: 255 255 255 64;
             }
          }
-         part {
-            name: "arrow";
-            type: TEXT;
-            effect: GLOW;
-            scale: 1;
-            clip_to: "bdis";
-            description {
-               state: "default" 0.0;
-               min: 32 32;
-               align: 0.0 0.5;
-               rel1 {
-                  to: "e.text.label";
-                  relative: 1.0  0.0;
-               }
-               rel2 {
-                  to: "e.text.label";
-                  relative: 1.0  1.0;
-               }
-               color: 255 255 255 255;
-               color2: 255 255 255 40;
-               color3: 255 255 255 10;
-               text {
-                  text: ">";
-                  font: "Sans:style=Bold";
-                  size: 16;
-                  min: 1 1;
-               }
-            }
-            description {
-               state: "go" 0.0;
-               inherit: "default" 0.0;
-               color: 180 180 180 0;
-               color2: 255 255 255 0;
-               color3: 255 255 255 0;
-               rel1.relative: 2.0 0.0;
-               rel2.relative: 2.0 1.0;
-            }
-         }
-         part {
-            name: "block";
+         part { name: "block"; type: RECT;
             mouse_events: 1;
-            description {
-               state: "default" 0.0;
+            description { state: "default" 0.0;
                rel1.to: "e.text.label";
                rel2.to: "e.text.label";
                visible: 0;
                color: 0 0 0 0;
             }
-            description {
-               state: "disabled" 0.0;
+            description { state: "disabled" 0.0;
                inherit: "default" 0.0;
                visible: 1;
-               color: 0 0 255 128;
             }
          }
-         part {
-            name: "bdis";
-            type: RECT;
-            description {
-               state: "default" 0.0;
-               color: 255 255 255 255;
+         part { name: "shadow2";
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               image.normal: "bg_shadow.png";
+               fill.smooth: 0;
             }
-            description {
-               state: "disabled" 0.0;
+         }
+         part { name: "fade"; type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               color: 0 0 0 255;
+            }
+            description { state: "hidden" 0.0;
                inherit: "default" 0.0;
-               color: 255 255 255 64;
+               color: 0 0 0 0;
+               visible: 0;
             }
          }
       }
       programs {
-         program {
-            name: "button_click";
+         program { name: "fade_in";
+            signal: "show";
+            source: "";
+            action: STATE_SET "hidden" 0.0;
+            transition: DECELERATE 0.5;
+            target: "fade";
+         }
+         program { name: "button_click";
             signal: "mouse,down,1";
-            source: "e.text.label";
+            source: "button";
             action: STATE_SET "clicked" 0.0;
-            target: "e.text.label";
+            target: "button";
          }
-         program {
-            name: "button_unclick";
+         program { name: "button_unclick";
             signal: "mouse,up,1";
-            source: "e.text.label";
+            source: "button";
             action: STATE_SET "default" 0.0;
-            target: "e.text.label";
+            target: "button";
          }
-         program {
-            name: "button_unclick2";
+         program { name: "button_unclick2";
             signal: "mouse,clicked,1";
-            source: "e.text.label";
+            source: "button";
             action: SIGNAL_EMIT "e,action,next" "";
-            after: "button_go";
          }
-         program {
-            name: "button_go";
-            action: STATE_SET "go" 0.0;
-            transition: ACCELERATE 0.5;
-            target: "arrow";
-            after: "button_go2";
-         }
-         program {
-            name: "button_go2";
-            action: STATE_SET "default" 0.0;
-            target: "arrow";
-         }
-         program {
-            name: "button_enable";
+         program { name: "button_enable";
             signal: "e,state,next,enable";
             source: "e";
             action: STATE_SET "default" 0.0;
             target: "block";
-            target: "bdis";
+            target: "e.text.label";
          }
-         program {
-            name: "button_disable";
+         program { name: "button_disable";
             signal: "e,state,next,disable";
             source: "e";
             action: STATE_SET "disabled" 0.0;
             target: "block";
-            target: "bdis";
-         }
-         program {
-            name: "show1";
-            signal: "show";
-            source: "";
-            action: STATE_SET "visible" 0.0;
-            transition: LINEAR 0.3;
-            target: "light";
-         }
-         program {
-            name: "show2";
-            signal: "show";
-            source: "";
-            in: 0.1 0.0;
-            action: STATE_SET "visible" 0.0;
-            transition: LINEAR 0.4;
-            target: "logoclip";
-            target: "e.text.title";
-         }
-         program {
-            name: "show3";
-            signal: "show";
-            source: "";
-            action: STATE_SET "visible" 0.0;
-            transition: LINEAR 0.2;
-            target: "p0-0";
-            target: "p0-0.1";
-            target: "p0-0.2";
-            target: "p1-0";
-            target: "p1-0.1";
-            target: "p1-0.2";
-            target: "p2-0";
-            target: "p2-0.1";
-            target: "p2-0.2";
-            target: "p3-0";
-            target: "p3-0.1";
-            target: "p3-0.2";
-            target: "p4-0";
-            target: "p4-0.1";
-            target: "p4-0.2";
-            after: "pulsate1";
-            after: "pulsate1.2";
-            after: "pulsate2";
-            after: "pulsate2.2";
-            after: "pulsate3";
-            after: "pulsate3.2";
-            after: "pulsate4";
-            after: "pulsate4.2";
-            after: "pulsate5";
-            after: "pulsate5.2";
-            after: "ready";
-         }
-         program {
-            name: "ready";
-            action: STATE_SET "default" 0.0;
-            transition: ACCELERATE 2.0;
-            target: "logoclip";
-         }
-         program {
-            name: "pulsate1";
-            action: STATE_SET "visible" 0.0;
-            transition: SINUSOIDAL 0.5;
-            in: 0.2 0.2;
-            after: "pulsate1.1";
-            target: "p0-1";
-         }
-         program {
-            name: "pulsate1.1";
-            action: STATE_SET "default" 0.0;
-            transition: SINUSOIDAL 0.5;
-            after: "pulsate1";
-            target: "p0-1";
-         }
-         program {
-            name: "pulsate1.2";
-            action: STATE_SET "visible2" 0.0;
-            transition: SINUSOIDAL 0.6;
-            in: 0.2 0.2;
-            after: "pulsate1.2.1";
-            target: "p0-0";
-            target: "p0-0.1";
-            target: "p0-0.2";
-         }
-         program {
-            name: "pulsate1.2.1";
-            action: STATE_SET "visible" 0.0;
-            transition: SINUSOIDAL 0.7;
-            after: "pulsate1.2";
-            target: "p0-0";
-            target: "p0-0.1";
-            target: "p0-0.2";
-         }
-         program {
-            name: "pulsate2";
-            action: STATE_SET "visible" 0.0;
-            transition: SINUSOIDAL 0.5;
-            in: 0.2 0.2;
-            after: "pulsate2.1";
-            target: "p1-1";
-         }
-         program {
-            name: "pulsate2.1";
-            action: STATE_SET "default" 0.0;
-            transition: SINUSOIDAL 0.5;
-            after: "pulsate2";
-            target: "p1-1";
-         }
-         program {
-            name: "pulsate2.2";
-            action: STATE_SET "visible2" 0.0;
-            transition: SINUSOIDAL 0.6;
-            in: 0.2 0.2;
-            after: "pulsate2.2.1";
-            target: "p1-0";
-            target: "p1-0.1";
-            target: "p1-0.2";
-         }
-         program {
-            name: "pulsate2.2.1";
-            action: STATE_SET "visible" 0.0;
-            transition: SINUSOIDAL 0.7;
-            after: "pulsate2.2";
-            target: "p1-0";
-            target: "p1-0.1";
-            target: "p1-0.2";
-         }
-         program {
-            name: "pulsate3";
-            action: STATE_SET "visible" 0.0;
-            transition: SINUSOIDAL 0.5;
-            in: 0.2 0.2;
-            after: "pulsate3.1";
-            target: "p2-1";
-         }
-         program {
-            name: "pulsate3.1";
-            action: STATE_SET "default" 0.0;
-            transition: SINUSOIDAL 0.5;
-            after: "pulsate3";
-            target: "p2-1";
-         }
-         program {
-            name: "pulsate3.2";
-            action: STATE_SET "visible2" 0.0;
-            transition: SINUSOIDAL 0.6;
-            in: 0.2 0.2;
-            after: "pulsate3.2.1";
-            target: "p2-0";
-            target: "p2-0.1";
-            target: "p2-0.2";
-         }
-         program {
-            name: "pulsate3.2.1";
-            action: STATE_SET "visible" 0.0;
-            transition: SINUSOIDAL 0.7;
-            after: "pulsate3.2";
-            target: "p2-0";
-            target: "p2-0.1";
-            target: "p2-0.2";
-         }
-         program {
-            name: "pulsate4";
-            action: STATE_SET "visible" 0.0;
-            transition: SINUSOIDAL 0.5;
-            in: 0.2 0.2;
-            after: "pulsate4.1";
-            target: "p3-1";
-         }
-         program {
-            name: "pulsate4.1";
-            action: STATE_SET "default" 0.0;
-            transition: SINUSOIDAL 0.5;
-            after: "pulsate4";
-            target: "p3-1";
-         }
-         program {
-            name: "pulsate4.2";
-            action: STATE_SET "visible2" 0.0;
-            transition: SINUSOIDAL 0.6;
-            in: 0.2 0.2;
-            after: "pulsate4.2.1";
-            target: "p3-0";
-            target: "p3-0.1";
-            target: "p3-0.2";
-         }
-         program {
-            name: "pulsate4.2.1";
-            action: STATE_SET "visible" 0.0;
-            transition: SINUSOIDAL 0.7;
-            after: "pulsate4.2";
-            target: "p3-0";
-            target: "p3-0.1";
-            target: "p3-0.2";
-         }
-         program {
-            name: "pulsate5";
-            action: STATE_SET "visible" 0.0;
-            transition: SINUSOIDAL 0.5;
-            in: 0.2 0.2;
-            after: "pulsate5.1";
-            target: "p4-1";
-         }
-         program {
-            name: "pulsate5.1";
-            action: STATE_SET "default" 0.0;
-            transition: SINUSOIDAL 0.5;
-            after: "pulsate5";
-            target: "p4-1";
-         }
-         program {
-            name: "pulsate5.2";
-            action: STATE_SET "visible2" 0.0;
-            transition: SINUSOIDAL 0.6;
-            in: 0.2 0.2;
-            after: "pulsate5.2.1";
-            target: "p4-0";
-            target: "p4-0.1";
-            target: "p4-0.2";
-         }
-         program {
-            name: "pulsate5.2.1";
-            action: STATE_SET "visible" 0.0;
-            transition: SINUSOIDAL 0.7;
-            after: "pulsate5.2";
-            target: "p4-0";
-            target: "p4-0.1";
-            target: "p4-0.2";
+            target: "e.text.label";
          }
       }
    }
@@ -32097,8 +30594,8 @@ collections {
    ICON("preferences-desktop-font","icon_fonts.png",64)                       // "enlightenment/fonts"
    ICON("preferences-desktop-screensaver","icon_screensaver.png",64)          // "enlightenment/screensaver"
    ICON("preferences-desktop-display","icon_screen_setup.png",64)             // "enlightenment/screen_setup"
-   ICON("preferences-desktop-keyboard","icon_keys.png",64)                    // "enlightenment/keys"
-   ICON("preferences-desktop-keyboard-shortcuts","icon_keys.png",64)           // "enlightenment/keys"
+   ICON("preferences-desktop-keyboard","icon_keyboard.png",64)                // "enlightenment/keys"
+   ICON("preferences-desktop-keyboard-shortcuts","icon_keys.png",64)          // "enlightenment/keys"
    ICON("preferences-desktop-pointer","icon_mouse.png",64)             // *** // "enlightenment/mouse"
    ICON("preferences-desktop-mouse","icon_mouse_clean.png",64)                // "enlightenment/mouse_clean"
    ICON("preferences-desktop-mouse-left","icon_mouse_left.png",64)     // *** // "enlightenment/mouse_left"
@@ -32128,6 +30625,7 @@ collections {
    ICON("preferences-position-right","icon_shelf_right.png",64)                 // *** // "enlightenment/shelf_position_right"
    ICON("preferences-position-right-top","icon_shelf_right_top.png",64)         // *** // "enlightenment/shelf_position_right_top"
    ICON("preferences-position-right-bottom","icon_shelf_right_bottom.png",64)   // *** // "enlightenment/shelf_position_right_bottom"
+   ICON("preferences-window-process","icon_window_process_management.png",64)    // *** // "enlightenment/window_process"
    ICON("preferences-window-manipulation","icon_window_manipulation.png",64)    // *** // "enlightenment/window_manipulation"
    ICON("preferences-window-maximize","icon_window_manipulation.png",64)        // *** // "enlightenment/window_maximize"
    ICON("preferences-window-stacking","icon_winlist.png",64)                    // *** // "enlightenment/window_stacking"
@@ -32142,6 +30640,7 @@ collections {
    ICON("preferences-system-lock-screen","icon_desklock.png",64) // *** // "enlightenment/desklock"
    ICON("preferences-icon-theme","icon_icon_theme.png",64)       // *** // "enlightenment/icon_theme"
    ICON("preferences-transitions","icon_transitions.png",64)     // *** // "enlightenment/transitions"
+   ICON("preferences-desktop-edge-bindings","icon_shelf_right.png",64)  // *** // "enlightenment/edges"
    ICON("preferences-toolbar","icon_toolbar.png",64)             // *** // "enlightenment/toolbar"
    ICON("preferences-profiles","icon_profiles.png",64)           // *** // "enlightenment/profiles"
    ICON("preferences-startup","icon_startup.png",64)             // *** // "enlightenment/startup"
@@ -33915,6 +32414,7 @@ collections {
             description {
                state: "default" 0.0;
                align: 0.5 1.0;
+               fixed: 0 1;
                rel1 {
                   to: "bot2";
                   relative: 0.0 1.0;
@@ -33941,7 +32441,7 @@ collections {
             description {
                state: "default" 0.0;
                align: 1.0 1.0;
-               fixed: 0 1;
+               fixed: 1 1;
                rel1 {
                   to_y: "bot2";
                   relative: 1.0 0.0;
@@ -34077,7 +32577,7 @@ collections {
             description {
                state: "default" 0.0;
                align: 0.0 0.0;
-               fixed: 0 1;
+               fixed: 1 1;
                rel1 {
                   relative: 0.0 1.0;
                   offset: 4 0;
@@ -34106,6 +32606,7 @@ collections {
             mouse_events: 0;
             description {
                state: "default" 0.0;
+               fixed: 1 1;
                align: 0.0 1.0;
                min: 22 22;
                max: 22 22;
@@ -34228,6 +32729,7 @@ collections {
             scale: 1;
             description {
                state: "default" 0.0;
+               fixed: 0 1;
                align: 0.5 0.0;
                rel1 {
                   to: "busy";
@@ -34255,6 +32757,7 @@ collections {
             clip_to: "busy_clip";
             description {
                state: "default" 0.0;
+               fixed: 1 1;
                min: 32 32;
                max: 32 32;
                aspect: 1.0 1.0;
@@ -35516,21 +34019,26 @@ collections {
          part {
             name: "base";
             type: RECT;
+            /* description {
+             *    state: "default" 0.0;
+             *    rel1 {
+             *       relative: 0.0 1.0;
+             *       to_x: "list_frame";
+             *       to_y: "input_base";
+             *    }
+             *    rel2 {
+             *       to_x: "list_frame";
+             *       to_y: "input_base";
+             *    }
+             * } */
             description {
                state: "default" 0.0;
+               /*inherit: "default" 0.0;*/
                rel1 {
                   relative: 0.0 1.0;
                   to_x: "list_frame";
                   to_y: "input_base";
                }
-               rel2 {
-                  to_x: "list_frame";
-                  to_y: "input_base";
-               }
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
                rel2 {
                   to: "list_frame";
                   offset: -1 -1;
@@ -35540,22 +34048,29 @@ collections {
          part {
             name: "input_base";
             type: RECT;
+            /* description {
+             *    state: "default" 0.0;
+             *    rel1 {
+             *       to_x: "base";
+             *    }
+             * 
+             *    rel2 {
+             *       relative: 1.0 0.0;
+             *       to_x: "base";
+             *       offset: -1 1;
+             *    }
+             * } */
             description {
                state: "default" 0.0;
-              rel1 {
-              to_x: "base";
-              }
-
-              rel2 {
+               /* inherit: "default" 0.0; */
+               rel1 {
+                  to_x: "base";
+               }
+               rel2 {
                   relative: 1.0 0.0;
-               to_x: "base";
-               offset: -1 1;
-              }
-            }
-            description {
-               state: "visible" 0.0;
-               inherit: "default" 0.0;
-               rel2.offset: -1 28;
+                  to_x: "base";
+                  offset: -1 28;
+               }
             }
          }
          part {
@@ -38871,7 +37386,347 @@ collections {
       }
    }
 
+   group { name: "e/modules/comp/screen/base/default";
+      parts {
+         part { name: "black"; type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               visible: 1;
+               color: 0 0 0 255;
+            }
+         }
+      }
+   }
+   group { name: "e/modules/comp/screen/overlay/default";
+      images {
+         image: "bg_shadow.png" COMP;
+      }
+      parts {
+         part { name: "clip"; type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               visible: 1;
+            }
+         }
+         part { name: "shadow";
+            mouse_events: 0;
+            clip_to: "clip";
+            description { state: "default" 0.0;
+               rel1.relative: -1.0 -1.0;
+               rel2.relative: 2.0 2.0;
+               image.normal: "bg_shadow.png";
+               fill.smooth: 0;
+               visible: 0;
+               color: 255 255 255 0;
+            }
+            description { state: "visible" 0.0;
+               inherit: "default" 0.0;
+               rel1.relative: 0.0 0.0;
+               rel2.relative: 1.0 1.0;
+               visible: 1;
+               color: 255 255 255 255;
+            }
+         }
+         part { name: "blanker"; type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               visible: 0;
+               color: 0 0 0 0;
+            }
+            description { state: "visible" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+               color: 0 0 0 255;
+            }
+         }
+         part { name: "suspender"; type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               visible: 0;
+               color: 0 0 0 0;
+            }
+            description { state: "visible" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+               color: 0 0 0 255;
+            }
+         }
+      }
+      programs {
+         program { name: "save-on";
+            signal: "e,state,screensaver,on";
+            source: "e";
+            action: STATE_SET "visible" 0.0;
+            transition: ACCELERATE 3.0 CURRENT;
+            target: "blanker";
+         }
+         program { name: "save-on2";
+            signal: "e,state,screensaver,on";
+            source: "e";
+            action: STATE_SET "visible" 0.0;
+            transition: DECELERATE 1.5 CURRENT;
+            target: "shadow";
+         }
+         program { name: "save-off";
+            signal: "e,state,screensaver,off";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            transition: ACCELERATE 0.5 CURRENT;
+            target: "blanker";
+            target: "shadow";
+         }
+         program { name: "save-off2";
+            signal: "e,state,screensaver,off";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            transition: ACCELERATE 0.25 CURRENT;
+            target: "shadow";
+         }
+         program { name: "suspend";
+            signal: "e,state,sys,suspend";
+            source: "e";
+            action: STATE_SET "visible" 0.0;
+            transition: ACCELERATE 0.5 CURRENT;
+            target: "suspender";
+            after: "suspend_done";
+         }
+         program { name: "suspend_done";
+            action: SIGNAL_EMIT "e,state,sys,suspend,done" "e";
+         }
+         program { name: "hibernate";
+            signal: "e,state,sys,hibernate";
+            source: "e";
+            action: STATE_SET "visible" 0.0;
+            transition: ACCELERATE 0.5 CURRENT;
+            target: "suspender";
+            after: "hibernate_done";
+         }
+         program { name: "hibernate_done";
+            action: SIGNAL_EMIT "e,state,sys,hibernate,done" "e";
+         }
+         program { name: "resume";
+            signal: "e,state,sys,resume";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            transition: DECELERATE 1.0 CURRENT;
+            target: "suspender";
+         }
+         program { name: "reboot";
+            signal: "e,state,sys,reboot";
+            source: "e";
+            action: STATE_SET "visible" 0.0;
+            transition: ACCELERATE 0.5 CURRENT;
+            target: "suspender";
+            after: "reboot_done";
+         }
+         program { name: "reboot_done";
+            action: SIGNAL_EMIT "e,state,sys,reboot,done" "e";
+         }
+         program { name: "halt";
+            signal: "e,state,sys,halt";
+            source: "e";
+            action: STATE_SET "visible" 0.0;
+            transition: ACCELERATE 0.5 CURRENT;
+            target: "suspender";
+            after: "halt_done";
+         }
+         program { name: "halt_done";
+            action: SIGNAL_EMIT "e,state,sys,halt,done" "e";
+         }
+         program { name: "logout";
+            signal: "e,state,sys,logout";
+            source: "e";
+            action: STATE_SET "visible" 0.0;
+            transition: ACCELERATE 0.5 CURRENT;
+            target: "suspender";
+            after: "logout_done";
+         }
+         program { name: "logout_done";
+            action: SIGNAL_EMIT "e,state,sys,logout,done" "e";
+         }
+      }
+   }
+
    group { name: "e/comp/default";
+      images {
+         image: "comp-sh1.png" COMP;
+         image: "bt_glow.png" COMP;
+      }
+      parts {
+         part { name: "clipper";
+            type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               visible: 0;
+               color: 255 255 255 0;
+               rel1 {
+                  relative: -1.0  -1.0;
+                  offset: -9999 -9999;
+               }
+               rel2 {
+                  relative: 2.0   2.0;
+                  offset: 9999  9999;
+               }
+            }
+            description { state: "visible" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+               color: 255 255 255 255;
+            }
+         }
+         part { name: "shadow";
+            mouse_events: 0;
+            clip_to: "clipper";
+            description { state: "default" 0.0;
+               image {
+                  normal: "comp-sh1.png";
+                  border: 18 18 18 18;
+                  middle: 0;
+               }
+               fill.smooth: 0;
+               rel1 {
+                  to: "e.swallow.content";
+                  relative: 0.0  0.0;
+                  offset: -16  -14;
+               }
+               rel2 {
+                  to: "e.swallow.content";
+                  relative: 1.0  1.0;
+                  offset: 15   17;
+               }
+            }
+            description { state: "hidden" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
+            }
+         }
+         part { name: "shower";
+            type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               visible: 0;
+               rel1 {
+                  relative: 0.05  0.05;
+                  offset: 0    0;
+               }
+               rel2 {
+                  relative: 0.95  0.95;
+                  offset: -1   -1;
+               }
+            }
+            description { state: "visible" 0.0;
+               inherit: "default" 0.0;
+               rel1 {
+                  relative: 0.0  0.0;
+               }
+               rel2 {
+                  relative: 1.0  1.0;
+               }
+            }
+         }
+         part { name: "e.swallow.content";
+            type: SWALLOW;
+            clip_to: "clipper";
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               rel1 {
+                  to: "shower";
+               }
+               rel2 {
+                  to: "shower";
+               }
+            }
+         }
+         part { name: "glow";
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               visible: 0;
+               rel1.to: "e.swallow.content";
+               rel1.offset: -3 -3;
+               rel2.to: "e.swallow.content";
+               rel2.offset: 2  2;
+               color: 255 255 255 0;
+               image {
+                  normal: "bt_glow.png";
+                  border: 8 8 8 8;
+                  middle: 0;
+               }
+               fill.smooth: 0;
+            }
+            description { state: "active" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+               color: 255 255 255 255;
+            }
+            description { state: "faded" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+               color: 255 255 255 0;
+               rel1.offset: -23 -22;
+               rel2.offset: 22  22;
+            }
+         }
+      }
+      programs {
+         program { name: "shadow-on";
+            signal: "e,state,shadow,on";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "shadow";
+         }
+         program { name: "shadow-off";
+            signal: "e,state,shadow,off";
+            source: "e";
+            action: STATE_SET "hidden" 0.0;
+            target: "shadow";
+         }
+         program { name: "show1";
+            signal: "e,state,visible,on";
+            source: "e";
+            action: STATE_SET "visible" 0.0;
+            transition: DECELERATE 0.15;
+            target: "clipper";
+            target: "shower";
+            after: "show2";
+         }
+         program { name: "show2";
+            action: SIGNAL_EMIT "e,action,show,done" "e";
+         }
+         program { name: "hide1";
+            signal: "e,state,visible,off";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            transition: DECELERATE 0.30;
+            target: "clipper";
+            target: "shower";
+            after: "hide2";
+         }
+         program { name: "hide2";
+            action: SIGNAL_EMIT "e,action,hide,done" "e";
+         }
+         program { name: "urgent-on";
+            signal: "e,state,urgent,on";
+            source: "e";
+            action: STATE_SET "active" 0.0;
+            target: "glow";
+            after: "urgent2";
+         }
+         program { name: "urgent2";
+            action: STATE_SET "faded" 0.0;
+            transition: DECELERATE 0.5;
+            target: "glow";
+            after: "urgent-on";
+         }
+         program { name: "urgent-off";
+            signal: "e,state,urgent,off";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "glow";
+         }
+      }
+   }
+//----
+   group { name: "e/comp/wobble";
       images {
          image: "comp-sh1.png" COMP;
          image: "bt_glow.png" COMP;
@@ -40133,6 +38988,283 @@ collections {
       }
    }
  */
+//----
+   group { name: "e/comp/fullscreen";
+      // a comp shadow can have a data item wanting another object in the
+      // background behind the comp obj and a fg object just above it
+      // as well as a screen overlay
+      data {
+         item: "screen.bg" "fullscreen.bg";
+//         item: "screen.fg" "fullscreen.fg";
+//         item: "screen.overlay" "fullscreen.overlay";
+      }
+      images {
+         image: "comp-sh1.png" COMP;
+         image: "bg_shadow.png" COMP;
+      }
+      parts {
+         part { name: "clipper";
+            type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               visible: 0;
+               color: 255 255 255 0;
+               rel1 {
+                  relative: -1.0  -1.0;
+                  offset: -9999 -9999;
+               }
+               rel2 {
+                  relative: 2.0   2.0;
+                  offset: 9999  9999;
+               }
+            }
+            description { state: "visible1" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+               color: 255 255 255 255;
+            }
+            description { state: "visible2" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+               color: 255 255 255 255;
+            }
+         }
+         part { name: "clipper_sh";
+            type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               visible: 0;
+               color: 255 255 255 0;
+               rel1 {
+                  relative: -1.0  -1.0;
+                  offset: -9999 -9999;
+               }
+               rel2 {
+                  relative: 2.0   2.0;
+                  offset: 9999  9999;
+               }
+            }
+            description { state: "visible1" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+               color: 255 255 255 100;
+            }
+            description { state: "visible2" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
+               color: 255 255 255 0;
+            }
+         }
+         part { name: "clipper_all";
+            type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               visible: 1;
+            }
+         }
+         part { name: "scr_shadow";
+            mouse_events: 0;
+            clip_to: "clipper_all";
+            description { state: "default" 0.0;
+               rel1.relative: -1.0 -1.0;
+               rel2.relative: 2.0 2.0;
+               image.normal: "bg_shadow.png";
+               fill.smooth: 0;
+               visible: 0;
+               color: 255 255 255 0;
+            }
+            description { state: "visible" 0.0;
+               inherit: "default" 0.0;
+               rel1.relative: 0.0 0.0;
+               rel2.relative: 1.0 1.0;
+               visible: 1;
+               color: 255 255 255 255;
+            }
+         }
+         part { name: "scr_shade";
+            type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               visible: 0;
+               color: 0 0 0 0;
+            }
+            description { state: "visible" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+               color: 0 0 0 255;
+            }
+         }
+         part { name: "shadow";
+            mouse_events: 0;
+            clip_to: "clipper_sh";
+            description { state: "default" 0.0;
+               image {
+                  normal: "comp-sh1.png";
+                  border: 18 18 18 18;
+                  middle: 0;
+               }
+               fill.smooth: 0;
+               rel1 {
+                  to: "e.swallow.content";
+                  relative: 0.0  0.0;
+                  offset: -16  -14;
+               }
+               rel2 {
+                  to: "e.swallow.content";
+                  relative: 1.0  1.0;
+                  offset: 15   17;
+               }
+            }
+            description { state: "hidden" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
+            }
+         }
+         part { name: "shower";
+            type: RECT;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               visible: 0;
+               rel1 {
+                  relative: 0.5  0.5;
+                  offset: 0    0;
+               }
+               rel2 {
+                  relative: 0.5  0.5;
+                  offset: -1   -1;
+               }
+            }
+            description { state: "visible1" 0.0;
+               inherit: "default" 0.0;
+               rel1 {
+                  relative: 0.1  0.49;
+                  offset: 0    0;
+               }
+               rel2 {
+                  relative: 0.9  0.51;
+                  offset: -1   -1;
+               }
+            }
+            description { state: "visible2" 0.0;
+               inherit: "default" 0.0;
+               rel1 {
+                  relative: 0.0  0.0;
+               }
+               rel2 {
+                  relative: 1.0  1.0;
+               }
+            }
+         }
+         part { name: "e.swallow.content";
+            type: SWALLOW;
+            clip_to: "clipper";
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               rel1 {
+                  to: "shower";
+               }
+               rel2 {
+                  to: "shower";
+               }
+            }
+         }
+         part { name: "fader";
+            type: RECT;
+            description { state: "default" 0.0;
+               visible: 0;
+               color: 255 255 255 0;
+               rel1.to: "e.swallow.content";
+               rel2.to: "e.swallow.content";
+            }
+            description { state: "visible1" 0.0;
+               inherit: "default" 0.0;
+               visible: 1;
+               color: 255 255 255 255;
+            }
+            description { state: "visible2" 0.0;
+               inherit: "default" 0.0;
+               visible: 0;
+               color: 255 255 255 0;
+            }
+         }
+      }
+      programs {
+         program { name: "shadow-on";
+            signal: "e,state,shadow,on";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            target: "shadow";
+         }
+         program { name: "shadow-off";
+            signal: "e,state,shadow,off";
+            source: "e";
+            action: STATE_SET "hidden" 0.0;
+            target: "shadow";
+         }
+         program { name: "show0";
+            signal: "e,state,visible,on";
+            source: "e";
+            action: STATE_SET "visible" 0.0;
+            transition: DECELERATE 0.25;
+            target: "scr_shadow";
+            target: "scr_shade";
+         }
+         program { name: "show1";
+            signal: "e,state,visible,on";
+            source: "e";
+            action: STATE_SET "visible1" 0.0;
+            transition: DECELERATE 0.05;
+            target: "clipper";
+            target: "clipper_sh";
+            target: "shower";
+            target: "fader";
+            after: "show2";
+         }
+         program { name: "show2";
+            action: STATE_SET "visible2" 0.0;
+            transition: DECELERATE 0.20;
+            target: "clipper";
+            target: "clipper_sh";
+            target: "shower";
+            target: "fader";
+            after: "show3";
+         }
+         program { name: "show3";
+            action: SIGNAL_EMIT "e,action,show,done" "e";
+         }
+         program { name: "hide0";
+            signal: "e,state,visible,off";
+            source: "e";
+            action: STATE_SET "default" 0.0;
+            transition: DECELERATE 0.25;
+            target: "scr_shadow";
+            target: "scr_shade";
+         }
+         program { name: "hide1";
+            signal: "e,state,visible,off";
+            source: "e";
+            action: STATE_SET "visible1" 0.0;
+            transition: DECELERATE 0.20;
+            target: "clipper";
+            target: "clipper_sh";
+            target: "shower";
+            target: "fader";
+            after: "hide2";
+         }
+         program { name: "hide2";
+            action: STATE_SET "default" 0.0;
+            transition: DECELERATE 0.05;
+            target: "clipper";
+            target: "clipper_sh";
+            target: "shower";
+            target: "fader";
+            after: "hide3";
+         }
+         program { name: "hide3";
+            action: SIGNAL_EMIT "e,action,hide,done" "e";
+         }
+      }
+   }
 
 
    group {
@@ -40309,7 +39441,7 @@ collections {
 	    rel1.to_x: "favorites_bg";
 	    rel1.relative: 1.0 0.0;
 	    rel1.offset: 10 0;
-	    rel2.offset: -40 -1;
+	    rel2.offset: -2 -1;
 	    color: 200 0 0 200;
 	    }
 	 }
@@ -40458,11 +39590,11 @@ collections {
 	 }
 	 part {
 	 name: "event";
+  type: SPACER;
 	 mouse_events: 1;
 	 repeat_events: 1;
 	    description {
 	    state: "default" 0.0;
-	    color: 0 0 0 0;
 	    }
 	 }
       }
@@ -40515,6 +39647,24 @@ collections {
 	    }
 	 }
 	 part {
+	 name: "label3";
+	 type: TEXT;
+	 mouse_events: 0;
+	 scale: 1;
+	    description {
+	    state: "default" 0.0;
+	    rel1.to: "e.text.label";
+	    rel2.to: "e.text.label";
+	    visible: 0;
+	       text {
+	       font: "Sans";
+	       text_source: "e.text.label";
+	       size: 10;
+	       min: 1 1;
+	       }
+	    }
+	 }
+	 part {
 	 name: "label2";
 	 type: TEXT;
 	 mouse_events: 0;
@@ -40529,7 +39679,7 @@ collections {
 	       font: "Sans";
 	       text_source: "e.text.label";
 	       size: 10;
-	       min: 1 1;
+	       min: 0 1;
 	       align: 0.5 0.5;
 	       elipsis: 0.0;
 	       }
@@ -41311,6 +40461,119 @@ collections {
             action: STATE_SET "default" 0.0;
             transition: DECELERATE 1.0;
             target: "icon_area";
+         }
+      }
+   }
+
+/////////////////////////////////////////////////////////////////////////////
+/*** MOD: XKBSWITCH ***/
+   group { name: "modules/xkbswitch/main";
+      images {
+         image: "xkbshad.png" COMP;
+      }
+      max: 128 128;
+      parts {
+         part { name: "shadow";
+            mouse_events: 1;
+            description { state: "default" 0.0;
+               rel1.to: "e.swallow.flag";
+               rel1.offset: -2 -1;
+               rel2.to: "e.swallow.flag";
+               rel2.offset: 1 2;
+               image {
+                  normal: "xkbshad.png";
+                  border: 5 5 5 5;
+               }
+            }
+         }
+         part { name: "e.swallow.flag";
+            type: SWALLOW;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               rel1.offset: 2 3;
+               rel2.offset: -3 -4;
+            }
+         }
+         part { name: "e.text.label"; type: TEXT;
+            effect: SOFT_SHADOW;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               rel1 {
+                  to: "e.swallow.flag";
+                  relative: 0.0 0.5;
+               }
+               rel2 {
+                  to: "e.swallow.flag";
+                  relative: 1.0 0.5;
+               }
+               color: 255 255 255 0;
+               color3: 0 0 0 0;
+               text {
+                  font: "Sans";
+                  size: 9;
+                  min: 0 1;
+                  text_class: "module_small";
+               }
+	    }
+            description { state: "visible" 0.0;
+               inherit: "default" 0.0;
+               color: 255 255 255 255;
+               color3: 0 0 0 24;
+            }
+         }
+         part { name: "event"; type: RECT;
+            mouse_events: 1;
+            description { state: "default" 0.0;
+               color: 0 0 0 0;
+            }
+         }
+      }
+      programs {
+         program { name: "fade1";
+            signal: "mouse,in";
+            source: "event";
+            action: STATE_SET "visible" 0.0;
+            transition: DECELERATE 1.0;
+            target: "e.text.label";
+         }
+         program { name: "fade2";
+            signal: "mouse,out";
+            source: "event";
+            action: STATE_SET "default" 0.0;
+            transition: DECELERATE 1.0;
+            target: "e.text.label";
+         }
+      }
+   }
+
+   group { name: "modules/xkbswitch/noflag";
+      max: 128 128;
+      parts {
+         part { name: "e.text.label"; type: TEXT;
+            effect: SOFT_SHADOW;
+            mouse_events: 0;
+            description { state: "default" 0.0;
+               rel1 {
+                  relative: 0.0 0.5;
+               }
+               rel2 {
+                  relative: 1.0 0.5;
+               }
+               color: 255 255 255 255;
+               color3: 0 0 0 24;
+               text {
+                  font: "Sans";
+                  size: 9;
+                  min: 0 1;
+                  text_class: "module_small";
+               }
+	    }
+         }
+         part { name: "event"; type: RECT;
+            mouse_events: 1;
+            description { state: "default" 0.0;
+               color: 0 0 0 0;
+            }
          }
       }
    }

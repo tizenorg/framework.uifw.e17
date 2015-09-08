@@ -6,12 +6,10 @@ static E_Gadcon_Client *_gc_init(E_Gadcon   *gc,
                                  const char *id,
                                  const char *style);
 static void         _gc_shutdown(E_Gadcon_Client *gcc);
-static const char  *_gc_label(E_Gadcon_Client_Class *client_class);
-static Evas_Object *_gc_icon(E_Gadcon_Client_Class *client_class,
+static const char  *_gc_label(const E_Gadcon_Client_Class *client_class);
+static Evas_Object *_gc_icon(const E_Gadcon_Client_Class *client_class,
                              Evas                  *evas);
-static const char  *_gc_id_new(E_Gadcon_Client_Class *client_class);
-static void         _gc_id_del(E_Gadcon_Client_Class *client_class,
-                               const char            *id);
+static const char  *_gc_id_new(const E_Gadcon_Client_Class *client_class);
 
 /* Callback function protos */
 static int  _notification_cb_notify(E_Notification_Daemon *daemon,
@@ -35,7 +33,7 @@ const E_Gadcon_Client_Class _gc_class =
 {
    GADCON_CLIENT_CLASS_VERSION, "notification",
    {
-      _gc_init, _gc_shutdown, _gc_orient, _gc_label, _gc_icon, _gc_id_new, _gc_id_del,
+      _gc_init, _gc_shutdown, _gc_orient, _gc_label, _gc_icon, _gc_id_new, NULL,
       e_gadcon_site_is_not_toolbar
    },
    E_GADCON_CLIENT_STYLE_PLAIN
@@ -77,9 +75,20 @@ static void
 _gc_shutdown(E_Gadcon_Client *gcc)
 {
    Instance *inst;
-
+   Notification_Box_Icon *ic;
+   
    inst = gcc->data;
-   notification_box_visible_set(inst->n_box, EINA_FALSE);
+   EINA_LIST_FREE(inst->n_box->icons, ic)
+     {
+        evas_object_del(ic->o_holder);
+        evas_object_del(ic->o_holder2);
+        if (ic->border) e_object_unref(E_OBJECT(ic->border));
+        if (ic->notif) e_notification_unref(ic->notif);
+        free(ic);
+     }
+   if (inst->n_box->o_empty) evas_object_del(inst->n_box->o_empty);
+   if (inst->n_box->o_box) evas_object_del(inst->n_box->o_box);
+   inst->n_box->o_box = inst->n_box->o_empty = NULL;
    notification_cfg->instances = eina_list_remove(notification_cfg->instances, inst);
    free(inst);
 }
@@ -123,13 +132,13 @@ _gc_orient(E_Gadcon_Client *gcc,
 }
 
 static const char *
-_gc_label(E_Gadcon_Client_Class *client_class __UNUSED__)
+_gc_label(const E_Gadcon_Client_Class *client_class __UNUSED__)
 {
    return _("Notification Box");
 }
 
 static Evas_Object *
-_gc_icon(E_Gadcon_Client_Class *client_class __UNUSED__,
+_gc_icon(const E_Gadcon_Client_Class *client_class __UNUSED__,
          Evas                  *evas)
 {
    Evas_Object *o;
@@ -145,26 +154,12 @@ _gc_icon(E_Gadcon_Client_Class *client_class __UNUSED__,
 }
 
 static const char *
-_gc_id_new(E_Gadcon_Client_Class *client_class __UNUSED__)
+_gc_id_new(const E_Gadcon_Client_Class *client_class __UNUSED__)
 {
    Config_Item *ci;
 
    ci = notification_box_config_item_get(NULL);
    return ci->id;
-}
-
-static void
-_gc_id_del(E_Gadcon_Client_Class *client_class __UNUSED__,
-           const char            *id)
-{
-   Config_Item *ci;
-
-   notification_box_del(id);
-   ci = notification_box_config_item_get(id);
-   if (!ci) return;
-   eina_stringshare_del(ci->id);
-   notification_cfg->items = eina_list_remove(notification_cfg->items, ci);
-   free(ci);
 }
 
 static unsigned int
@@ -399,13 +394,6 @@ e_modapi_shutdown(E_Module *m __UNUSED__)
    e_configure_registry_item_del("extensions/notification");
    e_configure_registry_category_del("extensions");
 
-   if (notification_cfg->menu)
-     {
-        e_menu_post_deactivate_callback_set(notification_cfg->menu, NULL, NULL);
-        e_object_del(E_OBJECT(notification_cfg->menu));
-        notification_cfg->menu = NULL;
-     }
-
    EINA_LIST_FREE(notification_cfg->items, ci)
      {
         eina_stringshare_del(ci->id);
@@ -435,14 +423,14 @@ e_modapi_save(E_Module *m __UNUSED__)
 
 /* Callbacks */
 static int
-_notification_cb_notify(E_Notification_Daemon *daemon __UNUSED__,
+_notification_cb_notify(E_Notification_Daemon *d __UNUSED__,
                         E_Notification        *n)
 {
    return _notification_notify(n);
 }
 
 static void
-_notification_cb_close_notification(E_Notification_Daemon *daemon __UNUSED__,
+_notification_cb_close_notification(E_Notification_Daemon *d __UNUSED__,
                                     unsigned int           id)
 {
    notification_popup_close(id);

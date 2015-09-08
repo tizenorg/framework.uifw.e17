@@ -9,6 +9,10 @@
 #define MOD_CONF_VERSION 2
 
 extern int _e_ofono_module_log_dom;
+#undef DBG
+#undef WRN
+#undef CRIT
+#undef ERR
 #define DBG(...)  EINA_LOG_DOM_DBG(_e_ofono_module_log_dom, __VA_ARGS__)
 #define WRN(...)  EINA_LOG_DOM_WARN(_e_ofono_module_log_dom, __VA_ARGS__)
 #define CRIT(...) EINA_LOG_DOM_CRIT(_e_ofono_module_log_dom, __VA_ARGS__)
@@ -22,7 +26,6 @@ struct E_Ofono_Instance
    E_Ofono_Module_Context *ctxt;
    E_Gadcon_Client        *gcc;
    E_Gadcon_Popup         *popup;
-   E_Menu                 *menu;
 
    struct
    {

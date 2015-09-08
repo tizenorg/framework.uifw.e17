@@ -2,11 +2,6 @@
 #include "e_fm_shared_codec.h"
 #include "e_fm_shared_device.h"
 
-#define TEBIBYTE_SIZE 1099511627776LL
-#define GIBIBYTE_SIZE 1073741824
-#define MEBIBYTE_SIZE 1048576
-#define KIBIBYTE_SIZE 1024
-
 static void _e_fm2_volume_write(E_Volume *v) EINA_ARG_NONNULL(1);
 static void _e_fm2_volume_erase(E_Volume *v) EINA_ARG_NONNULL(1);
 static void _e_fm2_device_mount_free(E_Fm2_Mount *m) EINA_ARG_NONNULL(1);
@@ -22,24 +17,13 @@ static void
 _e_fm2_device_volume_setup(E_Volume *v)
 {
    char label[1024] = {0};
-   char size[256] = {0};
+   char *size = NULL;
    const char *icon = NULL;
-   unsigned long long sz;
+   /* unsigned long long sz; */
 
    /* Compute the size in a readable form */
    if (v->size)
-     {
-        if ((sz = (v->size / TEBIBYTE_SIZE)) > 0)
-          snprintf(size, sizeof(size) - 1, _("%llu TiB"), sz);
-        else if ((sz = (v->size / GIBIBYTE_SIZE)) > 0)
-          snprintf(size, sizeof(size) - 1, _("%llu GiB"), sz);
-        else if ((sz = (v->size / MEBIBYTE_SIZE)) > 0)
-          snprintf(size, sizeof(size) - 1, _("%llu MiB"), sz);
-        else if ((sz = (v->size / KIBIBYTE_SIZE)) > 0)
-          snprintf(size, sizeof(size) - 1, _("%llu KiB"), sz);
-        else
-          snprintf(size, sizeof(size) - 1, _("%llu B"), v->size);
-     }
+     size = e_util_size_string_get(v->size);
 
    /* Choose the label */
    if ((v->label) && (v->label[0]))
@@ -49,27 +33,27 @@ _e_fm2_device_volume_setup(E_Volume *v)
    else if (((v->storage->vendor) && (v->storage->vendor[0])) &&
             ((v->storage->model) && (v->storage->model[0])))
      {
-        if (size[0] != '\0')
-          snprintf(label, sizeof(label) - 1, "%s %s - %s", v->storage->vendor, v->storage->model, size);
+        if (size && (size[0] != '\0'))
+          snprintf(label, sizeof(label) - 1, _("%s %s—%s"), v->storage->vendor, v->storage->model, size);
         else
           snprintf(label, sizeof(label) - 1, "%s %s", v->storage->vendor, v->storage->model);
      }
    else if ((v->storage->model) && (v->storage->model[0]))
      {
-        if (size[0] != '\0')
-          snprintf(label, sizeof(label) - 1, "%s - %s", v->storage->model, size);
+        if (size && (size[0] != '\0'))
+          snprintf(label, sizeof(label) - 1, _("%s—%s"), v->storage->model, size);
         else
           snprintf(label, sizeof(label) - 1, "%s", v->storage->model);
      }
    else if ((v->storage->vendor) && (v->storage->vendor[0]))
      {
-        if (size[0] != '\0')
-          snprintf(label, sizeof(label) - 1, "%s - %s", v->storage->vendor, size);
+        if (size && (size[0] != '\0'))
+          snprintf(label, sizeof(label) - 1, _("%s—%s"), v->storage->vendor, size);
         else
           snprintf(label, sizeof(label) - 1, "%s", v->storage->vendor);
      }
    else if (v->storage->drive_type && (!strcmp(v->storage->drive_type, "sd_mmc")))
-     snprintf(label, sizeof(label) - 1, "Flash Card - %s", size);
+     snprintf(label, sizeof(label) - 1, _("Flash Card—%s"), size);
    else
      snprintf(label, sizeof(label), _("Unknown Volume"));
 
@@ -104,18 +88,21 @@ _e_fm2_device_volume_setup(E_Volume *v)
    if (icon) eina_stringshare_replace(&v->icon, icon);
 
    if ((!v->mount_point) ||
+       // filter out these mountouts - hack hack
        (strcmp(v->mount_point, "/") &&
         strcmp(v->mount_point, "/home") &&
         strcmp(v->mount_point, "/tmp")))
      _e_fm2_volume_write(v);
+
+   E_FREE(size);
 }
-     
+
 EAPI void
 e_fm2_device_storage_add(E_Storage *s)
 {
    Eina_List *l;
    E_Volume *v;
-   
+
    if (e_fm2_device_storage_find(s->udi)) return;
 
    s->validated = EINA_TRUE;
@@ -165,7 +152,7 @@ e_fm2_device_storage_add(E_Storage *s)
      {
         s->trackable = EINA_TRUE;
      }
-     
+
    EINA_LIST_FOREACH(_e_vols, l, v) /* catch volumes which were added before their storage */
      {
         if ((!v->storage) && (s->udi == v->parent))
@@ -238,7 +225,7 @@ e_fm2_device_volume_add(E_Volume *v)
    if ((v->efm_mode == EFM_MODE_USING_HAL_MOUNT) &&
        ((!v->mount_point) || (!v->mount_point[0])))
      {
-        if (v->mount_point) eina_stringshare_del(v->mount_point);
+        eina_stringshare_del(v->mount_point);
         v->mount_point = NULL;
         v->mount_point = e_fm2_device_volume_mountpoint_get(v);
         if ((!v->mount_point) || (!v->mount_point[0]))
@@ -270,7 +257,7 @@ e_fm2_device_volume_add(E_Volume *v)
      }
 
    if (v->storage) _e_fm2_device_volume_setup(v);
-     
+
 }
 
 EAPI void
@@ -303,7 +290,6 @@ _e_fm2_volume_write(E_Volume *v)
 
    if (!v->storage) return;
    id = ecore_file_file_get(v->storage->udi);
-//   printf("vol write %s\n", id);
    e_user_dir_snprintf(buf, sizeof(buf), "fileman/favorites/|%s_%d.desktop",
                        id, v->partition_number);
 
@@ -337,14 +323,9 @@ _e_fm2_volume_write(E_Volume *v)
 
         /* FIXME: manipulate icon directly */
         _e_fm2_file_force_update(buf);
-        //_e_fm2_file_force_update(buf2);
+        _e_fm2_file_force_update(buf2);
      }
 }
-
-#undef TEBIBYTE_SIZE
-#undef GIBIBYTE_SIZE
-#undef MEBIBYTE_SIZE
-#undef KIBIBYTE_SIZE
 
 static void
 _e_fm2_volume_erase(E_Volume *v)
@@ -354,19 +335,18 @@ _e_fm2_volume_erase(E_Volume *v)
 
    if (!v->storage) return;
    id = ecore_file_file_get(v->storage->udi);
-   e_user_homedir_snprintf(buf, sizeof(buf), "%s/|%s_%d.desktop",
-                           _("Desktop"), id, v->partition_number);
-   ecore_file_unlink(buf);
-   _e_fm2_file_force_update(buf);
-
    if (e_config->device_desktop)
      {
-        e_user_dir_snprintf(buf, sizeof(buf),
-                            "fileman/favorites/|%s_%d.desktop",
-                            id, v->partition_number);
+        e_user_homedir_snprintf(buf, sizeof(buf), "%s/|%s_%d.desktop",
+                           _("Desktop"), id, v->partition_number);
         ecore_file_unlink(buf);
         _e_fm2_file_force_update(buf);
      }
+   e_user_dir_snprintf(buf, sizeof(buf),
+                       "fileman/favorites/|%s_%d.desktop",
+                       id, v->partition_number);
+   ecore_file_unlink(buf);
+   _e_fm2_file_force_update(buf);
 }
 
 EAPI E_Volume *
@@ -382,6 +362,20 @@ e_fm2_device_volume_find(const char *udi)
         if (!v->udi) continue;
         if (!strcmp(udi, v->udi)) return v;
      }
+
+   return NULL;
+}
+
+EAPI E_Volume *
+e_fm2_device_volume_find_fast(const char *udi)
+{
+   Eina_List *l;
+   E_Volume *v;
+
+   if (!udi) return NULL;
+
+   EINA_LIST_FOREACH(_e_vols, l, v)
+     if (udi == v->udi) return v;
 
    return NULL;
 }
@@ -468,6 +462,8 @@ e_fm2_device_mount_find(const char *path)
    Eina_List *l;
    E_Volume *v;
 
+   if (!path) return NULL;
+
    EINA_LIST_FOREACH(_e_vols, l, v)
      {
         if (v->mounted
@@ -504,10 +500,10 @@ e_fm2_device_mount(E_Volume *v,
 
    v->mounts = eina_list_prepend(v->mounts, m);
 
-//   printf("BEGIN MOUNT %p '%s'\n", m, v->mount_point);
 
    if (!v->mounted)
      {
+        //printf("BEGIN MOUNT %p '%s'\n", m, v->mount_point);
         v->auto_unmount = EINA_TRUE;
         _e_fm2_client_mount(v->udi, v->mount_point);
      }
@@ -549,7 +545,10 @@ e_fm2_device_unmount(E_Fm2_Mount *m)
    _e_fm2_device_mount_free(m);
 
    if (v->auto_unmount && v->mounted && !eina_list_count(v->mounts))
-     _e_fm2_client_unmount(v->udi);
+     {
+        //printf("BEGIN UNMOUNT %p '%s'\n", m, v->udi);
+        _e_fm2_client_unmount(v->udi);
+     }
 }
 
 EAPI void
@@ -573,12 +572,13 @@ _e_fm2_device_mount_ok(E_Fm2_Mount *m)
      m->mount_point = eina_stringshare_add(m->volume->mount_point);
    if (m->mount_ok)
      m->mount_ok(m->data);
-//   printf("MOUNT OK '%s'\n", m->mount_point);
+   //printf("MOUNT OK '%s'\n", m->mount_point);
 }
 
 static void
 _e_fm2_device_mount_fail(E_Fm2_Mount *m)
 {
+   //printf("MOUNT FAIL '%s'\n", m->mount_point);
    m->mounted = EINA_FALSE;
    if (m->mount_point)
      {
@@ -676,4 +676,3 @@ e_fm2_device_volume_list_get(void)
 {
    return _e_vols;
 }
-
