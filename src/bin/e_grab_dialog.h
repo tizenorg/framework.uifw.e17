@@ -20,8 +20,10 @@ struct _E_Grab_Dialog
    Eina_List *handlers;
    void *data;
 };
+#ifndef _F_DISABLE_E_GRAB_DIALOG
 
 EAPI E_Grab_Dialog *e_grab_dialog_show(E_Win *parent, Eina_Bool is_mouse, Ecore_Event_Handler_Cb key, Ecore_Event_Handler_Cb mouse, Ecore_Event_Handler_Cb wheel, const void *data);
 
+#endif
 #endif
 #endif

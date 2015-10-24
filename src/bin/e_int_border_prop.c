@@ -64,6 +64,13 @@ struct _E_Config_Dialog_Data
    } netwm;
 };
 
+//disable as suspected as it is for menu evoking on event (mouse button down)
+//(from _tasks_cb_item_mouse_down call and other..)
+//but it should be reviewed if it is being used for some other
+//purpose also.
+
+#ifndef _F_DISABLE_E_MENU
+
 EAPI void
 e_int_border_prop(E_Border *bd)
 {
@@ -84,6 +91,7 @@ e_int_border_prop(E_Border *bd)
    e_dialog_border_icon_set(dia, "preferences-system-windows");
    e_dialog_resizable_set(dia, 1);
 }
+#endif
 
 static void
 _create_data(E_Dialog *cfd, E_Border *bd)
@@ -272,8 +280,8 @@ _create_data(E_Dialog *cfd, E_Border *bd)
              if ((sizeof(buf) - strlen(buf)) <
                  (strlen(cfdata->border->client.icccm.command.argv[i]) - 2))
                break;
-             strcat(buf, cfdata->border->client.icccm.command.argv[i]);
-             strcat(buf, " ");
+             strncat(buf, cfdata->border->client.icccm.command.argv[i], strlen(cfdata->border->client.icccm.command.argv[i]));
+             strncat(buf, " ", 1);
           }
         cfdata->icccm.command = strdup(buf);
      }
@@ -365,6 +373,7 @@ _bd_cb_dialog_close(void *data __UNUSED__, E_Dialog *dia)
    e_object_del(E_OBJECT(dia));
 }
 
+#ifndef _F_DISABLE_E_MENU
 static void
 _bd_go(void *data, void *data2)
 {
@@ -517,4 +526,5 @@ _bd_netwm_create(E_Dialog *dia, void *data __UNUSED__)
 
    return otb;
 }
+#endif
 

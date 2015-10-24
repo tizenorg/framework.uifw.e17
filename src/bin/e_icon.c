@@ -409,7 +409,7 @@ EAPI Eina_Bool
 e_icon_fdo_icon_set(Evas_Object *obj, const char *icon)
 {
    E_Smart_Data *sd;
-   const char *path;
+   const char *path = NULL;
    int len;
 
    if (!icon) return EINA_TRUE;
@@ -428,6 +428,7 @@ e_icon_fdo_icon_set(Evas_Object *obj, const char *icon)
    eina_stringshare_replace(&sd->fdo, icon);
    if (!sd->fdo) return EINA_FALSE;
 
+#ifndef _F_DISABLE_E_EFREET_
    path = efreet_icon_path_find(e_config->icon_theme, sd->fdo, sd->size);
    if (!path) return EINA_TRUE;
 
@@ -452,6 +453,7 @@ e_icon_fdo_icon_set(Evas_Object *obj, const char *icon)
    else if (evas_object_visible_get(obj))
      evas_object_show(sd->obj);
    _e_icon_smart_reconfigure(sd);
+#endif
    return EINA_TRUE;
 }
 
@@ -859,9 +861,10 @@ _e_icon_smart_resize(Evas_Object *obj, Evas_Coord w, Evas_Coord h)
    sd->h = h;
    if (sd->fdo)
      {
-        const char *path;
+        const char *path = NULL;
 
         sd->size = MAX(w, h);
+#ifndef _F_DISABLE_E_EFREET_
         path = efreet_icon_path_find(e_config->icon_theme, sd->fdo, sd->size);
         if (!path) return;
 
@@ -873,6 +876,9 @@ _e_icon_smart_resize(Evas_Object *obj, Evas_Coord w, Evas_Coord h)
              sd->loading = 1;
              evas_object_image_preload(sd->obj, 0);
           }
+#else
+   return;
+#endif
      }
 
    _e_icon_smart_reconfigure(sd);

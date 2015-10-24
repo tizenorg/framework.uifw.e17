@@ -46,6 +46,7 @@
 #include "e_gadcon_popup.h"
 #include "e_ipc_codec.h"
 #include "e_test.h"
+#include "e_test_helper.h"
 #include "e_prefix.h"
 #include "e_datastore.h"
 #include "e_msg.h"
@@ -147,3 +148,11 @@
 #include "e_import_dialog.h"
 #include "e_import_config_dialog.h"
 #include "e_grab_dialog.h"
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+#include "e_virtual_resolution.h"
+#endif /* end of _F_USE_VIRT_RESOLUTION_*/
+
+#ifdef _F_USE_TZSH_
+#include "e_tzsh.h"
+#endif

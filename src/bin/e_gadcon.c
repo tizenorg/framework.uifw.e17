@@ -2953,12 +2953,8 @@ _e_gadcon_cb_dnd_move(void *data, const char *type __UNUSED__, void *event)
    o = gcc->o_frame ? gcc->o_frame : gcc->o_base;
    if (o)
      {
-        if (e_gadcon_layout_orientation_get(gc->o_container))
-          e_gadcon_layout_pack_request_set(o, gcc->config.pos,
-                                           gcc->config.size);
-        else
-          e_gadcon_layout_pack_request_set(o, gcc->config.pos,
-                                           gcc->config.size);
+        e_gadcon_layout_pack_request_set(o, gcc->config.pos,
+                                         gcc->config.size);
      }
    e_gadcon_layout_thaw(gc->o_container);
 }
@@ -3591,7 +3587,9 @@ e_gadcon_layout_pack_options_set(Evas_Object *obj, E_Gadcon_Client *gcc)
    EINA_LIST_FOREACH(bi->sd->items, l, item)
      {
         bi2 = evas_object_data_get(item, "e_gadcon_layout_data");
-        if ((!bi2) || (bi == bi2)) continue;
+        if(!bi2) continue;
+
+        if (bi == bi2) continue;
         if (bi->gcc->id == bi2->gcc->id) continue;
         if (bi->gcc->state_info.seq == bi2->gcc->state_info.seq)
           ok = 1;
@@ -3811,31 +3809,24 @@ _e_gadcon_layout_smart_reconfigure(E_Smart_Data *sd)
    EINA_LIST_FOREACH(sd->items, l, obj)
      {
         bi = evas_object_data_get(obj, "e_gadcon_layout_data");
-        if (bi)
+        if(!bi) continue;
+        if (bi->gcc->gadcon->editing) bi->gcc->state_info.seq = i;
+
+        if (set_prev_pos)
           {
-             if ((bi->gcc) && (bi->gcc->gadcon) &&
-                 (bi->gcc->gadcon->editing))
-               bi->gcc->state_info.seq = i;
+             bi->ask.prev_pos = bi->x;
+             bi->ask.prev_size = bi->w;
+          }
 
-             if (set_prev_pos)
-               {
-                  bi->ask.prev_pos = bi->x;
-                  bi->ask.prev_size = bi->w;
-               }
+        if ((bi->x == bi->ask.pos) &&
+            (bi->gcc->state_info.flags & E_GADCON_LAYOUT_ITEM_LOCK_POSITION))
+          bi->gcc->state_info.flags |= E_GADCON_LAYOUT_ITEM_LOCK_ABSOLUTE;
 
-             if (!bi->gcc)
-               continue;
-
-             if ((bi->x == bi->ask.pos) &&
-                 (bi->gcc->state_info.flags & E_GADCON_LAYOUT_ITEM_LOCK_POSITION))
-               bi->gcc->state_info.flags |= E_GADCON_LAYOUT_ITEM_LOCK_ABSOLUTE;
-
-             if ((bi->gcc->state_info.flags & E_GADCON_LAYOUT_ITEM_LOCK_POSITION) &&
-                 (bi->gcc->state_info.flags & E_GADCON_LAYOUT_ITEM_LOCK_ABSOLUTE))
-               {
-                  if (bi->x != bi->ask.pos)
-                    bi->gcc->state_info.flags &= ~E_GADCON_LAYOUT_ITEM_LOCK_ABSOLUTE;
-               }
+        if ((bi->gcc->state_info.flags & E_GADCON_LAYOUT_ITEM_LOCK_POSITION) &&
+            (bi->gcc->state_info.flags & E_GADCON_LAYOUT_ITEM_LOCK_ABSOLUTE))
+          {
+             if (bi->x != bi->ask.pos)
+               bi->gcc->state_info.flags &= ~E_GADCON_LAYOUT_ITEM_LOCK_ABSOLUTE;
           }
         i++;
      }
@@ -4095,8 +4086,7 @@ _e_gadcon_layout_smart_min_cur_size_calc(E_Smart_Data *sd, int *min, int *mino, 
    EINA_LIST_FOREACH(sd->items, l, item)
      {
         bi = evas_object_data_get(item, "e_gadcon_layout_data");
-        if (!bi)
-          continue;
+        if(!bi) continue;
         bi->ask.size2 = bi->ask.size;
 
         if ((bi->aspect.w > 0) && (bi->aspect.h > 0))
@@ -4135,9 +4125,11 @@ _e_gadcon_layout_smart_width_smart_sort_reverse_cb(const void *d1, const void *d
 
    bi = evas_object_data_get(d1, "e_gadcon_layout_data");
    bi2 = evas_object_data_get(d2, "e_gadcon_layout_data");
-
-   if ((!bi) || (!bi2))
-     return 0;
+   if ((!bi) && (!bi2)) return 0;
+   else if (!bi)
+     return 1;
+   else if (!bi2)
+     return -1;
 
    if (bi->ask.size2 > bi->min.w)
      {
@@ -4211,8 +4203,7 @@ _e_gadcon_layout_smart_gadcons_width_adjust(E_Smart_Data *sd, int min, int cur)
    EINA_LIST_FOREACH(sd->items, l, item)
      {
         bi = evas_object_data_get(item, "e_gadcon_layout_data");
-        if (!bi || !bi->gcc)
-          continue;
+        if(!bi) continue;
         if (bi->gcc->autoscroll) autosize += bi->ask.size2;
      }
 
@@ -4224,8 +4215,8 @@ _e_gadcon_layout_smart_gadcons_width_adjust(E_Smart_Data *sd, int min, int cur)
           {
              if (need <= 0) break;
              bi = evas_object_data_get(item, "e_gadcon_layout_data");
-             if (!bi || !bi->gcc)
-               continue;
+             if(!bi) continue;
+
              if (bi->gcc->autoscroll)
                {
                   int reduce_by;
@@ -4257,10 +4248,11 @@ _e_gadcon_layout_smart_sort_by_sequence_number_cb(const void *d1, const void *d2
 
    bi = evas_object_data_get(d1, "e_gadcon_layout_data");
    bi2 = evas_object_data_get(d2, "e_gadcon_layout_data");
-
-   if (!bi || !bi->gcc ||
-       !bi2 || !bi2->gcc)
-     return 0;
+   if ((!bi) && (!bi2)) return 0;
+   else if (!bi)
+     return 1;
+   else if (!bi2)
+     return -1;
 
    if ((!bi->gcc->state_info.seq) && (!bi2->gcc->state_info.seq)) return 0;
    else if (!bi->gcc->state_info.seq)
@@ -4277,9 +4269,11 @@ _e_gadcon_layout_smart_sort_by_position_cb(const void *d1, const void *d2)
 
    bi = evas_object_data_get(d1, "e_gadcon_layout_data");
    bi2 = evas_object_data_get(d2, "e_gadcon_layout_data");
-
-   if (!bi || !bi2)
-     return 0;
+   if ((!bi) && (!bi2)) return 0;
+   else if (!bi)
+     return 1;
+   else if (!bi2)
+     return -1;
 
    return bi->x - bi2->x;
 }
@@ -4352,8 +4346,8 @@ _e_gadcon_layout_smart_gadcon_position_shrinked_mode(E_Smart_Data *sd)
    EINA_LIST_FOREACH(sd->items, l, item)
      {
         bi = evas_object_data_get(item, "e_gadcon_layout_data");
-        if (!bi)
-          continue;
+        if(!bi) continue;
+
         if (bi->gcc->state_info.state == E_LAYOUT_ITEM_STATE_POS_INC)
           {
              if (bi->gcc->state_info.resist <= E_LAYOUT_ITEM_DRAG_RESIST_LEVEL)
@@ -4371,19 +4365,18 @@ _e_gadcon_layout_smart_gadcon_position_shrinked_mode(E_Smart_Data *sd)
                        l->data = tp;
 
                        bi2 = evas_object_data_get(tp, "e_gadcon_layout_data");
-                       if (bi2)
-                         {
-                            if (bi2->x + bi2->w / 2 > bi->ask.pos + bi->w)
-                              {
-                                 bi->gcc->config.pos = bi->ask.pos = bi->gcc->state_info.prev_pos;
-                                 return;
-                              }
+                       if(!bi2) continue;
 
-                            bi2->gcc->state_info.want_save = 1;
-                            bi->gcc->config.pos = bi->ask.pos = bi2->ask.pos;
+                       if (bi2->x + bi2->w / 2 > bi->ask.pos + bi->w)
+                         {
+                            bi->gcc->config.pos = bi->ask.pos = bi->gcc->state_info.prev_pos;
+                            return;
                          }
+
+                       bi->gcc->config.pos = bi->ask.pos = bi2->ask.pos;
                        bi->gcc->state_info.flags &= ~E_GADCON_LAYOUT_ITEM_LOCK_ABSOLUTE;
                        bi->gcc->state_info.want_save = 1;
+                       bi2->gcc->state_info.want_save = 1;
                        break;
                     }
                   else
@@ -4407,19 +4400,18 @@ _e_gadcon_layout_smart_gadcon_position_shrinked_mode(E_Smart_Data *sd)
 
                        l->data = tp;
                        bi2 = evas_object_data_get(tp, "e_gadcon_layout_data");
-                       if (bi2)
-                         {
-                            if (bi->ask.pos > bi2->x + bi2->w / 2)
-                              {
-                                 bi->gcc->config.pos = bi->ask.pos = bi->gcc->state_info.prev_pos;
-                                 return;
-                              }
+                       if(!bi2) continue;
 
-                            bi2->gcc->state_info.want_save = 1;
-                            bi->gcc->config.pos = bi->ask.pos = bi2->ask.pos;
+                       if (bi->ask.pos > bi2->x + bi2->w / 2)
+                         {
+                            bi->gcc->config.pos = bi->ask.pos = bi->gcc->state_info.prev_pos;
+                            return;
                          }
+
+                       bi->gcc->config.pos = bi->ask.pos = bi2->ask.pos;
                        bi->gcc->state_info.flags &= ~E_GADCON_LAYOUT_ITEM_LOCK_ABSOLUTE;
                        bi->gcc->state_info.want_save = 1;
+                       bi2->gcc->state_info.want_save = 1;
                        break;
                     }
                   else
@@ -4443,9 +4435,8 @@ _e_gadcon_layout_smart_gadcon_position_shrinked_mode(E_Smart_Data *sd)
    EINA_LIST_FOREACH(sd->items, l, item)
      {
         bi = evas_object_data_get(item, "e_gadcon_layout_data");
+        if(!bi) continue;
 
-        if (!bi)
-          continue;
         bi->x = pos;
         bi->w = bi->ask.size2;
         bi->gcc->config.size = bi->w;
@@ -4534,29 +4525,24 @@ _e_gadcon_layout_smart_gadcons_wrap(E_Smart_Data *sd)
    EINA_LIST_FOREACH(sd->items, l, item)
      {
         bi = evas_object_data_get(item, "e_gadcon_layout_data");
+        if(!bi) continue;
         lc = E_NEW(E_Layout_Item_Container, 1);
-        if (!lc)
-          continue;
-
+        lc->state_info.min_seq = lc->state_info.max_seq = bi->gcc->state_info.seq;
         lc->sd = sd;
-        if (bi)
-          {
-             lc->state_info.min_seq = lc->state_info.max_seq = bi->gcc->state_info.seq;
 
-             lc->pos = bi->x;
-             lc->size = bi->w;
+        lc->pos = bi->x;
+        lc->size = bi->w;
 
-             lc->prev_pos = bi->ask.prev_pos;
-             lc->prev_size = bi->ask.prev_size;
+        lc->prev_pos = bi->ask.prev_pos;
+        lc->prev_size = bi->ask.prev_size;
 
-             E_LAYOUT_ITEM_CONTAINER_STATE_SET(lc->state, bi->gcc->state_info.state);
+        E_LAYOUT_ITEM_CONTAINER_STATE_SET(lc->state, bi->gcc->state_info.state);
 
-             if ((bi->gcc->state_info.flags & E_GADCON_LAYOUT_ITEM_LOCK_POSITION) &&
-                 (lc->state == E_LAYOUT_ITEM_CONTAINER_STATE_NONE))
-               lc->state = E_LAYOUT_ITEM_CONTAINER_STATE_POS_LOCKED;
+        if ((bi->gcc->state_info.flags & E_GADCON_LAYOUT_ITEM_LOCK_POSITION) &&
+            (lc->state == E_LAYOUT_ITEM_CONTAINER_STATE_NONE))
+          lc->state = E_LAYOUT_ITEM_CONTAINER_STATE_POS_LOCKED;
 
-             lc->items = eina_list_append(lc->items, bi);
-          }
+        lc->items = eina_list_append(lc->items, bi);
         list = eina_list_append(list, lc);
      }
    return list;

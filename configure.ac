@@ -113,7 +113,7 @@ dnl AC_E_CHECK_PKG(VALGRIND, [valgrind >= 2.4.0], [], [:])
 AC_SUBST(VALGRIND_CFLAGS)
 AC_SUBST(VALGRIND_LIBS)
 
-MODULE_ARCH="$host_os-$host_cpu-relname"
+MODULE_ARCH="$host_os-$host_cpu-$release"
 AC_SUBST(MODULE_ARCH)
 AC_DEFINE_UNQUOTED(MODULE_ARCH, "$MODULE_ARCH", "Module architecture")
 
@@ -252,7 +252,7 @@ ALL_LINGUAS="bg ca cs da de el eo es fi fr fr_CH he hu it ja ko nb nl pl pt_BR r
 AC_SUBST(ALL_LINGUAS)
 
 m4_ifdef([AM_GNU_GETTEXT_VERSION], [
-AM_GNU_GETTEXT_VERSION([0.17])
+AM_GNU_GETTEXT_VERSION([0.18.1])
 ])
 
 m4_ifdef([AM_GNU_GETTEXT], [
@@ -545,7 +545,10 @@ PKG_CHECK_MODULES(E, [
   $eeze_mount
   $udisks_mount
   $device_backend,
-  dlog
+  dlog,
+  pixman-1,
+  xrender,
+  xcomposite
 ])
 requirements_e="\
 evas >= 1.2.0 \
@@ -594,6 +597,10 @@ PKG_CHECK_MODULES(E_OPEN, [
   efreet-mime >= 1.2.0
   eina >= 1.2.0
 ])
+
+# systrace support
+PKG_CHECK_MODULES(TTRACE, [ttrace],
+          AC_DEFINE(ENABLE_TTRACE, 1, [ttrace available]));
 
 AC_E_CHECK_PKG(ECORE_IMF, [ ecore-imf >= 1.2.0 ecore-imf-evas >= 1.2.0 ], [], [:])
 
@@ -651,10 +658,6 @@ e_extra_features+="-D_F_COPY_FROM_DATA_DIR_ "
 e_extra_features+="-D_F_TEMPORARY_COMP_EVENT_ "
 # add move resize event send
 e_extra_features+="-D_F_MOVE_RESIZE_SEND_PATCH_ "
-# enable to kill hung processe through resourced
-# if you enable this feature, the E is going to send ping only for visible windows.
-# e_config->ping_clients configuration value must be enabled if you want to use it.
-e_extra_features+="-D_F_KILL_HUNG_PROCESS_THROUGH_RD_ "
 # enable patch to handling except case that a client will do consecutively the Map and Unmap repeatedly.
 e_extra_features+="-D_F_FIX_POSITION_PROBLEM_ "
 # enable tiled desk layout feature
@@ -669,9 +672,132 @@ e_extra_features+="-D_F_MOVE_KEEPING_FOCUS_ "
 e_extra_features+="-D_F_USE_WM_VISIBILITY_ "
 # enable patch for shape input mask
 e_extra_features+="-D_F_SHAPE_INPUT_PATCH_ "
+# use border transform - _F_USE_BORDER_TRANSFORM_, _F_INPUT_REDIRECTION_
+e_extra_features+="-D_F_USE_BORDER_TRANSFORM_ "
+e_extra_features+="-D_F_INPUT_REDIRECTION_ "
 # add resizing window when the window is iconified
 e_extra_features+="-D_F_USE_ICONIFY_RESIZE_ "
+# disable unused feature
+e_extra_features+="-D_F_DISABLE_UNUSED_FEATURE_ "
+# disable efreet library calls
+e_extra_features+="-D_F_DISABLE_E_EFREET_ "
+# add capturing the last window buffer when the window is iconified (TV profile feature)
+#e_extra_features+="-D_F_USE_CAPTURE_ "
+# enable TV specific features such as stereoscopic & resolution changes (TV profile feature)
+#e_extra_features+="-D_F_USE_TV_FEATURE_ "
+# enable to support WM working in Tizen zone host.
+#e_extra_features+="-D_F_USE_WM_ZONE_HOST_ "
+# enable vconf ready feature to avoid smack issue (TV profile feature)
+#e_extra_features+="-D_F_USE_VCONF_READY_ "
+# change cursor image/size change by extra module packages (TV profile feature)
+e_extra_features+="-D_F_USE_PHOTON_CURSOR_ "
+# add lightweight features
+e_extra_features+="-D_F_DISABLE_E_ACTION "
+e_extra_features+="-D_F_DISABLE_E_MENU "
+e_extra_features+="-D_F_DISABLE_E_DESKLOCK "
+e_extra_features+="-D_F_DISABLE_E_GADGETS "
+e_extra_features+="-D_F_DISABLE_E_WIDGET "
+e_extra_features+="-D_F_DISABLE_E_THEME "
+e_extra_features+="-D_F_DISABLE_E_THUMB "
+e_extra_features+="-D_F_DISABLE_E_SHELF "
+e_extra_features+="-D_F_DISABLE_E_FM "
+e_extra_features+="-D_F_DISABLE_E_SCREENSAVER "
+e_extra_features+="-D_F_DISABLE_E_COLOR_CLASS "
+e_extra_features+="-D_F_DISABLE_E_UPDATE "
+e_extra_features+="-D_F_DISABLE_E_STARTUP_APP "
+e_extra_features+="-D_F_DISABLE_E_XINERMA "
+e_extra_features+="-D_F_DISABLE_E_DATASTORE "
+e_extra_features+="-D_F_DISABLE_E_GRAB_DIALOG "
+e_extra_features+="-D_F_DISABLE_E_IMPORT_CONFIG_DIALOG "
+e_extra_features+="-D_F_DISABLE_E_IMPORT_DIALOG_SHOW "
+e_extra_features+="-D_F_DISABLE_E_IMPORT_SLIDE "
+e_extra_features+="-D_F_DISABLE_E_ENTRY_DIALOG "
+e_extra_features+="-D_F_DISABLE_E_LIVETHUMB "
+# add ignoring damages when the window is iconified
+e_extra_features+="-D_F_IGNORE_DMG_HIDE_ "
 
+have_wayland_clients=no
+AC_ARG_ENABLE([wayland-clients],
+  AS_HELP_STRING([--enable-wayland-clients],[enable wayland clients in composite module @<:@default=disabled@:>@]),
+  [e_cv_want_wayland_clients=$enableval],
+  [e_cv_want_wayland_clients=no])
+
+AC_MSG_CHECKING([whether wayland client support is enabled])
+AC_MSG_RESULT([${e_cv_want_wayland_clients}])
+
+if test "x$e_cv_want_wayland_clients" != "xno";then
+  PKG_CHECK_MODULES([WAYLAND], [wayland-server egl >= 7.10 glesv2 gl pixman-1 xcb-image],
+    [
+      have_wayland_clients=yes
+      AC_DEFINE_UNQUOTED([HAVE_WAYLAND_CLIENTS],[1],[enable wayland client support])
+    ],
+    [have_wayland_clients=no])
+else
+  have_wayland_clients=no
+fi
+
+AM_CONDITIONAL([HAVE_WAYLAND_CLIENTS], [test "x${have_wayland_clients}" = "xyes"])
+
+have_tzsh=no
+AC_ARG_ENABLE([tzsh],
+  AS_HELP_STRING([--enable-tzsh],[enable tizen window system shell service @<:@default=disabled@:>@]),
+  [want_tzsh=$enableval],
+  [want_tzsh=no])
+
+AC_MSG_CHECKING([whether tizen window system shell service is enabled])
+AC_MSG_RESULT([${want_tzsh}])
+
+if test "x${want_tzsh}" = "xyes"; then
+  PKG_CHECK_MODULES([TZSH], [wayland-server],
+    [
+      have_tzsh=yes
+      AC_DEFINE_UNQUOTED([HAVE_TZSH],[1],[enable tizen window system shell service])
+
+      # add support tizen window system shell service
+      e_extra_features+="-D_F_USE_TZSH_"
+    ],
+    [have_tzsh=no])
+
+  TZSH_PROTOCOL_DIR=$(pkg-config --variable=pkgdatadir tzsh-common)
+  AC_SUBST(TZSH_PROTOCOL_DIR)
+  AC_DEFINE_UNQUOTED(TZSH_PROTOCOL_DIR, "$TZSH_PROTOCOL_DIR", "Tzsh Protocol")
+
+  AC_PATH_PROG([wayland_scanner], [wayland-scanner])
+  if test x$wayland_scanner = x; then
+    AC_MSG_ERROR([wayland-scanner is needed to enable Tzsh])
+  fi
+else
+  have_tzsh=no
+fi
+
+AM_CONDITIONAL([HAVE_TZSH], [test "x${have_tzsh}" = "xyes"])
+
+dnl ========================================================================
+# window manager to work based with preferred(virtual) resolution instead of root size
+dnl ========================================================================
+have_virt_res=no
+AC_ARG_ENABLE([virt-res],
+  AS_HELP_STRING([--enable-virt-res],[enable virtual resolution support @<:@default=disabled@:>@]),
+  [want_virt_res=$enableval],
+  [want_virt_res=no])
+
+AC_MSG_CHECKING([virtual resolution support])
+AC_MSG_RESULT([${want_virt_res}])
+
+if test "x${want_virt_res}" = "xyes"; then
+  have_virt_res=yes
+  AC_DEFINE_UNQUOTED([HAVE_VIRT_RESOLUTION],[1],[enable virtual resolution support])
+
+  # add support virtual resolution change
+  e_extra_features+="-D_F_USE_VIRT_RESOLUTION_"
+
+else
+  have_virt_res=no
+fi
+
+AM_CONDITIONAL([HAVE_VIRT_RESOLUTION], [test "x${have_virt_res}" = "xyes"])
+
+dnl ========================================================================
 have_extra_features=no
 AC_ARG_ENABLE(extra_features,
               AC_HELP_STRING([--enable-extra-features], [enable extra features (default: no)]),
@@ -885,28 +1011,6 @@ define([CHECK_MODULE_OFONO],
 AC_SUBST(EOFONO_CFLAGS)
 AC_SUBST(EOFONO_LIBS)
 
-have_wayland_clients=no
-AC_ARG_ENABLE([wayland-clients],
-  AS_HELP_STRING([--enable-wayland-clients],[enable wayland clients in composite module @<:@default=disabled@:>@]),
-  [e_cv_want_wayland_clients=$enableval],
-  [e_cv_want_wayland_clients=no])
-
-AC_MSG_CHECKING([whether wayland client support is enabled])
-AC_MSG_RESULT([${e_cv_want_wayland_clients}])
-
-if test "x$e_cv_want_wayland_clients" != "xno";then
-  PKG_CHECK_MODULES([WAYLAND], [wayland-server egl >= 7.10 glesv2 gl pixman-1 xcb-image],
-    [
-      have_wayland_clients=yes
-      AC_DEFINE_UNQUOTED([HAVE_WAYLAND_CLIENTS],[1],[enable wayland client support])
-    ],
-    [have_wayland_clients=no])
-else
-  have_wayland_clients=no
-fi
-
-AM_CONDITIONAL([HAVE_WAYLAND_CLIENTS], [test "x${have_wayland_clients}" = "xyes"])
-
 
 AC_E_OPTIONAL_MODULE([ibar], true)
 AC_E_OPTIONAL_MODULE([dropshadow], true)
@@ -1005,136 +1109,6 @@ src/Makefile
 src/bin/Makefile
 src/bin/e_fm_shared_types.h
 src/bin/e_fm/Makefile
-src/modules/Makefile
-src/modules/ibar/Makefile
-src/modules/ibar/module.desktop
-src/modules/dropshadow/Makefile
-src/modules/dropshadow/module.desktop
-src/modules/clock/Makefile
-src/modules/clock/module.desktop
-src/modules/pager/Makefile
-src/modules/pager/module.desktop
-src/modules/battery/Makefile
-src/modules/battery/module.desktop
-src/modules/temperature/Makefile
-src/modules/temperature/module.desktop
-src/modules/notification/Makefile
-src/modules/notification/module.desktop
-src/modules/cpufreq/Makefile
-src/modules/cpufreq/module.desktop
-src/modules/ibox/Makefile
-src/modules/ibox/module.desktop
-src/modules/start/Makefile
-src/modules/start/module.desktop
-src/modules/winlist/Makefile
-src/modules/winlist/module.desktop
-src/modules/fileman/Makefile
-src/modules/fileman/module.desktop
-src/modules/fileman_opinfo/Makefile
-src/modules/fileman_opinfo/module.desktop
-src/modules/wizard/Makefile
-src/modules/conf/Makefile
-src/modules/conf/module.desktop
-src/modules/conf_wallpaper2/Makefile
-src/modules/conf_wallpaper2/module.desktop
-src/modules/conf_theme/Makefile
-src/modules/conf_theme/module.desktop
-src/modules/conf_intl/Makefile
-src/modules/conf_intl/module.desktop
-src/modules/conf_applications/Makefile
-src/modules/conf_applications/module.desktop
-src/modules/conf_display/Makefile
-src/modules/conf_display/module.desktop
-src/modules/conf_shelves/Makefile
-src/modules/conf_shelves/module.desktop
-src/modules/conf_keybindings/Makefile
-src/modules/conf_keybindings/module.desktop
-src/modules/conf_edgebindings/Makefile
-src/modules/conf_edgebindings/module.desktop
-src/modules/conf_window_remembers/Makefile
-src/modules/conf_window_remembers/module.desktop
-src/modules/conf_window_manipulation/Makefile
-src/modules/conf_window_manipulation/module.desktop
-src/modules/conf_menus/Makefile
-src/modules/conf_menus/module.desktop
-src/modules/conf_dialogs/Makefile
-src/modules/conf_dialogs/module.desktop
-src/modules/conf_performance/Makefile
-src/modules/conf_performance/module.desktop
-src/modules/conf_paths/Makefile
-src/modules/conf_paths/module.desktop
-src/modules/conf_interaction/Makefile
-src/modules/conf_interaction/module.desktop
-src/modules/msgbus/Makefile
-src/modules/msgbus/module.desktop
-src/modules/conf_randr/Makefile
-src/modules/conf_randr/module.desktop
-src/modules/gadman/Makefile
-src/modules/gadman/module.desktop
-src/modules/mixer/Makefile
-src/modules/mixer/module.desktop
-src/modules/connman/Makefile
-src/modules/connman/module.desktop
-src/modules/bluez/Makefile
-src/modules/bluez/module.desktop
-src/modules/ofono/Makefile
-src/modules/ofono/module.desktop
-src/modules/illume2/Makefile
-src/modules/illume2/doc/illume.dox
-src/modules/illume2/doc/Makefile
-src/modules/illume2/images/Makefile
-src/modules/illume2/module.desktop
-src/modules/illume2/keyboards/Makefile
-src/modules/illume2/policies/Makefile
-src/modules/illume2/policies/illume/Makefile
-src/modules/illume2/policies/tablet/Makefile
-src/modules/illume-home/Makefile
-src/modules/illume-home/module.desktop
-src/modules/illume-home-toggle/Makefile
-src/modules/illume-home-toggle/module.desktop
-src/modules/illume-softkey/Makefile
-src/modules/illume-softkey/module.desktop
-src/modules/illume-softkey/images/Makefile
-src/modules/illume-keyboard/Makefile
-src/modules/illume-keyboard/module.desktop
-src/modules/illume-keyboard/keyboards/Makefile
-src/modules/illume-keyboard/dicts/Makefile
-src/modules/illume-keyboard/images/Makefile
-src/modules/illume-indicator/Makefile
-src/modules/illume-indicator/module.desktop
-src/modules/illume-indicator/images/Makefile
-src/modules/illume-kbd-toggle/Makefile
-src/modules/illume-kbd-toggle/module.desktop
-src/modules/illume-mode-toggle/Makefile
-src/modules/illume-mode-toggle/module.desktop
-src/modules/illume-bluetooth/Makefile
-src/modules/illume-bluetooth/module.desktop
-src/modules/syscon/Makefile
-src/modules/syscon/module.desktop
-src/modules/everything/Makefile
-src/modules/everything/module.desktop
-src/modules/everything/everything.pc
-src/modules/systray/Makefile
-src/modules/systray/module.desktop
-src/modules/comp/Makefile
-src/modules/comp/module.desktop
-src/modules/physics/Makefile
-src/modules/physics/module.desktop
-src/modules/quickaccess/Makefile
-src/modules/quickaccess/module.desktop
-src/modules/shot/Makefile
-src/modules/shot/module.desktop
-src/modules/backlight/Makefile
-src/modules/backlight/module.desktop
-src/modules/tasks/Makefile
-src/modules/tasks/module.desktop
-src/modules/xkbswitch/Makefile
-src/modules/xkbswitch/module.desktop
-src/modules/tiling/Makefile
-src/modules/tiling/module.desktop
-src/modules/access/Makefile
-src/modules/access/module.desktop
-src/preload/Makefile
 data/Makefile
 data/images/Makefile
 data/flags/Makefile

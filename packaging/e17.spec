@@ -1,17 +1,15 @@
 Name:       e17
 Summary:    The Enlightenment window manager
-Version:    1.0.4.001+svn.76808slp2+build06
-Release:    2
+Version:    1.0.6.001+svn.76808slp2+build27
+Release:    1
 Group:      System/GUI/Other
 License:    BSD 2-clause and Flora-1.1
 URL:        http://www.enlightenment.org/
 Source0:    %{name}-%{version}.tar.gz
-Source2:    packaging/e17.service
 BuildRequires:  pkgconfig(alsa)
 BuildRequires:  pkgconfig(ecore)
 BuildRequires:  pkgconfig(ecore-con)
 BuildRequires:  pkgconfig(ecore-evas)
-BuildRequires:  pkgconfig(ecore-fb)
 BuildRequires:  pkgconfig(ecore-file)
 BuildRequires:  pkgconfig(ecore-imf)
 BuildRequires:  pkgconfig(ecore-imf-evas)
@@ -20,26 +18,31 @@ BuildRequires:  pkgconfig(ecore-input-evas)
 BuildRequires:  pkgconfig(ecore-ipc)
 BuildRequires:  pkgconfig(ecore-x)
 BuildRequires:  pkgconfig(edbus)
-BuildRequires:  pkgconfig(elementary)
 BuildRequires:  pkgconfig(edje)
 BuildRequires:  pkgconfig(eet)
-BuildRequires:  pkgconfig(efreet)
-BuildRequires:  pkgconfig(efreet-mime)
 BuildRequires:  pkgconfig(ehal)
 BuildRequires:  pkgconfig(eina)
 BuildRequires:  pkgconfig(evas)
 BuildRequires:  pkgconfig(eio)
-BuildRequires:  pkgconfig(utilX)
+BuildRequires:  pkgconfig(elementary)
 BuildRequires:  pkgconfig(x11)
 BuildRequires:  pkgconfig(xext)
 BuildRequires:  pkgconfig(dlog)
+BuildRequires:  pkgconfig(ttrace)
+BuildRequires:  pkgconfig(xrender)
+BuildRequires:  pkgconfig(xcomposite)
+BuildRequires:  pkgconfig(pixman-1)
+%if "%{?tizen_profile_name}" != "tv"
+BuildRequires:  tzsh-devel
+%endif
+#BuildRequires:  pkgconfig(display-capture-api)
 BuildRequires:  edje-bin
 BuildRequires:  embryo-bin
 BuildRequires:  eet-bin
 BuildRequires:  gettext-devel
 Requires(post): e17-data
 Requires(post): sys-assert
-
+#Requires: display-capture-api
 
 %description
 The Enlightenment DR17 Window Manager Enlightenment is an advanced window manager for X11. Unique
@@ -73,107 +76,18 @@ The Enlightenment window manager (data)
 
 
 %build
-export CFLAGS+=" -fvisibility=hidden -fPIC "
+export CFLAGS+=" -fvisibility=hidden -fPIC -Werror-implicit-function-declaration "
 export LDFLAGS+=" -fvisibility=hidden -Wl,--hash-style=both -Wl,--as-needed"
 export CFLAGS="$CFLAGS -DTIZEN_DEBUG_ENABLE"
 
 %autogen --disable-static
-LIBS='-ledbus' ./configure --prefix=/usr --disable-static \
-    --disable-temperature \
-    --disable-mixer \
-    --disable-everything \
-    --disable-dropshadow \
-    --disable-pager \
-    --disable-battery \
-    --disable-cpufreq \
-    --disable-start \
-    --disable-exebuf \
-    --disable-winlist \
-    --disable-fileman \
-    --disable-fileman-opinfo \
-    --disable-wizard \
-    --disable-conf \
-    --disable-conf-wallpaper \
-    --disable-conf-wallpaper2 \
-    --disable-conf-colors \
-    --disable-conf-fonts \
-    --disable-conf-borders \
-    --disable-conf-icon-theme \
-    --disable-conf-mouse-cursor \
-    --disable-conf-transitions \
-    --disable-conf-startup \
-    --disable-conf-intl \
-    --disable-conf-imc \
-    --disable-conf-profiles \
-    --disable-msgbus-lang \
-    --disable-conf-engine \
-    --disable-conf-desks \
-    --disable-conf-desk \
-    --disable-conf-display \
-    --disable-conf-desklock \
-    --disable-conf-screensaver \
-    --disable-conf-dpms \
-    --disable-conf-shelves \
-    --disable-conf-shelves \
-    --disable-conf-keybindings \
-    --disable-conf-mousebindings \
-    --disable-conf-edgebindings \
-    --disable-conf-mouse \
-    --disable-conf-window-display \
-    --disable-conf-window-focus \
-    --disable-conf-window-remembers \
-    --disable-conf-window-manipulation \
-    --disable-conf-menus \
-    --disable-conf-clientlist \
-    --disable-conf-dialogs \
-    --disable-conf-performance \
-    --disable-conf-winlist \
-    --disable-conf-exebuf \
-    --disable-conf-paths \
-    --disable-conf-mime \
-    --disable-conf-interaction \
-    --disable-conf-scale \
-    --disable-mixel \
-    --disable-connman \
-    --disable-illume \
-    --disable-syscon \
-    --disable-bluez \
-    --disable-ofono \
-    --disable-msgbus \
-    --disable-systray \
-    --disable-conf_acpibindings \
-    --disable-everything-apps \
-    --disable-everything-aspell \
-    --disable-everything-calc \
-    --disable-everything-files \
-    --disable-everything-settings \
-    --disable-everything-windows \
-    --disable-illume-bluetooth \
-    --disable-illume-home \
-    --disable-illume-toggle \
-    --disable-illume-indicator \
-    --disable-illume-kbd-toggle \
-    --disable-illume-keyboard \
-    --disable-illume-mode-toggle \
-    --disable-illume-softkey \
-    --disable-comp \
-    --disable-illume2 \
-    --disable-conf_randr \
-    --disable-tasks \
-    --disable-backlight \
-    --disable-shot \
-    --disable-notification \
-    --disable-quickaccess \
-    --disable-tiling \
-    --disable-xkbswitch \
-    --disable-access \
-    --disable-clock \
-    --disable-gadman \
-    --disable-ibar \
-    --disable-ibox \
-    --disable-conf-applications \
-    --disable-conf-theme \
-    --enable-extra-features
+LIBS='-ledbus' %configure --prefix=/usr --disable-static \
+%if "%{?tizen_profile_name}" == "tv"
+           --enable-virt-res \
+%else
+           --enable-tzsh \
+%endif
+           --enable-extra-features
 
 make %{?jobs:-j%jobs}
 
@@ -185,11 +99,9 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/license
 cp -a %{_builddir}/%{buildsubdir}/COPYING %{buildroot}/usr/share/license/%{name}
 cp -a %{_builddir}/%{buildsubdir}/COPYING %{buildroot}/usr/share/license/%{name}-data
+cat %{_builddir}/%{buildsubdir}/COPYING.Flora >> %{buildroot}/usr/share/license/%{name}
+cat %{_builddir}/%{buildsubdir}/COPYING.Flora >> %{buildroot}/usr/share/license/%{name}-data
 
-#systemd setup
-mkdir -p %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants
-install -m 0644 %SOURCE2 %{buildroot}%{_libdir}/systemd/user/
-ln -s ../e17.service %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants/e17.service
 
 %files
 %manifest e17.manifest
@@ -198,10 +110,7 @@ ln -s ../e17.service %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants/e
 /usr/bin/enlightenment_imc
 /usr/bin/enlightenment_remote
 /usr/bin/enlightenment_start
-/usr/lib/enlightenment/preload/*
-%config /usr/etc/enlightenment/sysactions.conf
-/usr/lib/systemd/user/e17.service
-/usr/lib/systemd/user/core-efl.target.wants/e17.service
+#%config /usr/etc/enlightenment/sysactions.conf
 /usr/share/license/%{name}
 
 %files devel
@@ -214,7 +123,7 @@ ln -s ../e17.service %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants/e
 %defattr(-,root,root,-)
 /etc/smack/accesses.d/e17.efl
 /usr/share/license/%{name}-data
-%exclude /usr/etc/xdg/*
+#%exclude /usr/etc/xdg/*
 %exclude /usr/lib/enlightenment/utils/*
 %exclude /usr/share/enlightenment/AUTHORS
 %exclude /usr/share/enlightenment/COPYING
@@ -230,7 +139,6 @@ ln -s ../e17.service %{buildroot}%{_libdir}/systemd/user/core-efl.target.wants/e
 %exclude /usr/share/enlightenment/data/flags/*
 %exclude /usr/share/enlightenment/data/favorites/*
 %exclude /usr/share/enlightenment/data/favorites/.order
-%exclude /usr/bin/enlightenment_open
 %exclude /usr/bin/enlightenment_filemanager
 
 %define _unpackaged_files_terminate_build 0

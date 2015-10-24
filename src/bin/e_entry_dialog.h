@@ -25,6 +25,8 @@ struct _E_Entry_Dialog
    } cancel;
 };
 
+#ifndef _F_DISABLE_E_ENTRY_DIALOG
+
 EAPI E_Entry_Dialog *e_entry_dialog_show(const char *title,
 					 const char *icon,
 					 const char *text,
@@ -35,5 +37,6 @@ EAPI E_Entry_Dialog *e_entry_dialog_show(const char *title,
 					 void (*cancel_func) (void *data),
 					 void *data);
 
+#endif
 #endif
 #endif

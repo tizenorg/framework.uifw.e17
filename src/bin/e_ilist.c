@@ -1299,7 +1299,7 @@ _e_typebuf_add(Evas_Object *obj, const char *s)
           }
      }
 
-   strcat(sd->typebuf.buf, s);
+   strncat(sd->typebuf.buf, s, strlen(s));
    edje_object_part_text_set(sd->o_edje, "e.text.typebuf_label", sd->typebuf.buf);
    edje_object_signal_emit(sd->o_edje, "e,state,typebuf,start", "e");
    _e_typebuf_match(obj);
@@ -1319,9 +1319,9 @@ _e_typebuf_match(Evas_Object *obj)
    match = malloc(strlen(sd->typebuf.buf) + 2 + 1);
    if (!match) return;
 
-   strcpy(match, "*");
-   strcat(match, sd->typebuf.buf);
-   strcat(match, "*");
+   strncpy(match, "*", strlen("*") + 1);
+   strncat(match, sd->typebuf.buf, strlen(sd->typebuf.buf));
+   strncat(match, "*", 1);
 
    n = 0;
    EINA_LIST_FOREACH(sd->items, l, si)
@@ -1335,7 +1335,7 @@ _e_typebuf_match(Evas_Object *obj)
              else
                label = edje_object_part_text_get(si->o_base, "e.text.label");
 
-             if ((label) && (e_util_glob_case_match(label, match)))
+             if (e_util_glob_case_match(label, match))
                {
                   e_ilist_selected_set(obj, n);
                   break;

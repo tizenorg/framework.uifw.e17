@@ -4,6 +4,7 @@
 #ifndef E_THUMB_H
 #define E_THUMB_H
 
+#ifndef _F_DISABLE_E_THUMB
 
 EINTERN int                   e_thumb_init(void);
 EINTERN int                   e_thumb_shutdown(void);
@@ -19,5 +20,6 @@ EAPI const char           *e_thumb_sort_id_get(Evas_Object *obj);
 EAPI void                  e_thumb_client_data(Ecore_Ipc_Event_Client_Data *e);
 EAPI void                  e_thumb_client_del(Ecore_Ipc_Event_Client_Del *e);
 
+#endif
 #endif
 #endif

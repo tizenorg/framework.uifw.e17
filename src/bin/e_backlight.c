@@ -227,6 +227,8 @@ e_backlight_level_set(E_Zone *zone, double val, double tim)
    else if (val > 1.0) val = 1.0;
    if (val == bl_val) return;
    if (!zone) zone = e_util_zone_current_get(e_manager_current_get());
+   if (!zone) return;
+
    bl_now = bl_val;
    bl_val = val;
    if (e_config->backlight.mode != E_BACKLIGHT_MODE_NORMAL) return;

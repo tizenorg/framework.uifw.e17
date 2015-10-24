@@ -189,9 +189,10 @@ _update_machid_get(void)
    if (f)
      {
         double t;
+        unsigned int seedp1 = 1, seedp2 = 1;
         fwrite("GEN-", 4, 1, f);
         t = ecore_time_unix_get();
-        fprintf(f, "%1.16f-%i-%i\n", t, rand(), rand());
+        fprintf(f, "%1.16f-%i-%i\n", t, rand_r(&seedp1), rand_r(&seedp2));
         fclose(f);
         _update_machid_get();
         return;

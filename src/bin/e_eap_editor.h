@@ -32,10 +32,15 @@ struct _E_Desktop_Edit
    E_Config_Dialog *cfd;
 };
 
+#ifndef _F_DISABLE_E_MENU
+
+#ifndef _F_DISABLE_E_EFREET_
 EAPI Efreet_Desktop *e_desktop_border_create(E_Border *bd);
+#endif
 EAPI E_Desktop_Edit *e_desktop_border_edit(E_Container *con, E_Border *bd);
 EAPI E_Desktop_Edit *e_desktop_edit(E_Container *con, Efreet_Desktop *desktop);
 
+#endif
 #endif
 #endif
 #endif

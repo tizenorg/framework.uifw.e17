@@ -22,7 +22,9 @@ struct _Main_Data
 static void        _e_int_menus_main_del_hook(void *obj);
 static void        _e_int_menus_main_about(void *data, E_Menu *m, E_Menu_Item *mi);
 //static void _e_int_menus_fwin_favorites_item_cb(void *data, E_Menu *m, E_Menu_Item *mi);
+#ifndef _F_DISABLE_E_EFREET_
 static void        _e_int_menus_apps_scan(E_Menu *m, Efreet_Menu *menu);
+#endif
 static void        _e_int_menus_apps_start(void *data, E_Menu *m);
 static void        _e_int_menus_apps_free_hook(void *obj);
 static void        _e_int_menus_apps_free_hook2(void *obj);
@@ -192,7 +194,9 @@ e_int_menus_main_new(void)
    mi = e_menu_item_new(subm);
    e_menu_item_label_set(mi, _("Theme"));
    e_util_menu_item_theme_icon_set(mi, "preferences-desktop-theme");
+#ifndef _F_DISABLE_E_THEME
    e_menu_item_callback_set(mi, _e_int_menus_themes_about, NULL);
+#endif
 
    l = _e_int_menus_augmentation_find("enlightenment/1");
    if (l) _e_int_menus_augmentation_add(subm, l);
@@ -514,6 +518,7 @@ _e_int_menus_main_about(void *data __UNUSED__, E_Menu *m __UNUSED__, E_Menu_Item
    if (about) e_about_show(about);
 }
 
+#ifndef _F_DISABLE_E_THEME
 static void
 _e_int_menus_themes_about(void *data __UNUSED__, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUSED__)
 {
@@ -522,7 +527,7 @@ _e_int_menus_themes_about(void *data __UNUSED__, E_Menu *m __UNUSED__, E_Menu_It
    about = e_theme_about_new(e_container_current_get(e_manager_current_get()));
    if (about) e_theme_about_show(about);
 }
-
+#endif
 /*
    static void
    _e_int_menus_fwin_favorites_item_cb(void *data, E_Menu *m, E_Menu_Item *mi)
@@ -567,6 +572,7 @@ _e_int_menus_main_exit(void *data __UNUSED__, E_Menu *m __UNUSED__, E_Menu_Item 
    if ((a) && (a->func.go)) a->func.go(NULL, NULL);
 }
 
+#ifndef _F_DISABLE_E_EFREET_
 static void
 _e_int_menus_apps_scan(E_Menu *m, Efreet_Menu *menu)
 {
@@ -622,11 +628,12 @@ _e_int_menus_apps_scan(E_Menu *m, Efreet_Menu *menu)
         e_menu_item_label_set(mi, _("(No Applications)"));
      }
 }
+#endif
 
 static void
 _e_int_menus_apps_start(void *data, E_Menu *m)
 {
-   Efreet_Menu *menu;
+   Efreet_Menu *menu = NULL;
 
    menu = data;
    if (!menu)
@@ -636,15 +643,21 @@ _e_int_menus_apps_start(void *data, E_Menu *m)
         dir = e_object_data_get(E_OBJECT(m));
         if (dir)
           {
+#ifndef _F_DISABLE_E_EFREET_
              menu = efreet_menu_parse(dir);
+#endif
              free(dir);
           }
+#ifndef _F_DISABLE_E_EFREET_
         else menu = efreet_menu_get();
+#endif
         e_object_data_set(E_OBJECT(m), menu);
         e_object_free_attach_func_set(E_OBJECT(m),
                                       _e_int_menus_apps_free_hook2);
      }
+#ifndef _F_DISABLE_E_EFREET_
    if (menu) _e_int_menus_apps_scan(m, menu);
+#endif
    e_menu_pre_activate_callback_set(m, NULL, NULL);
 }
 
@@ -663,7 +676,7 @@ static void
 _e_int_menus_apps_free_hook2(void *obj)
 {
    E_Menu *m;
-   Efreet_Menu *menu;
+   Efreet_Menu *menu = NULL;
    Eina_List *l, *l_next;
    E_Menu_Item *mi;
 
@@ -676,7 +689,9 @@ _e_int_menus_apps_free_hook2(void *obj)
           e_object_del(E_OBJECT(mi->submenu));
      }
    menu = e_object_data_get(E_OBJECT(m));
+#ifndef _F_DISABLE_E_EFREET_
    if (menu) efreet_menu_free(menu);
+#endif
 }
 
 static void
@@ -716,7 +731,9 @@ _e_int_menus_apps_drag(void *data, E_Menu *m, E_Menu_Item *mi)
         const char *drag_types[] = { "enlightenment/desktop" };
 
         evas_object_geometry_get(mi->icon_object, &x, &y, &w, &h);
+#ifndef _F_DISABLE_E_EFREET_
         efreet_desktop_ref(desktop);
+#endif
         drag = e_drag_new(m->zone->container, x, y, drag_types, 1, desktop, -1,
                           NULL, NULL);
 
@@ -807,7 +824,7 @@ static void
 _e_int_menus_virtuals_icon_cb(void *data, E_Menu *m, E_Menu_Item *mi)
 {
    E_Desk *desk;
-   Evas_Object *o;
+   Evas_Object *o = NULL;
    const char *bgfile;
    int tw, th;
 
@@ -818,10 +835,12 @@ _e_int_menus_virtuals_icon_cb(void *data, E_Menu *m, E_Menu_Item *mi)
    th = (tw * desk->zone->h) / desk->zone->w;
 
    bgfile = e_bg_file_get(desk->zone->container->num, desk->zone->num, desk->x, desk->y);
+#ifndef _F_DISABLE_E_THUMB
    o = e_thumb_icon_add(m->evas);
    e_thumb_icon_file_set(o, bgfile, "e/desktop/background");
    e_thumb_icon_size_set(o, tw, th);
    e_thumb_icon_begin(o);
+#endif
    mi->icon_object = o;
 }
 
@@ -1329,6 +1348,7 @@ _e_int_menus_lost_clients_pre_cb(void *data __UNUSED__, E_Menu *m)
    root = e_menu_root_get(m);
    /* get the current clients */
    if (root) zone = root->zone;
+   if (!zone) return;
    borders = e_border_lost_windows_get(zone);
 
    if (!borders)
@@ -1529,7 +1549,9 @@ _e_int_menus_shelves_item_cb(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi _
    E_Shelf *s = data;
 
    E_OBJECT_CHECK(s);
+#ifndef _F_DISABLE_E_SHELF
    e_int_shelf_config(s);
+#endif
 }
 
 static void
@@ -1538,7 +1560,9 @@ _e_int_menus_shelves_add_cb(void *data __UNUSED__, E_Menu *m __UNUSED__, E_Menu_
    E_Zone *zone;
 
    zone = e_util_zone_current_get(e_manager_current_get());
+#ifndef _F_DISABLE_E_ENTRY_DIALOG
    e_shelf_new_dialog(zone);
+#endif
 }
 
 static void
@@ -1550,7 +1574,7 @@ _e_int_menus_shelves_del_cb(void *data __UNUSED__, E_Menu *m, E_Menu_Item *mi __
 static void
 _e_int_menus_item_label_set(Efreet_Menu *entry, E_Menu_Item *mi)
 {
-   Efreet_Desktop *desktop;
+   Efreet_Desktop *desktop = NULL;
    char label[4096];
    int opt = 0;
 

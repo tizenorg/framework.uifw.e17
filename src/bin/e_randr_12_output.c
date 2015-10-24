@@ -16,6 +16,8 @@ _monitor_modes_refs_set(E_Randr_Monitor_Info *mi, Ecore_X_Randr_Output o)
 
    // Add (preferred) modes
    modes = ecore_x_randr_output_modes_get(e_randr_screen_info.root, o, &nmodes, &npreferred);
+   if (!modes) return;
+
    while (--nmodes >= 0)
      {
         if (!modes[nmodes]) continue;
@@ -150,14 +152,16 @@ _output_refs_set(E_Randr_Output_Info *output_info)
 
    //Add possible crtcs
    crtcs = ecore_x_randr_output_possible_crtcs_get(e_randr_screen_info.root, output_info->xid, &ncrtcs);
-   while (--ncrtcs >= 0)
+   if (crtcs)
      {
-        if (!(crtc_info = _12_screen_info_crtc_info_get(crtcs[ncrtcs])))
-          continue;
-        output_info->possible_crtcs = eina_list_append(output_info->possible_crtcs, crtc_info);
+        while (--ncrtcs >= 0)
+          {
+             if (!(crtc_info = _12_screen_info_crtc_info_get(crtcs[ncrtcs])))
+               continue;
+             output_info->possible_crtcs = eina_list_append(output_info->possible_crtcs, crtc_info);
+          }
+        free(crtcs);
      }
-   free(crtcs);
-
    crtc = ecore_x_randr_output_crtc_get(e_randr_screen_info.root, output_info->xid);
    output_info->crtc = _12_screen_info_crtc_info_get(crtc);
 

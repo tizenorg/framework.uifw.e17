@@ -376,32 +376,32 @@ auth_action_ok(char *a,
                int gn,
                gid_t egid)
 {
-   struct passwd *pw;
-   struct group *gp;
+   struct passwd pw, *temppw = NULL;
+   struct group gp, *tempgp = NULL;
    char *usr = NULL, **grp, *g;
    int ret, i, j;
 
-   pw = getpwuid(uid);
-   if (!pw) return 0;
-   usr = pw->pw_name;
+   ret = getpwuid_r(uid, &pw, NULL, 0, &temppw);
+   if (ret) return 0;
+   usr = pw.pw_name;
    if (!usr) return 0;
    grp = alloca(sizeof(char *) * (gn + 1 + 1));
    j = 0;
-   gp = getgrgid(gid);
-   if (gp)
+   ret = getgrgid_r(gid, &gp, NULL, 0, &tempgp);
+   if ((!ret) && (tempgp))
      {
-        grp[j] = gp->gr_name;
+        grp[j] = gp.gr_name;
         j++;
      }
    for (i = 0; i < gn; i++)
      {
         if (gl[i] != egid)
           {
-             gp = getgrgid(gl[i]);
-             if (gp)
+             ret = getgrgid_r(gl[i], &gp, NULL, 0, &tempgp);
+             if ((!ret) && (tempgp))
                {
-                  g = alloca(strlen(gp->gr_name) + 1);
-                  strcpy(g, gp->gr_name);
+                  g = alloca(strlen(gp.gr_name) + 1);
+                  strncpy(g, gp.gr_name, strlen(gp.gr_name) + 1);
                   grp[j] = g;
                   j++;
                }

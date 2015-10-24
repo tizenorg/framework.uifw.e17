@@ -29,7 +29,13 @@ extern EAPI Ecore_X_Atom E_ATOM_ZONE_GEOMETRY;
 extern EAPI Ecore_X_Atom E_ATOM_WINDOW_DESKTOP_LAYOUT_SUPPORTED;
 extern EAPI Ecore_X_Atom E_ATOM_WINDOW_DESKTOP_LAYOUT_CHANGE;
 extern EAPI Ecore_X_Atom E_ATOM_WINDOW_DESKTOP_LAYOUT;
+extern EAPI Ecore_X_Atom E_ATOM_DESK_LAYOUT_MAX_TILE;
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+#ifdef _F_USE_VIRT_RESOLUTION_
+extern EAPI Ecore_X_Atom E_ATOM_WM_APP_RESOLUTION;
+extern EAPI Ecore_X_Atom E_ATOM_WM_PLANE_MUTE_REQUEST;
+extern EAPI Ecore_X_Atom E_ATOM_WM_SUPPORT_EPOP;
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
 
 EINTERN int    e_atoms_init(void);
 EINTERN int    e_atoms_shutdown(void);

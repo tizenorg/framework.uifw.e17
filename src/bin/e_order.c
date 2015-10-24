@@ -5,7 +5,9 @@ static void _e_order_free(E_Order *eo);
 static void _e_order_cb_monitor(void *data, Ecore_File_Monitor *em, Ecore_File_Event event, const char *path);
 static void _e_order_read(E_Order *eo);
 static void _e_order_save(E_Order *eo);
+#ifndef _F_DISABLE_E_EFREET_
 static Eina_Bool _e_order_cb_efreet_cache_update(void *data, int ev_type, void *ev);
+#endif
 
 static Eina_List *orders = NULL;
 static Eina_List *handlers = NULL;
@@ -16,11 +18,13 @@ e_order_init(void)
 {
    char *menu_file = NULL;
 
+#ifndef _F_DISABLE_E_EFREET_
    handlers =
      eina_list_append(handlers,
                       ecore_event_handler_add(EFREET_EVENT_DESKTOP_CACHE_UPDATE,
                                               _e_order_cb_efreet_cache_update,
                                               NULL));
+#endif
    if (e_config->default_system_menu)
       menu_file = strdup(e_config->default_system_menu);
    if (!menu_file)
@@ -44,7 +48,9 @@ e_order_init(void)
                }
           }
      }
+#ifndef _F_DISABLE_E_EFREET_
    efreet_menu_file_set(menu_file);
+#endif
    if (menu_file) free(menu_file);
    return 1;
 }
@@ -95,7 +101,9 @@ e_order_remove(E_Order *eo, Efreet_Desktop *desktop)
 
    tmp = eina_list_data_find_list(eo->desktops, desktop);
    if (!tmp) return;
+#ifndef _F_DISABLE_E_EFREET_
    efreet_desktop_free(eina_list_data_get(tmp));
+#endif
    eo->desktops = eina_list_remove_list(eo->desktops, tmp);
    _e_order_save(eo);
 }
@@ -106,9 +114,11 @@ e_order_append(E_Order *eo, Efreet_Desktop *desktop)
    E_OBJECT_CHECK(eo);
    E_OBJECT_TYPE_CHECK(eo, E_ORDER_TYPE);
 
+#ifndef _F_DISABLE_E_EFREET_
    efreet_desktop_ref(desktop);
    eo->desktops = eina_list_append(eo->desktops, desktop);
    _e_order_save(eo);
+#endif
 }
 
 EAPI void
@@ -117,7 +127,9 @@ e_order_prepend_relative(E_Order *eo, Efreet_Desktop *desktop, Efreet_Desktop *b
    E_OBJECT_CHECK(eo);
    E_OBJECT_TYPE_CHECK(eo, E_ORDER_TYPE);
 
+#ifndef _F_DISABLE_E_EFREET_
    efreet_desktop_ref(desktop);
+#endif
    eo->desktops = eina_list_prepend_relative(eo->desktops, desktop, before);
    _e_order_save(eo);
 }
@@ -131,6 +143,7 @@ e_order_files_append(E_Order *eo, Eina_List *files)
    E_OBJECT_CHECK(eo);
    E_OBJECT_TYPE_CHECK(eo, E_ORDER_TYPE);
 
+#ifndef _F_DISABLE_E_EFREET_
    EINA_LIST_FOREACH(files, l, file)
      {
 	Efreet_Desktop *desktop;
@@ -139,6 +152,7 @@ e_order_files_append(E_Order *eo, Eina_List *files)
 	if (!desktop) continue;
 	eo->desktops = eina_list_append(eo->desktops, desktop);
      }
+#endif
    _e_order_save(eo);
 }
 
@@ -151,6 +165,7 @@ e_order_files_prepend_relative(E_Order *eo, Eina_List *files, Efreet_Desktop *be
    E_OBJECT_CHECK(eo);
    E_OBJECT_TYPE_CHECK(eo, E_ORDER_TYPE);
 
+#ifndef _F_DISABLE_E_EFREET_
    EINA_LIST_FOREACH(files, l, file)
      {
 	Efreet_Desktop *desktop;
@@ -159,6 +174,7 @@ e_order_files_prepend_relative(E_Order *eo, Eina_List *files, Efreet_Desktop *be
 	if (!desktop) continue;
 	eo->desktops = eina_list_prepend_relative(eo->desktops, desktop, before);
      }
+#endif
    _e_order_save(eo);
 }
 
@@ -168,7 +184,9 @@ e_order_clear(E_Order *eo)
    E_OBJECT_CHECK(eo);
    E_OBJECT_TYPE_CHECK(eo, E_ORDER_TYPE);
 
+#ifndef _F_DISABLE_E_EFREET_
    E_FREE_LIST(eo->desktops, efreet_desktop_free);
+#endif
    _e_order_save(eo);
 }
 
@@ -177,7 +195,9 @@ static void
 _e_order_free(E_Order *eo)
 {
    if (eo->delay) ecore_timer_del(eo->delay);
+#ifndef _F_DISABLE_E_EFREET_
    E_FREE_LIST(eo->desktops, efreet_desktop_free);
+#endif
    if (eo->path) eina_stringshare_del(eo->path);
    if (eo->monitor) ecore_file_monitor_del(eo->monitor);
    orders = eina_list_remove(orders, eo);
@@ -211,7 +231,9 @@ _e_order_read(E_Order *eo)
    FILE *f;
    char *dir;
 
+#ifndef _F_DISABLE_E_EFREET_
    E_FREE_LIST(eo->desktops, efreet_desktop_free);
+#endif
    if (!eo->path) return;
 
    dir = ecore_file_dir_get(eo->path);
@@ -234,6 +256,7 @@ _e_order_read(E_Order *eo)
 		    }
 		  if (len > 0)
 		    {
+#ifndef _F_DISABLE_E_EFREET_
 		       Efreet_Desktop *desktop = NULL;
 
 		       if (buf[0] == '/')
@@ -244,6 +267,7 @@ _e_order_read(E_Order *eo)
 			 desktop = efreet_util_desktop_file_id_find(ecore_file_file_get(buf));
 		       if (desktop)
                          eo->desktops = eina_list_append(eo->desktops, desktop);
+#endif
 		    }
 	       }
 	  }
@@ -257,12 +281,13 @@ _e_order_save(E_Order *eo)
 {
    FILE *f;
    Eina_List *l;
-   Efreet_Desktop *desktop;
+   Efreet_Desktop *desktop = NULL;
 
    if (!eo->path) return;
    f = fopen(eo->path, "wb");
    if (!f) return;
 
+#ifndef _F_DISABLE_E_EFREET_
    EINA_LIST_FOREACH(eo->desktops, l, desktop)
      {
 	const char *id;
@@ -273,6 +298,7 @@ _e_order_save(E_Order *eo)
 	else
           fprintf(f, "%s\n", desktop->orig_path);
      }
+#endif
 
    fclose(f);
 }

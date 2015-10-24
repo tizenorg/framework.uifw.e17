@@ -529,8 +529,12 @@ main(int argc, char *argv[])
              /* Question: should we execute them in parallel? */
              int r = system(*itr);
              if (r < 0)
-               fprintf(stderr, "ERROR: %s executing %s\n", strerror(errno),
-                       *itr);
+               {
+                  char error_buf[256] = {0};
+                  strerror_r(errno, error_buf, sizeof(char) * 256);
+                  fprintf(stderr, "ERROR: %s executing %s\n", error_buf,
+                          *itr);
+               }
              free(*itr);
              if (r > 0) /* Question: should we stop the loop on first faiure? */
                ret = r;

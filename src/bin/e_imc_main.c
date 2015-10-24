@@ -123,9 +123,11 @@ main(int argc, char **argv)
 
    if (!ef)
      {
-	printf("ERROR: cannot open file %s for READ/WRITE (%i:%s)\n",
-               file, errno, strerror(errno));
-	return -1;
+        char error_buf[256] = {0};
+        strerror_r(errno, error_buf, sizeof(char) * 256);
+        printf("ERROR: cannot open file %s for READ/WRITE (%i:%s)\n",
+               file, errno, error_buf);
+        return -1;
      }
 
    /* If File Exists, Try to read imc */
@@ -167,8 +169,7 @@ main(int argc, char **argv)
 	e_intl_input_method_config_write(ef, write_imc);
      }
 
-
-   if (list)
+   if (list && read_imc) 
      {
 	printf("Config File List:\n");
 	printf("Config Version:    %i\n", read_imc->version);

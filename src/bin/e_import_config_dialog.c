@@ -26,6 +26,9 @@ _import_edj_gen(E_Import_Config_Dialog *import)
    FILE *f;
    size_t len, off;
    mode_t old_umask;
+   char ebuf[256];
+   int ret = -1;
+   int length=0;
 
    evas = e_win_evas_get(import->dia->win);
    file = ecore_file_file_get(import->file);
@@ -57,14 +60,17 @@ _import_edj_gen(E_Import_Config_Dialog *import)
         return;
      }
 
-   strcpy(tmpn, "/tmp/e_bgdlg_new.edc-tmp-XXXXXX");
+   length = strlen("/tmp/e_bgdlg_new.edc-tmp-XXXXXX");
+   strncpy(tmpn,"/tmp/e_bgdlg_new.edc-tmp-XXXXXX",length);
+   tmpn[length] = '\0';
    old_umask = umask(S_IRWXG|S_IRWXO);
    fd = mkstemp(tmpn);
    umask(old_umask);
    if (fd < 0)
      {
-        printf("Error Creating tmp file: %s\n", strerror(errno));
-        return;
+       ret = (int)strerror_r(errno, ebuf, sizeof(char) * 256);
+       if (!ret) printf("Error Creating tmp file: %s\n", ebuf);
+       return;
      }
 
    f = fdopen(fd, "w");
@@ -391,7 +397,7 @@ _e_import_config_preview_size_get(int size, int w, int h,int *tw, int *th)
    if (size <= 0) return;
    double aspect;
    aspect = (double)w/h;
-   
+
    if(w > size)
      {
         w = size;
@@ -475,17 +481,26 @@ e_import_config_dialog_show(E_Container *con, const char *path, Ecore_End_Cb ok,
    o = e_widget_list_add(evas, 0, 0);
 
    ot = e_widget_list_add(evas, 0, 0);
+
+#ifndef _F_DISABLE_E_WIDGET
+ //adding label to evas object below
    frame = e_widget_frametable_add(evas, _("Preview"), 1);
-   
+#endif
    preview = evas_object_image_add(evas);
    evas_object_image_file_set(preview, path, NULL);
    evas_object_image_size_get(preview,&w, &h);
    evas_object_del(preview);
 
    _e_import_config_preview_size_get(320, w, h, &tw, &th);
-   
+
+
+
+#ifndef _F_DISABLE_E_WIDGET
    preview = e_widget_preview_add(evas, tw, th);
+
+#ifndef _F_DISABLE_E_THUMB
    e_widget_preview_thumb_set(preview, path, NULL, tw, th);
+#endif
 
    e_widget_frametable_object_append(frame, preview, 0, 0, 1, 1, 1, 1, 1, 0);
    e_widget_list_object_append(ot, frame, 1, 1, 0);
@@ -536,6 +551,9 @@ e_import_config_dialog_show(E_Container *con, const char *path, Ecore_End_Cb ok,
    e_widget_list_object_append(o, ot, 0, 0, 0.5);
 
    e_widget_size_min_get(o, &w, &h);
+
+#endif
+
    e_dialog_content_set(dia, o, w, h);
    e_dialog_button_add(dia, _("OK"), NULL, _import_cb_ok, import);
    e_dialog_button_add(dia, _("Cancel"), NULL, _import_cb_close, import);

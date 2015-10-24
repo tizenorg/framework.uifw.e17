@@ -25,6 +25,8 @@ struct _E_Color_Dialog
    void  *change_data;
 };
 
+#ifndef _F_DISABLE_E_COLOR_CLASS
+
 EAPI E_Color_Dialog  *e_color_dialog_new                (E_Container *con, const E_Color *initial_color, Eina_Bool alpha_enabled);
 EAPI void             e_color_dialog_show               (E_Color_Dialog *dia);
 EAPI void             e_color_dialog_title_set          (E_Color_Dialog *dia, const char *title);
@@ -34,5 +36,6 @@ EAPI void             e_color_dialog_select_callback_set(E_Color_Dialog *dia, vo
 EAPI void             e_color_dialog_cancel_callback_set(E_Color_Dialog *dia, void (*func)(E_Color_Dialog *dia, E_Color *color, void *data), void *data);
 EAPI void             e_color_dialog_change_callback_set(E_Color_Dialog *dia, void (*func)(E_Color_Dialog *dia, E_Color *color, void *data), void *data);
 
+#endif
 #endif
 #endif

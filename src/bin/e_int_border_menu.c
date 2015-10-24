@@ -765,7 +765,9 @@ _e_border_menu_cb_prop(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUSE
    E_Border *bd;
 
    bd = data;
+   #ifndef _F_DISABLE_E_MENU
    e_int_border_prop(bd);
+   #endif
 }
 
 static void
@@ -1312,11 +1314,12 @@ static void
 _e_border_menu_cb_fav_add(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUSED__)
 {
    E_Border *bd;
-   Efreet_Menu *menu;
+   Efreet_Menu *menu = NULL;
    char buf[PATH_MAX];
 
    if (!(bd = data)) return;
    e_user_dir_concat_static(buf, "applications/menu/favorite.menu");
+#ifndef _F_DISABLE_E_EFREET_
    menu = efreet_menu_parse(buf);
    if (!menu)
      menu = efreet_menu_new("Favorites");
@@ -1324,6 +1327,7 @@ _e_border_menu_cb_fav_add(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UN
    efreet_menu_desktop_insert(menu, bd->desktop, -1);
    efreet_menu_save(menu, buf);
    efreet_menu_free(menu);
+#endif
 }
 
 static void

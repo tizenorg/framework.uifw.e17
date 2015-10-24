@@ -236,19 +236,60 @@ e_fm2_custom_file_rename(const char *path, const char *new_path)
 	EINA_LIST_FOREACH(list, l, key)
 	  {
 	     cf2 = eina_hash_find(_e_fm2_custom_hash, key);
-	     if (cf2)
-	       {
-		  char buf[PATH_MAX];
-
-		  strcpy(buf, new_path);
-		  strcat(buf, (char *)key + strlen(path));
-		  eina_hash_del(_e_fm2_custom_hash, key, cf2);
-		  cf = eina_hash_find(_e_fm2_custom_hash, buf);
-		  if (cf)
-		    _e_fm2_custom_file_del(cf);
-		  eina_hash_add(_e_fm2_custom_hash, buf, cf2);
-	       }
-	  }
+         if (cf2)
+           {
+              char buf[PATH_MAX];
+              if((strlen(new_path)) < PATH_MAX)
+                {
+                   /* none */
+                }
+              else
+                {
+                   eina_list_free(list);
+                   return;
+                }
+              if((strlen(buf) + strlen((char *)key+strlen(path))) < PATH_MAX)
+                {
+                   /* none */
+                }
+              else
+                {
+                   eina_list_free(list);
+                   return;
+                }
+           }
+      }
+    EINA_LIST_FOREACH(list, l, key)
+      {
+         cf2 = eina_hash_find(_e_fm2_custom_hash, key);
+         if (cf2)
+           {
+              char buf[PATH_MAX];
+              if((strlen(new_path)) < PATH_MAX)
+                {
+                   strncpy(buf, new_path, strlen(new_path) + 1);
+                }
+              else
+                {
+                   eina_list_free(list);
+                   return;
+                }
+              if((strlen(buf)+ strlen((char *)key+strlen(path))) < PATH_MAX)
+                {
+                   strncat(buf, (char *)key + strlen(path), strlen((char *)key + strlen(path)));
+                }
+              else
+                {
+                   eina_list_free(list);
+                   return;
+                }
+              eina_hash_del(_e_fm2_custom_hash, key, cf2);
+              cf = eina_hash_find(_e_fm2_custom_hash, buf);
+              if (cf)
+                _e_fm2_custom_file_del(cf);
+              eina_hash_add(_e_fm2_custom_hash, buf, cf2);
+           }
+      }
 	eina_list_free(list);
      }
    _e_fm2_custom_writes = 1;

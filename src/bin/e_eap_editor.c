@@ -65,6 +65,7 @@ static void         _e_desktop_editor_icon_entry_changed(void *data, Evas_Object
 
 /* externally accessible functions */
 
+#ifndef _F_DISABLE_E_EFREET_
 EAPI Efreet_Desktop *
 e_desktop_border_create(E_Border *bd)
 {
@@ -102,6 +103,7 @@ e_desktop_border_create(E_Border *bd)
              if (!ecore_file_exists(path))
                {
                   desktop = efreet_desktop_empty_new(path);
+
                   break;
                }
           }
@@ -109,6 +111,7 @@ e_desktop_border_create(E_Border *bd)
           {
              snprintf(path, sizeof(path), "%s/_rename_me-%i.desktop",
                       desktop_dir, (int)ecore_time_get());
+
              desktop = efreet_desktop_empty_new(NULL);
           }
      }
@@ -149,6 +152,7 @@ e_desktop_border_create(E_Border *bd)
      }
    return desktop;
 }
+#endif
 
 EAPI E_Desktop_Edit *
 e_desktop_border_edit(E_Container *con, E_Border *bd)
@@ -159,6 +163,8 @@ e_desktop_border_edit(E_Container *con, E_Border *bd)
    if (!con) return NULL;
    editor = E_OBJECT_ALLOC(E_Desktop_Edit, E_DESKTOP_EDIT_TYPE, _e_desktop_edit_free);
    if (!editor) return NULL;
+
+#ifndef _F_DISABLE_E_EFREET_
    if (bd->desktop)
      editor->desktop = bd->desktop;
 
@@ -171,6 +177,7 @@ e_desktop_border_edit(E_Container *con, E_Border *bd)
           editor->tmp_image_path = strdup(editor->desktop->icon);
         new_desktop = 1;
      }
+#endif
 
 #if 0
    if ((!bname) && (!bclass))
@@ -281,7 +288,8 @@ _e_desktop_edit_create_data(E_Config_Dialog *cfd)
     * desktop is the desktop to load
     */
    path[0] = '\0';
-   if (cfdata->editor->desktop)
+#ifndef _F_DISABLE_E_EFREET_
+    if (cfdata->editor->desktop)
      {
         char dir[PATH_MAX];
         const char *file;
@@ -338,6 +346,8 @@ _e_desktop_edit_create_data(E_Config_Dialog *cfd)
         cfdata->terminal = desktop->terminal;
         cfdata->show_in_menus = !desktop->no_display;
      }
+ #endif
+
    if (cfdata->exec && *cfdata->exec)
      cfdata->type = 0;
    else if (cfdata->url && *cfdata->url)
@@ -361,7 +371,10 @@ _e_desktop_edit_free_data(E_Config_Dialog *cfd __UNUSED__, E_Config_Dialog_Data 
              ecore_file_unlink(cfdata->editor->tmp_image_path);
           }
      }
-   if (cfdata->desktop) efreet_desktop_free(cfdata->desktop);
+
+#ifndef _F_DISABLE_E_EFREET_
+    if (cfdata->desktop) efreet_desktop_free(cfdata->desktop);
+#endif
 
    IFFREE(cfdata->name);
    IFFREE(cfdata->generic_name);
@@ -413,8 +426,10 @@ _e_desktop_edit_user_local_desktop_filename_generate(E_Config_Dialog_Data *cfdat
    else
      eina_strlcpy(buf, "unnamed_desktop", sizeof(buf));
 
+#ifndef _F_DISABLE_E_EFREET_
    i = snprintf(path, PATH_MAX, "%s/applications/%s.desktop",
                 efreet_data_home_get(), buf);
+
    if (i >= PATH_MAX)
      {
         path[0] = '\0';
@@ -424,6 +439,7 @@ _e_desktop_edit_user_local_desktop_filename_generate(E_Config_Dialog_Data *cfdat
 
    for (i = 0; ecore_file_exists(path); i++)
      snprintf(path + prefix, PATH_MAX - prefix, "-%u.desktop", i);
+ #endif
 }
 
 static void
@@ -479,11 +495,15 @@ _e_desktop_edit_basic_apply_data(E_Config_Dialog *cfd __UNUSED__, E_Config_Dialo
 
    EINA_LIST_FREE(cfdata->desktop->categories, str)
      eina_stringshare_del(str);
-   cfdata->desktop->categories = efreet_desktop_string_list_parse(cfdata->categories);
+#ifndef _F_DISABLE_E_EFREET_
+    cfdata->desktop->categories = efreet_desktop_string_list_parse(cfdata->categories);
+ #endif
 
    EINA_LIST_FREE(cfdata->desktop->mime_types, str)
      eina_stringshare_del(str);
-   cfdata->desktop->mime_types = efreet_desktop_string_list_parse(cfdata->mimes);
+#ifndef _F_DISABLE_E_EFREET_
+    cfdata->desktop->mime_types = efreet_desktop_string_list_parse(cfdata->mimes);
+ #endif
 
    IFFREE(cfdata->desktop->icon);
    IFDUP(cfdata->icon, cfdata->desktop->icon);
@@ -492,13 +512,17 @@ _e_desktop_edit_basic_apply_data(E_Config_Dialog *cfd __UNUSED__, E_Config_Dialo
    cfdata->desktop->terminal = cfdata->terminal;
    cfdata->desktop->no_display = !cfdata->show_in_menus;
 
-   if (cfdata->desktop->orig_path && cfdata->desktop->orig_path[0])
+#ifndef _F_DISABLE_E_EFREET_
+    if (cfdata->desktop->orig_path && cfdata->desktop->orig_path[0])
      cfdata->editor->saved = efreet_desktop_save(cfdata->desktop);
    else
+ #endif
      {
         _e_desktop_edit_update_orig_path(cfdata);
-        cfdata->editor->saved = efreet_desktop_save_as
+#ifndef _F_DISABLE_E_EFREET_
+         cfdata->editor->saved = efreet_desktop_save_as
             (cfdata->desktop, cfdata->orig_path);
+ #endif
      }
    return 1;
 }
@@ -593,7 +617,8 @@ _e_desktop_edit_basic_check_changed(E_Config_Dialog *cfd __UNUSED__, E_Config_Di
              cfdata->edited_mimes = EINA_FALSE;
              cfdata->changed_mimes = EINA_FALSE;
 
-             if (cfdata->desktop->mime_types)
+#ifndef _F_DISABLE_E_EFREET_
+              if (cfdata->desktop->mime_types)
                old_lst = cfdata->desktop->mime_types;
              else if ((cfdata->editor) && (cfdata->editor->desktop))
                old_lst = cfdata->editor->desktop->mime_types;
@@ -624,6 +649,7 @@ _e_desktop_edit_basic_check_changed(E_Config_Dialog *cfd __UNUSED__, E_Config_Di
                     }
                   eina_stringshare_del(str);
                }
+ #endif
           }
         ret |= cfdata->changed_mimes;
      }
@@ -828,8 +854,10 @@ _e_desktop_editor_cb_icon_select(void *data1, void *data2)
      {
         if (ecore_file_exists(cfdata->icon))
           icon_path = cfdata->icon;
-        else
+#ifndef _F_DISABLE_E_EFREET_
+         else
           icon_path = efreet_icon_path_find(e_config->icon_theme, cfdata->icon, 64);
+ #endif
 
         if (icon_path)
           path = ecore_file_dir_get(icon_path);

@@ -3,6 +3,8 @@
 #ifndef E_WIDGET_FLIST_H
 #define E_WIDGET_FLIST_H
 
+#ifndef _F_DISABLE_E_WIDGET
+
 EAPI Evas_Object *e_widget_flist_add(Evas *evas);
 EAPI void e_widget_flist_path_set(Evas_Object *obj, const char *dev, const char *path);
 EAPI Eina_List *e_widget_flist_all_list_get(Evas_Object *obj);
@@ -15,5 +17,6 @@ EAPI void e_widget_flist_parent_go(Evas_Object *obj);
 EAPI void e_widget_flist_refresh(Evas_Object *obj);
 EAPI E_Fm2_Config *e_widget_flist_config_get(Evas_Object *obj);
 
+#endif
 #endif
 #endif

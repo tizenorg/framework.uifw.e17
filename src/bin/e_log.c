@@ -37,7 +37,6 @@ e_log_init(void)
 {
    e_log_dom = eina_log_domain_register("e", EINA_COLOR_WHITE);
    eina_log_domain_level_set("e", E_LOG_LEVEL);
-   eina_log_print_cb_set(_e_log_cb, NULL);
    return (e_log_dom != -1);
 }
 
@@ -101,6 +100,8 @@ e_logbuf_add(unsigned int type,
         msg = E_NEW(E_Log, 1);
         if (msg)
           buf->list = eina_list_append(buf->list, msg);
+        else
+          LOGW("E_LOG Memory allocation failure");
      }
    else
      {
@@ -123,7 +124,7 @@ e_logbuf_add(unsigned int type,
           }
         else
           {
-             strncpy(msg->func, func, n);
+             strncpy(msg->func, func, n-1);
           }
 
         msg->line = line;
@@ -138,7 +139,7 @@ e_logbuf_add(unsigned int type,
           }
         else
           {
-             strncpy(msg->str, str, n);
+             strncpy(msg->str, str, n-1);
           }
 
         buf->cur = (buf->num) % MAX_LOGS;
@@ -166,6 +167,8 @@ e_logbuf_fmt_add(unsigned int type,
         msg = E_NEW(E_Log, 1);
         if (msg)
           buf->list = eina_list_append(buf->list, msg);
+        else
+          LOGW("E_LOG Memory allocation failure");
      }
    else
      {
@@ -188,7 +191,7 @@ e_logbuf_fmt_add(unsigned int type,
           }
         else
           {
-             strncpy(msg->func, func, n);
+             strncpy(msg->func, func, n-1);
           }
 
         msg->line = line;
@@ -198,7 +201,7 @@ e_logbuf_fmt_add(unsigned int type,
         else msg->t = 0.0f;
 
         va_start(args, fmt);
-        vsnprintf(msg->str, sizeof(msg->str), fmt, args);
+        vsnprintf(msg->str, sizeof(msg->str)-1, fmt, args);
         va_end(args);
 
         buf->cur = (buf->num) % MAX_LOGS;
@@ -251,7 +254,7 @@ _type_name_get(unsigned int t)
       case ELBT_ALL:         return "ALL";    break;
       default: break;
      }
-   return NULL;
+   return "NONE";
 }
 
 static void
@@ -259,14 +262,30 @@ _log_type_disp(void)
 {
    unsigned int i;
    char str[1024] = "LOG Type: ";
+   char *pstr = "LOG Type: ";
+   const char* log_type = _type_name_get(e_logbuf_type);
 
    if (e_logbuf_type == ELBT_NONE)
      {
-        strcat(str, _type_name_get(e_logbuf_type));
+        if(strlen(log_type)> (sizeof(str)-strlen(pstr)))
+          {
+             strncat(str, log_type, (sizeof(str)-strlen(pstr)-1));
+             str[1023]='\0';
+          }
+        else
+          strncat(str, log_type, strlen(log_type));
+
      }
    else if (e_logbuf_type == ELBT_ALL)
      {
-        strcat(str, _type_name_get(e_logbuf_type));
+        if(strlen(log_type)> (sizeof(str)-strlen(pstr)))
+          {
+             strncat(str, log_type, sizeof(str)-strlen(pstr)-1);
+             str[1023]='\0';
+          }
+
+        else
+          strncat(str,log_type, strlen(log_type));
      }
    else
      {
@@ -276,8 +295,14 @@ _log_type_disp(void)
                {
                   if (_type_name_get(i))
                     {
-                       strcat(str, ", ");
-                       strcat(str, _type_name_get(i));
+                       strncat(str, ", ", 2);
+                       if(strlen(log_type)> (sizeof(str)-strlen(pstr)))
+                         {
+                            strncat(str, log_type, sizeof(str)-strlen(pstr)-1);
+                            str[1023]='\0';
+                         }
+                       else
+                         strncat(str, log_type, strlen(log_type));
                     }
                }
           }
@@ -394,9 +419,12 @@ _e_log_dump(FILE *fp)
    char timeBuf[32];
 
    ptm = localtime(&(tv.tv_sec));
-   strftime(timeBuf, sizeof(timeBuf), "%m-%d %H:%M:%S", ptm);
+   if (ptm)
+     {
+        strftime(timeBuf, sizeof(timeBuf), "%m-%d %H:%M:%S", ptm);
 
-   fprintf(fp, "Total:%d Num:%d(Printed time : %s.%03ld(%.3f))\n", eina_list_count(buf->list), buf->num, timeBuf, tv.tv_usec / 1000, ecore_time_get());
+        fprintf(fp, "Total:%d Num:%d(Printed time : %s.%03ld(%.3f))\n", eina_list_count(buf->list), buf->num, timeBuf, tv.tv_usec / 1000, ecore_time_get());
+     }
    fflush(fp);
 }
 

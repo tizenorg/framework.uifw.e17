@@ -339,8 +339,11 @@ _toolbar_select_cb(void *data, void *data2)
 static CFModule *
 _module_new(const char *short_name, const Efreet_Desktop *desk)
 {
-   CFModule *cfm = E_NEW(CFModule, 1);
+   CFModule *cfm = NULL;
 
+   if (!desk) return NULL;
+
+   cfm = E_NEW(CFModule, 1);
    if (!cfm) return NULL;
    cfm->short_name = eina_stringshare_add(short_name);
 
@@ -458,7 +461,7 @@ _load_modules(const char *dir, Eina_Hash *types_hash)
    files = ecore_file_ls(dir);
    EINA_LIST_FREE(files, mod)
      {
-        Efreet_Desktop *desk;
+        Efreet_Desktop *desk = NULL;
         CFType *cft;
         CFModule *cfm;
         const char *type;
@@ -467,11 +470,13 @@ _load_modules(const char *dir, Eina_Hash *types_hash)
         snprintf(modpath + modpathlen, sizeof(modpath) - modpathlen,
                  "%s/module.desktop", mod);
         if (!ecore_file_exists(modpath)) goto end_mod;
+#ifndef _F_DISABLE_E_EFREET_
         if (!(desk = efreet_desktop_new(modpath))) goto end_mod;
 
         if (desk->x)
           type = eina_hash_find(desk->x, "X-Enlightenment-ModuleType");
         else
+#endif
           type = NULL;
         if (!type) type = "utils";  // todo: warn?
 
@@ -521,7 +526,9 @@ _load_modules(const char *dir, Eina_Hash *types_hash)
         // TODO be paranoid about hash add failure, otherwise it will leak
 
 end_desktop:
+#ifndef _F_DISABLE_E_EFREET_
         efreet_desktop_free(desk);
+#endif
 end_mod:
         free(mod);
      }

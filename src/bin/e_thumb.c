@@ -301,8 +301,8 @@ _e_thumb_gen_begin(int objid, const char *file, const char *key, int w, int h)
    l2 = 0;
    if (key) l2 = strlen(key);
    buf = alloca(l1 + 1 + l2 + 1);
-   strcpy(buf, file);
-   if (key) strcpy(buf + l1 + 1, key);
+   strncpy(buf, file, l1 + 1 + l2);
+   if (key) strncpy(buf + l1 + 1, key, l2);
    else buf[l1 + 1] = 0;
    cli = eina_list_data_get(_thumbnailers);
    if (!cli) return;

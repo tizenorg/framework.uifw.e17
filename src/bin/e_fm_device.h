@@ -4,6 +4,8 @@
 #include "e.h"
 #include "e_fm.h"
 
+#ifndef _F_DISABLE_E_FM
+
 EAPI void         e_fm2_device_storage_add(E_Storage *s);
 EAPI void         e_fm2_device_storage_del(E_Storage *s);
 EAPI E_Storage   *e_fm2_device_storage_find(const char *udi);
@@ -30,4 +32,5 @@ EAPI void         e_fm2_device_hide_desktop_icons(void);
 
 EAPI Eina_List   *e_fm2_device_volume_list_get(void);
 
+#endif
 #endif

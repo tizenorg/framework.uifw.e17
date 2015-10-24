@@ -21,9 +21,10 @@ EAPI int e_exehist_popularity_get(const char *exe);
 EAPI double e_exehist_newest_run_get(const char *exe);
 EAPI Eina_List *e_exehist_list_get(void);
 EAPI Eina_List *e_exehist_sorted_list_get(E_Exehist_Sort sort_type, int max);
+#ifndef _F_DISABLE_E_EFREET_
 EAPI void e_exehist_mime_desktop_add(const char *mime, Efreet_Desktop *desktop);
 EAPI Efreet_Desktop *e_exehist_mime_desktop_get(const char *mime);
-
+#endif
 extern EAPI int E_EVENT_EXEHIST_UPDATE;
 
 #endif

@@ -41,6 +41,8 @@ struct _E_Fm2_Op_Registry_Entry
      } func;
 };
 
+#ifndef _F_DISABLE_E_FM
+
 extern EAPI int E_EVENT_FM_OP_REGISTRY_ADD;
 extern EAPI int E_EVENT_FM_OP_REGISTRY_DEL;
 extern EAPI int E_EVENT_FM_OP_REGISTRY_CHANGED;
@@ -66,6 +68,8 @@ EAPI void           e_fm2_op_registry_entry_abort(E_Fm2_Op_Registry_Entry *entry
 EINTERN unsigned int e_fm2_op_registry_init(void);
 EINTERN unsigned int e_fm2_op_registry_shutdown(void);
 
+#endif
+
 /* E internal/private functions, symbols not exported outside e binary (e_fm.c mainly) */
 Eina_Bool e_fm2_op_registry_entry_add(int id, Evas_Object *e_fm, E_Fm_Op_Type op, E_Fm2_Op_Registry_Abort_Func abort);
 Eina_Bool e_fm2_op_registry_entry_del(int id);
@@ -75,3 +79,4 @@ void      e_fm2_op_registry_entry_files_set(E_Fm2_Op_Registry_Entry *entry, cons
 
 #endif
 #endif
+

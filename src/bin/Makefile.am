@@ -1,4 +1,3 @@
-SUBDIRS = e_fm
 
 MAINTAINERCLEANFILES = Makefile.in
 DISTCLEANFILES = e_fm_shared_types.h
@@ -13,6 +12,7 @@ INCLUDES = \
 @VALGRIND_CFLAGS@ \
 @EDJE_DEF@ \
 @ELM_CFLAGS@ \
+@TTRACE_CFLAGS@ \
 -DPACKAGE_BIN_DIR=\"@PACKAGE_BIN_DIR@\" \
 -DPACKAGE_LIB_DIR=\"@PACKAGE_LIB_DIR@\" \
 -DPACKAGE_DATA_DIR=\"@PACKAGE_DATA_DIR@\" \
@@ -23,15 +23,14 @@ bin_PROGRAMS = \
 enlightenment \
 enlightenment_imc \
 enlightenment_start \
-enlightenment_filemanager \
-enlightenment_open
+enlightenment_filemanager
 
 internal_bindir = $(libdir)/enlightenment/utils
 internal_bin_PROGRAMS = \
 enlightenment_fm_op \
 enlightenment_init \
 enlightenment_sys \
-enlightenment_thumb 
+enlightenment_thumb
 
 if HAVE_EEZE
 internal_bin_PROGRAMS += enlightenment_backlight
@@ -152,6 +151,7 @@ e_stolen.h \
 e_sys.h \
 e_table.h \
 e_test.h \
+e_test_helper.h \
 e_theme_about.h \
 e_theme.h \
 e_thumb.h \
@@ -194,6 +194,9 @@ e_xkb.h \
 e_xsettings.h \
 e_zone.h
 
+if HAVE_VIRT_RESOLUTION
+ENLIGHTENMENTHEADERS += e_virtual_resolution.h
+endif
 
 enlightenment_src = \
 e_about.c \
@@ -208,62 +211,41 @@ e_border.c \
 e_box.c \
 e_canvas.c \
 e_color.c \
-e_color_class.c \
-e_color_dialog.c \
 e_config.c \
 e_config_data.c \
 e_config_dialog.c \
 e_configure.c \
-e_confirm_dialog.c \
 e_container.c \
 e_datastore.c \
 e_desk.c \
 e_deskenv.c \
-e_desklock.c \
 e_dialog.c \
 e_dnd.c \
 e_dpms.c \
-e_eap_editor.c \
 e_editable.c \
 e_entry.c \
-e_entry_dialog.c \
 e_env.c \
 e_error.c \
 e_exec.c \
 e_exehist.c \
 e_filereg.c \
 e_flowlayout.c \
-e_fm.c \
-e_fm_custom.c \
-e_fm_device.c \
 e_fm_mime.c \
-e_fm_op_registry.c \
-e_fm_prop.c \
-e_fm_shared_codec.c \
-e_fm_shared_device.c \
 e_focus.c \
 e_font.c \
-e_gadcon.c \
-e_gadcon_popup.c \
 e_grabinput.c \
-e_grab_dialog.c \
 e_hints.c \
 e_icon.c \
 e_ilist.c \
 e_import_config_dialog.c \
-e_import_dialog.c \
 e_init.c \
 e_int_border_locks.c \
-e_int_border_menu.c \
 e_int_border_prop.c \
 e_int_border_remember.c \
 e_int_config_modules.c \
-e_int_gadcon_config.c \
 e_intl.c \
 e_intl_data.c \
 e_int_menus.c \
-e_int_shelf_config.c \
-e_int_toolbar_config.c \
 e_ipc.c \
 e_ipc_codec.c \
 e_layout.c \
@@ -299,52 +281,32 @@ e_randr_12_serialization.c \
 e_remember.c \
 e_resist.c \
 e_scale.c \
-e_screensaver.c \
 e_scrollframe.c \
 e_sha1.c \
 e_shelf.c \
 e_signals.c \
-e_slidecore.c \
 e_slider.c \
-e_slidesel.c \
-e_spectrum.c \
-e_startup.c \
 e_stolen.c \
 e_sys.c \
 e_table.c \
 e_test.c \
-e_theme_about.c \
+e_test_helper.c \
 e_theme.c \
-e_thumb.c \
-e_toolbar.c \
-e_update.c \
 e_user.c \
 e_utils.c \
-e_widget_aspect.c \
 e_widget_button.c \
 e_widget.c \
 e_widget_check.c \
-e_widget_color_well.c \
-e_widget_config_list.c \
-e_widget_csel.c \
 e_widget_cslider.c \
-e_widget_deskpreview.c \
 e_widget_entry.c \
-e_widget_filepreview.c \
-e_widget_flist.c \
-e_widget_font_preview.c \
 e_widget_framelist.c \
 e_widget_frametable.c \
-e_widget_fsel.c \
 e_widget_ilist.c \
-e_widget_image.c \
 e_widget_label.c \
 e_widget_list.c \
-e_widget_preview.c \
 e_widget_radio.c \
 e_widget_scrollframe.c \
 e_widget_slider.c \
-e_widget_spectrum.c \
 e_widget_table.c \
 e_widget_textblock.c \
 e_widget_toolbar.c \
@@ -356,14 +318,50 @@ e_xsettings.c \
 e_zone.c \
 $(ENLIGHTENMENTHEADERS)
 
+if HAVE_VIRT_RESOLUTION
+enlightenment_src += e_virtual_resolution.c
+endif
+
 enlightenment_CPPFLAGS = -DE_LOGGING=1
-enlightenment_CFLAGS = -fPIE
 enlightenment_SOURCES = \
 e_main.c \
 $(enlightenment_src)
 
-enlightenment_LDFLAGS = -export-dynamic -pie
-enlightenment_LDADD = @e_libs@ @ELM_LIBS@ @dlopen_libs@ @cf_libs@ @VALGRIND_LIBS@ -lm
+enlightenment_LDFLAGS = -export-dynamic
+enlightenment_LDADD = @e_libs@ @ELM_LIBS@ @dlopen_libs@ @cf_libs@ @VALGRIND_LIBS@ @TTRACE_LIBS@ -lm
+
+if HAVE_TZSH
+INCLUDES += \
+-I$(top_builddir)/src/bin/e_tzsh \
+-I$(top_builddir)/src/bin/e_tzsh/quickpanel \
+-I$(top_srcdir)/src/bin/e_tzsh \
+-I$(top_srcdir)/src/bin/e_tzsh/quickpanel
+
+enlightenment_SOURCES += \
+e_tzsh.c \
+e_tzsh/e_tzsh_event.c \
+e_tzsh/e_tzsh_client.c \
+e_tzsh/e_tzsh_service.c \
+e_tzsh/e_tzsh_user.c \
+e_tzsh/e_tzsh_region.c \
+e_tzsh/quickpanel/quickpanel.c \
+e_tzsh/tzsh_protocol.c
+enlightenment_LDADD += @TZSH_LIBS@
+
+ENLIGHTENMENTHEADERS += e_tzsh.h
+
+BUILT_SOURCES = \
+e_tzsh/tzsh_protocol.c \
+e_tzsh/tzsh_protocol.h
+
+CLEANFILES = $(BUILT_SOURCES)
+
+e_tzsh/%_protocol.c : $(TZSH_PROTOCOL_DIR)/%.xml
+	$(AM_V_GEN)$(MKDIR_P) $(dir $@) && $(wayland_scanner) code < $< > $@
+
+e_tzsh/%_protocol.h : $(TZSH_PROTOCOL_DIR)/%.xml
+	$(AM_V_GEN)$(MKDIR_P) $(dir $@) && $(wayland_scanner) server-header < $< > $@
+endif
 
 enlightenment_imc_SOURCES = \
 e.h \
@@ -372,14 +370,11 @@ e_imc_main.c \
 e_intl_data.c
 
 enlightenment_imc_LDADD = @E_IMC_LIBS@
-enlightenment_imc_CFLAGS = -fPIE
-enlightenment_imc_LDFLAGS = -pie
 
 enlightenment_start_SOURCES = \
 e_start_main.c
-enlightenment_start_CFLAGS = $(INCLUDES) @E_START_CFLAGS@ -fPIE
-enlightenment_start_LDADD = @dlopen_libs@ @E_START_LIBS@
-enlightenment_start_LDFLAGS = -pie
+enlightenment_start_CFLAGS = $(INCLUDES) @E_START_CFLAGS@
+enlightenment_start_LDADD = @dlopen_libs@ @E_START_LIBS@ @TTRACE_LIBS@
 
 enlightenment_thumb_SOURCES = \
 e_sha1.c \
@@ -423,10 +418,6 @@ enlightenment_init_LDADD = @E_INIT_LIBS@
 enlightenment_filemanager_SOURCES = e_fm_cmdline.c
 enlightenment_filemanager_LDADD = @E_FM_CMDLINE_LIBS@
 enlightenment_filemanager_CFLAGS = @E_FM_CMDLINE_CFLAGS@
-
-enlightenment_open_SOURCES = e_open.c
-enlightenment_open_LDADD = @E_OPEN_LIBS@
-enlightenment_open_CFLAGS = @E_OPEN_CFLAGS@
 
 # HACK! why install-data-hook? install-exec-hook is run after bin_PROGRAMS
 # and before internal_bin_PROGRAMS are installed. install-data-hook is

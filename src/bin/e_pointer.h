@@ -7,7 +7,14 @@ typedef struct _E_Pointer E_Pointer;
 #define E_POINTER_H
 
 #define E_POINTER_TYPE 0xE0b01013
-
+#ifdef _F_USE_PHOTON_CURSOR_
+typedef enum
+{
+   POINTER_DEFAULT = 0,
+   POINTER_PHOTON,
+   POINTER_OTHER
+}pointer_types_t;
+#endif /* end of _F_USE_PHOTON_CURSOR_ */
 struct _E_Pointer
 {
    E_Object e_obj_inherit;
@@ -44,6 +51,8 @@ EAPI void       e_pointer_type_push(E_Pointer *p, void *obj, const char *type);
 EAPI void       e_pointer_type_pop(E_Pointer *p, void *obj, const char *type);
 EAPI void       e_pointers_size_set(int size);
 EAPI void       e_pointer_idler_before(void);
-
+#ifdef _F_USE_PHOTON_CURSOR_
+EAPI void       e_root_pointer_type_set(pointer_types_t type);
+#endif /* end of _F_USE_PHOTON_CURSOR_ */
 #endif
 #endif

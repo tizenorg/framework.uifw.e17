@@ -43,6 +43,7 @@ e_xinerama_screens_all_get(void)
    return all_screens;
 }
 
+#ifndef _F_DISABLE_E_XINERMA
 EAPI void
 e_xinerama_fake_screen_add(int x, int y, int w, int h)
 {
@@ -58,6 +59,7 @@ e_xinerama_fake_screen_add(int x, int y, int w, int h)
    fake_screens = eina_list_append(fake_screens, scr);
 }
 
+#endif
 /* local subsystem functions */
 static void
 _e_xinerama_clean(void)

@@ -65,9 +65,13 @@ EAPI Eina_Bool e_util_fullscreen_curreny_any(void);
 EAPI Eina_Bool e_util_fullscreen_any(void);
 EAPI const char *e_util_time_str_get(long int seconds);
 EAPI void e_util_size_debug_set(Evas_Object *obj, Eina_Bool enable);
+#ifndef _F_DISABLE_E_EFREET_
 EAPI Efreet_Desktop *e_util_terminal_desktop_get(void);
+#endif
 EAPI void e_util_gadcon_orient_icon_set(E_Gadcon_Orient orient, Evas_Object *obj);
 EAPI void e_util_gadcon_orient_menu_item_icon_set(E_Gadcon_Orient orient, E_Menu_Item *mi);
+
+EAPI void e_util_nanosleep(time_t sec, long nsec);
 
 #if _F_USE_EXTN_DIALOG_
 EAPI void         e_util_extn_dialog_show(const char *title, const char *txt);

@@ -65,14 +65,16 @@ e_msg_send(const char *name, const char *info, int val, E_Object *obj, void *msg
    pos = size;
    if (name)
      {
-	ev->name = ((char *)ev) + pos;
-	pos += name_len;
-	strcpy(ev->name, name);
+        ev->name = ((char *)ev) + pos;
+        pos += name_len;
+        strncpy(ev->name, name, name_len - 1);
+        ev->name[name_len - 1] = '\0';
      }
    if (info)
      {
-	ev->info = ((char *)ev) + pos;
-	strcpy(ev->info, info);
+        ev->info = ((char *)ev) + pos;
+        strncpy(ev->info, info, info_len - 1);
+        ev->info[info_len - 1] = '\0';
      }
    ev->val = val;
    ev->obj = obj;

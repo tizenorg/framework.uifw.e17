@@ -89,8 +89,6 @@ _fill_data(E_Config_Dialog_Data *cfdata)
      cfdata->layer = 0;
    else if ((cfdata->escfg->popup) && (cfdata->escfg->layer == 0))
      cfdata->layer = 1;
-   else if ((cfdata->escfg->popup) && (cfdata->escfg->layer == 200))
-     cfdata->layer = 2;
    else
      cfdata->layer = 2;
    cfdata->overlap = cfdata->escfg->overlap;
@@ -456,15 +454,19 @@ _fill_styles(E_Config_Dialog_Data *cfdata, Evas_Object *obj)
    styles = e_theme_shelf_list();
    EINA_LIST_FOREACH(styles, l, style)
      {
-        Evas_Object *thumb, *ow;
+        Evas_Object *thumb = NULL, *ow = NULL;
         char buff[4096];
 
+#ifndef _F_DISABLE_E_LIVETHUMB
         thumb = e_livethumb_add(evas);
         e_livethumb_vsize_set(thumb, 120, 40);
         ow = edje_object_add(e_livethumb_evas_get(thumb));
+#endif
         snprintf(buff, sizeof(buff), "e/shelf/%s/base", style);
         e_theme_edje_object_set(ow, "base/theme/shelf", buff);
+#ifndef _F_DISABLE_E_LIVETHUMB
         e_livethumb_thumb_set(thumb, ow);
+#endif
         e_widget_ilist_append(obj, thumb, style, NULL, NULL, style);
         if (!strcmp(cfdata->style, style))
 	  e_widget_ilist_selected_set(obj, n);

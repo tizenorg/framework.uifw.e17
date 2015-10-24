@@ -45,6 +45,11 @@ static void _e_layout_smart_clip_unset(Evas_Object *obj);
 /* local subsystem globals */
 static Evas_Smart *_e_smart = NULL;
 
+#ifdef _F_USE_VIRT_RESOLUTION_
+static int lrect_width = 0;
+static int lrect_height = 0;
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
+
 /* externally accessible functions */
 EAPI Evas_Object *
 e_layout_add(Evas *evas)
@@ -60,13 +65,8 @@ e_layout_freeze(Evas_Object *obj)
 
    if (evas_object_smart_smart_get(obj) != _e_smart) SMARTERR(0);
    sd = evas_object_smart_data_get(obj);
-   if (sd)
-     {
-        sd->frozen++;
-        return sd->frozen;
-     }
-   else
-     return 0;
+   sd->frozen++;
+   return sd->frozen;
 }
 
 EAPI int
@@ -76,14 +76,9 @@ e_layout_thaw(Evas_Object *obj)
 
    if (evas_object_smart_smart_get(obj) != _e_smart) SMARTERR(0);
    sd = evas_object_smart_data_get(obj);
-   if (sd)
-     {
-        sd->frozen--;
-        if (sd->frozen <= 0) _e_layout_smart_reconfigure(sd);
-        return sd->frozen;
-     }
-   else
-     return 0;
+   sd->frozen--;
+   if (sd->frozen <= 0) _e_layout_smart_reconfigure(sd);
+   return sd->frozen;
 }
 
 EAPI void
@@ -95,14 +90,32 @@ e_layout_virtual_size_set(Evas_Object *obj, Evas_Coord w, Evas_Coord h)
    sd = evas_object_smart_data_get(obj);
    if (w < 1) w = 1;
    if (h < 1) h = 1;
-   if ((!sd) ||
-       ((sd->vw == w) && (sd->vh == h)))
-     return;
+   if ((sd->vw == w) && (sd->vh == h)) return;
    sd->vw = w;
    sd->vh = h;
    sd->changed = 1;
    if (sd->frozen <= 0) _e_layout_smart_reconfigure(sd);
 }
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+EAPI void
+e_layout_stereo_size_set(Evas_Object *obj, Evas_Coord rect_x, Evas_Coord rect_y,
+                         Evas_Coord rect_w, Evas_Coord rect_h)
+{
+   E_Smart_Data *sd;
+
+   if (evas_object_smart_smart_get(obj) != _e_smart) SMARTERRNR();
+   sd = evas_object_smart_data_get(obj);
+   sd->x = rect_x;
+   sd->y = rect_y;
+   sd->w = rect_w;
+   sd->h = rect_h;
+   lrect_width = rect_w;
+   lrect_height = rect_h;
+   sd->changed = 1;
+   _e_layout_smart_reconfigure(sd);
+}
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
 
 EAPI void
 e_layout_virtual_size_get(Evas_Object *obj, Evas_Coord *w, Evas_Coord *h)
@@ -111,8 +124,6 @@ e_layout_virtual_size_get(Evas_Object *obj, Evas_Coord *w, Evas_Coord *h)
 
    if (evas_object_smart_smart_get(obj) != _e_smart) SMARTERRNR();
    sd = evas_object_smart_data_get(obj);
-   if (!sd)
-     return;
    if (w) *w = sd->vw;
    if (h) *h = sd->vh;
 }
@@ -125,8 +136,6 @@ e_layout_coord_canvas_to_virtual(Evas_Object *obj, Evas_Coord cx, Evas_Coord cy,
    if (evas_object_smart_smart_get(obj) != _e_smart) SMARTERRNR();
    sd = evas_object_smart_data_get(obj);
 
-   if (!sd)
-     return;
    if (vx) *vx = (cx - sd->x) * ((double)(sd->vw) / sd->w);
    if (vy) *vy = (cy - sd->y) * ((double)(sd->vh) / sd->h);
 }
@@ -151,14 +160,10 @@ e_layout_pack(Evas_Object *obj, Evas_Object *child)
 
    if (evas_object_smart_smart_get(obj) != _e_smart) SMARTERRNR();
    sd = evas_object_smart_data_get(obj);
-   if (sd)
-     {
-        _e_layout_smart_adopt(sd, child);
-        sd->items = eina_list_append(sd->items, child);
-     }
+   _e_layout_smart_adopt(sd, child);
+   sd->items = eina_list_append(sd->items, child);
    li = evas_object_data_get(child, "e_layout_data");
-   if (li)
-     _e_layout_smart_move_resize_item(li);
+   if (li) _e_layout_smart_move_resize_item(li);
 }
 
 EAPI void
@@ -344,12 +349,23 @@ _e_layout_smart_reconfigure(E_Smart_Data *sd)
 
    if (!sd->changed) return;
 
+#ifdef _F_USE_VIRT_RESOLUTION_
+   if (e_virtual_res_type_get() == E_VIRTUAL_RES_SINGLE_SOURCE)
+     {
+        E_Virtual_Res_Data* vir_res_data = e_virtual_res_data_get();
+        if (vir_res_data && vir_res_data->preferred_resolution_get)
+          vir_res_data->preferred_resolution_get(&(sd->vw), &(sd->vh));
+
+        sd->w = lrect_width;
+        sd->h = lrect_height;
+     }
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
+
    EINA_LIST_FOREACH(sd->items, l, obj)
      {
 	E_Layout_Item *li;
 	li = evas_object_data_get(obj, "e_layout_data");
-        if (li)
-          _e_layout_smart_move_resize_item(li);
+	if (li) _e_layout_smart_move_resize_item(li);
      }
    sd->changed = 0;
 }

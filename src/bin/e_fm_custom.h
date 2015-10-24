@@ -39,6 +39,8 @@ struct _E_Fm2_Custom_File
    /* FIXME: this will have more added */
 };
 
+#ifndef _F_DISABLE_E_FM
+
 EINTERN int                   e_fm2_custom_file_init(void);
 EINTERN void                  e_fm2_custom_file_shutdown(void);
 EAPI E_Fm2_Custom_File    *e_fm2_custom_file_get(const char *path);
@@ -49,5 +51,6 @@ EAPI void                  e_fm2_custom_file_flush(void);
 
 EAPI E_Fm2_Custom_File    *e_fm2_custom_file_dup(const E_Fm2_Custom_File *cf);
 
+#endif
 #endif
 #endif

@@ -68,7 +68,7 @@ static Eina_Bool
 _structs_init(void)
 {
    //Output stuff
-   Ecore_X_Randr_Output *outputs;
+   Ecore_X_Randr_Output *outputs = NULL;
    E_Randr_Output_Info *output_info = NULL;
    int noutputs = 0;
    //CRTC stuff
@@ -82,12 +82,11 @@ _structs_init(void)
    EINA_SAFETY_ON_TRUE_RETURN_VAL(E_RANDR_12_NO, EINA_FALSE);
 
    outputs = ecore_x_randr_outputs_get(e_randr_screen_info.root, &noutputs);
-   if (noutputs == 0)
+   if (noutputs == 0) 
      {
-        free(outputs);
+        if (outputs != NULL) free(outputs);  
         return EINA_FALSE;
      }
-
    while (--noutputs >= 0)
      {
         output_info = _output_info_new(outputs[noutputs]);
@@ -99,7 +98,11 @@ _structs_init(void)
    crtcs = ecore_x_randr_crtcs_get(e_randr_screen_info.root, &ncrtcs);
    if (ncrtcs == 0)
      {
-        free(crtcs);
+        if (crtcs != NULL)
+          {
+             free(crtcs);
+             crtcs = NULL;
+          }
         return EINA_FALSE;
      }
 
@@ -113,9 +116,10 @@ _structs_init(void)
    modes = ecore_x_randr_modes_info_get(e_randr_screen_info.root, &nmodes);
    if (nmodes == 0)
      {
-        free(modes);
+        if (modes != NULL) free(modes);  
         return EINA_FALSE;
      }
+
    while (--nmodes >= 0)
      {
         e_randr_screen_info.rrvd_info.randr_info_12->modes = eina_list_append(e_randr_screen_info.rrvd_info.randr_info_12->modes, modes[nmodes]);

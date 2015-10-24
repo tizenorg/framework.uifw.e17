@@ -188,11 +188,15 @@ e_manager_new(Ecore_X_Window root, int num)
                       ecore_event_handler_add(ECORE_X_EVENT_PING,
                                               _e_manager_cb_ping,
                                               man));
+
+#ifndef _F_DISABLE_E_SCREENSAVER
    man->handlers =
      eina_list_append(man->handlers,
                       ecore_event_handler_add(ECORE_X_EVENT_SCREENSAVER_NOTIFY,
                                               _e_manager_cb_screensaver_notify,
                                               man));
+
+#endif
    man->handlers =
      eina_list_append(man->handlers,
                       ecore_event_handler_add(ECORE_X_EVENT_CLIENT_MESSAGE,
@@ -218,165 +222,175 @@ e_manager_manage_windows(E_Manager *man)
    windows = ecore_x_window_children_get(man->root, &wnum);
    if (windows)
      {
-	int i;
-	const char *atom_names[] =
-	  {
-	     "_XEMBED_INFO",
-	       "_KDE_NET_WM_SYSTEM_TRAY_WINDOW_FOR",
-	       "KWM_DOCKWINDOW"
-	  };
-	Ecore_X_Atom atoms[3];
+        int i;
+        const char *atom_names[] =
+          {
+             "_XEMBED_INFO",
+             "_KDE_NET_WM_SYSTEM_TRAY_WINDOW_FOR",
+             "KWM_DOCKWINDOW"
+          };
+        Ecore_X_Atom atoms[3];
         Ecore_X_Atom atom_xmbed, atom_kde_netwm_systray, atom_kwm_dockwindow;
-	unsigned char *data = NULL;
-	int count;
+        unsigned char *data = NULL;
+        int count;
 
-	ecore_x_atoms_get(atom_names, 3, atoms);
-	atom_xmbed = atoms[0];
-	atom_kde_netwm_systray = atoms[1];
-	atom_kwm_dockwindow = atoms[2];
-	for (i = 0; i < wnum; i++)
-	  {
-	     Ecore_X_Window_Attributes att;
-	     unsigned int ret_val, deskxy[2];
-	     int ret;
+        ecore_x_atoms_get(atom_names, 3, atoms);
+        atom_xmbed = atoms[0];
+        atom_kde_netwm_systray = atoms[1];
+        atom_kwm_dockwindow = atoms[2];
+        for (i = 0; i < wnum; i++)
+          {
+             Ecore_X_Window_Attributes att;
+             unsigned int ret_val, deskxy[2];
+             int ret;
 
              if (e_border_find_by_client_window(windows[i]))
                continue;
-	     ecore_x_window_attributes_get(windows[i], &att);
-	     if ((att.override) || (att.input_only))
-	       {
-		  if (att.override)
-		    {
-		       char *wname = NULL, *wclass = NULL;
-
-		       ecore_x_icccm_name_class_get(windows[i],
-						    &wname, &wclass);
-		       if ((wname) && (wclass) &&
-			   (!strcmp(wname, "E")) &&
-			   (!strcmp(wclass, "Init_Window")))
-			 {
-			    free(wname);
-			    free(wclass);
-			    man->initwin = windows[i];
-			 }
-		       else
-			 {
-			    if (wname) free(wname);
-			    if (wclass) free(wclass);
-			    continue;
-			 }
-		    }
-		  else
-                    continue;
-	       }
-	     /* XXX manage xembed windows as long as they are not override_redirect..
-	      * if (!ecore_x_window_prop_property_get(windows[i],
-	      *					   atom_xmbed,
-	      *					   atom_xmbed, 32,
-	      *					   &data, &count))
-	      *   data = NULL;
-	      * if (!data) */
-	       {
-		  if (!ecore_x_window_prop_property_get(windows[i],
-							atom_kde_netwm_systray,
-							atom_xmbed, 32,
-							&data, &count))
-		    data = NULL;
-	       }
-	     if (!data)
-	       {
-		  if (!ecore_x_window_prop_property_get(windows[i],
-							atom_kwm_dockwindow,
-							atom_kwm_dockwindow, 32,
-							&data, &count))
-		    data = NULL;
-	       }
-	     if (data)
-	       {
-		  free(data);
-		  data = NULL;
-		  continue;
-	       }
-	     ret = ecore_x_window_prop_card32_get(windows[i],
-						  E_ATOM_MANAGED,
-						  &ret_val, 1);
-
-	     /* we have seen this window before */
-	     if ((ret > -1) && (ret_val == 1))
-	       {
-		  E_Container  *con = NULL;
-		  E_Zone       *zone = NULL;
-		  E_Desk       *desk = NULL;
-		  E_Border     *bd = NULL;
-		  unsigned int  id;
-		  char *path;
-		  Efreet_Desktop *desktop = NULL;
-
-		  /* get all information from window before it is
-		   * reset by e_border_new */
-		  ret = ecore_x_window_prop_card32_get(windows[i],
-						       E_ATOM_CONTAINER,
-						       &id, 1);
-		  if (ret == 1)
-		    con = e_container_number_get(man, id);
-		  if (!con)
-		    con = e_container_current_get(man);
-
-		  ret = ecore_x_window_prop_card32_get(windows[i],
-						       E_ATOM_ZONE,
-						       &id, 1);
-		  if (ret == 1)
-		    zone = e_container_zone_number_get(con, id);
-		  if (!zone)
-		    zone = e_zone_current_get(con);
-		  ret = ecore_x_window_prop_card32_get(windows[i],
-						       E_ATOM_DESK,
-						       deskxy, 2);
-		  if (ret == 2)
-		    desk = e_desk_at_xy_get(zone,
-					    deskxy[0],
-					    deskxy[1]);
-
-		  path = ecore_x_window_prop_string_get(windows[i],
-							E_ATOM_DESKTOP_FILE);
-		  if (path)
-		    {
-		       desktop = efreet_desktop_get(path);
-		       free(path);
-		    }
-
-		    {
-		       bd = e_border_new(con, windows[i], 1, 0);
-		       if (bd)
-			 {
-                            bd->ignore_first_unmap = 1;
-			    /* FIXME:
-			     * It's enough to set the desk, the zone will
-			     * be set according to the desk */
-//			    if (zone) e_border_zone_set(bd, zone);
-			    if (desk) e_border_desk_set(bd, desk);
-			    bd->desktop = desktop;
-			 }
-		    }
-	       }
-	     else if ((att.visible) && (!att.override) &&
-		      (!att.input_only))
-	       {
-		  /* We have not seen this window, and X tells us it
-		   * should be seen */
-		  E_Container *con;
-		  E_Border *bd;
-
-		  con = e_container_current_get(man);
-		  bd = e_border_new(con, windows[i], 1, 0);
-		  if (bd)
+             ecore_x_window_attributes_get(windows[i], &att);
+             if ((att.override) || (att.input_only))
+               {
+                  if (att.override)
                     {
-                       bd->ignore_first_unmap = 1;
-                       e_border_show(bd);
+                       char *wname = NULL, *wclass = NULL;
+
+                       ecore_x_icccm_name_class_get(windows[i],
+                                                    &wname, &wclass);
+                       if ((wname) && (wclass) &&
+                           (!strcmp(wname, "E")) &&
+                           (!strcmp(wclass, "Init_Window")))
+                         {
+                            free(wname);
+                            free(wclass);
+                            man->initwin = windows[i];
+                         }
+                       else
+                         {
+                            if (wname) free(wname);
+                            if (wclass) free(wclass);
+                            continue;
+                         }
                     }
-	       }
-	  }
-	free(windows);
+                  else
+                    continue;
+               }
+             /* XXX manage xembed windows as long as they are not override_redirect..
+              * if (!ecore_x_window_prop_property_get(windows[i],
+              *					   atom_xmbed,
+              *					   atom_xmbed, 32,
+              *					   &data, &count))
+              *   data = NULL;
+              * if (!data) */
+               {
+                  if (!ecore_x_window_prop_property_get(windows[i],
+                                                        atom_kde_netwm_systray,
+                                                        atom_xmbed, 32,
+                                                        &data, &count))
+                    {
+                       if (data) free(data);
+                       data = NULL;
+                    }
+               }
+             if (!data)
+               {
+                  if (!ecore_x_window_prop_property_get(windows[i],
+                                                        atom_kwm_dockwindow,
+                                                        atom_kwm_dockwindow, 32,
+                                                        &data, &count))
+                    {
+                       if (data) free(data);
+                       data = NULL;
+                    }
+               }
+             if (data)
+               {
+                  free(data);
+                  data = NULL;
+                  continue;
+               }
+             ret = ecore_x_window_prop_card32_get(windows[i],
+                                                  E_ATOM_MANAGED,
+                                                  &ret_val, 1);
+
+             /* we have seen this window before */
+             if ((ret > -1) && (ret_val == 1))
+               {
+                  E_Container  *con = NULL;
+                  E_Zone       *zone = NULL;
+                  E_Desk       *desk = NULL;
+                  E_Border     *bd = NULL;
+                  unsigned int  id;
+                  char *path;
+                  Efreet_Desktop *desktop = NULL;
+
+                  /* get all information from window before it is
+                   * reset by e_border_new */
+                  ret = ecore_x_window_prop_card32_get(windows[i],
+                                                       E_ATOM_CONTAINER,
+                                                       &id, 1);
+                  if (ret == 1)
+                    con = e_container_number_get(man, id);
+                  if (!con)
+                    con = e_container_current_get(man);
+
+                  ret = ecore_x_window_prop_card32_get(windows[i],
+                                                       E_ATOM_ZONE,
+                                                       &id, 1);
+                  if (ret == 1)
+                    zone = e_container_zone_number_get(con, id);
+                  if (!zone)
+                    zone = e_zone_current_get(con);
+                  ret = ecore_x_window_prop_card32_get(windows[i],
+                                                       E_ATOM_DESK,
+                                                       deskxy, 2);
+                  if (ret == 2)
+                    desk = e_desk_at_xy_get(zone,
+                                            deskxy[0],
+                                            deskxy[1]);
+
+                  path = ecore_x_window_prop_string_get(windows[i],
+                                                        E_ATOM_DESKTOP_FILE);
+                  if (path)
+                    {
+#ifndef _F_DISABLE_E_EFREET_
+                       desktop = efreet_desktop_get(path);
+#endif
+                       free(path);
+                    }
+
+                    {
+                       bd = e_border_new(con, windows[i], 1, 0);
+                       if (bd)
+                         {
+                            ELB(ELBT_BD, "NEW BORDER shown before starting WM", windows[i]);
+                            bd->ignore_first_unmap = 1;
+                            /* FIXME:
+                             * It's enough to set the desk, the zone will
+                             * be set according to the desk */
+                            //			    if (zone) e_border_zone_set(bd, zone);
+                            if (desk) e_border_desk_set(bd, desk);
+                            bd->desktop = desktop;
+                         }
+                    }
+               }
+             else if ((att.visible) && (!att.override) &&
+                      (!att.input_only))
+               {
+                  /* We have not seen this window, and X tells us it
+                   * should be seen */
+                  E_Container *con;
+                  E_Border *bd;
+
+                  con = e_container_current_get(man);
+                  bd = e_border_new(con, windows[i], 1, 0);
+                  if (bd)
+                    {
+                       ELB(ELBT_BD, "NEW BORDER shown before starting WM", windows[i]);
+                       bd->ignore_first_unmap = 1;
+                       //e_border_show(bd);
+                    }
+               }
+          }
+        free(windows);
      }
 }
 
@@ -1046,11 +1060,8 @@ e_manager_comp_object_pack(Evas_Object *obj,
 
    if (evas_object_smart_smart_get(obj) != _e_smart) SMARTERRNR();
    sd = evas_object_smart_data_get(obj);
-   if (sd)
-     {
-        _e_manager_comp_object_smart_adopt(sd, child);
-        sd->child = child;
-     }
+   _e_manager_comp_object_smart_adopt(sd, child);
+   sd->child = child;
    ci = evas_object_data_get(child, "e_manager_comp_object_data");
    _e_manager_comp_object_smart_move_resize_item(ci);
 }
@@ -1082,9 +1093,8 @@ e_manager_comp_object_managed_set(Evas_Object *obj, Eina_Bool set)
 
    if (evas_object_smart_smart_get(obj) != _e_smart) SMARTERRNR();
    sd = evas_object_smart_data_get(obj);
-   if (!sd)
-     return;
    sd->input.managed = set;
+
    e_manager_comp_input_region_managed_set(sd->man, sd->input.id, sd->child, set);
 }
 #endif /* end of _F_E_MANAGER_COMP_OBJECT_ */
@@ -1121,34 +1131,36 @@ _e_manager_cb_window_show_request(void *data, int ev_type __UNUSED__, void *ev)
    if (ecore_x_window_parent_get(e->win) != man->root)
      return ECORE_CALLBACK_PASS_ON;  /* try other handlers for this */
 
-     SLOGI("Show request(0x%08x)", e->win);
-     {
-        E_Container *con;
-        E_Border *bd;
+   LOGE("Show request(0x%08x)", e->win);
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:WINDOW:SHOW_REQUEST");
 
-        con = e_container_current_get(man);
-        if (!e_border_find_by_client_window(e->win))
+   E_Container *con;
+   E_Border *bd;
+
+   con = e_container_current_get(man);
+   if (!e_border_find_by_client_window(e->win))
+     {
+        bd = e_border_new(con, e->win, 0, 0);
+        if (!bd)
           {
-             bd = e_border_new(con, e->win, 0, 0);
-             if (!bd)
+             /* the wm shows only valid input_only window.
+              * it doesn't need to deal with invalid window and
+              * override_redirect window.
+              */
+             Ecore_X_Window_Attributes att;
+             if ((ecore_x_window_attributes_get(e->win, &att)) &&
+                 (!att.override))
                {
-                  /* the wm shows only valid input_only window.
-                   * it doesn't need to deal with invalid window and
-                   * override_redirect window.
-                   */
-                  Ecore_X_Window_Attributes att;
-                  if ((ecore_x_window_attributes_get(e->win, &att)) &&
-                      (!att.override))
-                    {
-                       ecore_x_window_show(e->win);
-                    }
-                  else
-                    {
-                       ELB(ELBT_MNG, "show request of invalid win", e->win);
-                    }
+                  ecore_x_window_show(e->win);
+               }
+             else
+               {
+                  ELB(ELBT_MNG, "show request of invalid win", e->win);
                }
           }
      }
+
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
    return ECORE_CALLBACK_PASS_ON;
 }
 
@@ -1353,6 +1365,7 @@ _e_manager_cb_ping(void *data, int ev_type __UNUSED__, void *ev)
    return ECORE_CALLBACK_PASS_ON;
 }
 
+#ifndef _F_DISABLE_E_SCREENSAVER
 static Eina_Bool
 _e_manager_cb_timer_post_screensaver_lock(void *data __UNUSED__)
 {
@@ -1391,6 +1404,7 @@ _e_manager_cb_screensaver_notify(void *data __UNUSED__, int ev_type __UNUSED__, 
    return ECORE_CALLBACK_PASS_ON;
 }
 
+#endif
 
 #ifdef _F_WINDOW_GROUP_RAISE_
 static void
@@ -1505,9 +1519,32 @@ _e_manager_cb_client_message(void *data __UNUSED__, int ev_type __UNUSED__, void
    if (e->message_type == ECORE_X_ATOM_NET_ACTIVE_WINDOW)
      {
         ELB(ELBT_BD, "ACTIVE REQUEST", e->win);
+		LOGE("ACTIVE REQUEST(0x%08x)", e->win);
+
+        traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:WINDOW:ACTIVE_REQUEST");
         bd = e_border_find_by_client_window(e->win);
         if (bd)
           {
+#ifdef _F_E_WIN_AUX_HINT_
+             if (e_config->win_aux_hint)
+               {
+                  if (bd->client.e.fetch.aux_hint.hints)
+                    {
+                       e_border_aux_hint_info_update(bd);
+                       bd->client.e.fetch.aux_hint.hints = 0;
+                    }
+               }
+#endif /* end of _F_E_WIN_AUX_HINT_ */
+
+             bd->client.e.state.deiconify_approve.render_only = 0;
+
+             // reset flag for iconified window requested by client
+             if (bd->iconify_by_client == 1)
+               {
+                  ELBF(ELBT_BD, 0, bd->client.win, "Reset ICONIFY BY CLIENT");
+                  bd->iconify_by_client = 0;
+               }
+
 #if 0 /* notes */
              if (e->data.l[0] == 0 /* 0 == old, 1 == client, 2 == pager */)
                {
@@ -1529,6 +1566,7 @@ _e_manager_cb_client_message(void *data __UNUSED__, int ev_type __UNUSED__, void
                   if (bd->client.icccm.client_leader)
                     {
                        _e_manager_windows_group_raise (bd);
+                       traceEnd(TTRACE_TAG_WINDOW_MANAGER);
                        return ECORE_CALLBACK_PASS_ON;
                     }
                }
@@ -1644,6 +1682,8 @@ _e_manager_cb_client_message(void *data __UNUSED__, int ev_type __UNUSED__, void
              else e_border_raise(bd);
 #endif
           }
+
+        traceEnd(TTRACE_TAG_WINDOW_MANAGER);
      }
 
    return ECORE_CALLBACK_PASS_ON;

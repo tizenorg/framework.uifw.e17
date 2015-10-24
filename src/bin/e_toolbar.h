@@ -25,6 +25,7 @@ struct _E_Toolbar
    E_Config_Dialog *cfg_dlg;
    Evas_Object     *o_base, *o_event;
 };
+#ifndef _F_DISABLE_E_GADGETS
 
 EINTERN int       e_toolbar_init(void);
 EINTERN int       e_toolbar_shutdown(void);
@@ -42,5 +43,6 @@ EAPI void         e_toolbar_orient(E_Toolbar *tbar, E_Gadcon_Orient orient);
 EAPI void         e_toolbar_position_calc(E_Toolbar *tbar);
 EAPI void         e_toolbar_populate(E_Toolbar *tbar);
 
+#endif
 #endif
 #endif

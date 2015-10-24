@@ -261,8 +261,8 @@ _e_fm_ipc_monitor_start_try(E_Fm_Task *task)
    if (!it)
      {
         char buf[PATH_MAX + 4096];
-
-        snprintf(buf, sizeof(buf), "Cannot open directory '%s': %s.", task->src, strerror(errno));
+        char errbuf[1024];
+        snprintf(buf, sizeof(buf), "Cannot open directory '%s': %s.", task->src, strerror_r(errno, errbuf, 1024));
         _e_fm_ipc_client_send(task->id, E_FM_OP_ERROR_RETRY_ABORT, buf, strlen(buf) + 1);
      }
    else
@@ -481,13 +481,17 @@ static void
 _e_fm_ipc_mkdir_try(E_Fm_Task *task)
 {
    char buf[PATH_MAX + 4096];
+   char buffer_error[1024];
+   int _errno;
 
    if (!task || !task->src)
      return;
 
    if (mkdir(task->src, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) < 0)
      {
-        snprintf(buf, sizeof(buf), "Cannot make directory '%s': %s.", task->src, strerror(errno));
+        _errno = errno;
+        strerror_r(_errno, buffer_error, sizeof(buffer_error));
+        snprintf(buf, sizeof(buf), "Cannot make directory '%s': %s.", task->src, buffer_error);
         _e_fm_ipc_client_send(task->id, E_FM_OP_ERROR_RETRY_ABORT, buf, strlen(buf) + 1);
      }
    else
@@ -505,6 +509,7 @@ _e_fm_ipc_mkdir(int id, const char *src, const char *rel, int rel_to __UNUSED__,
    E_Fm_Task *task;
 
    task = malloc(sizeof(E_Fm_Task));
+   if (!task) return;
 
    task->id = id;
    task->type = E_FM_OP_MKDIR;
@@ -742,7 +747,9 @@ _e_fm_ipc_cb_server_data(void *data __UNUSED__, int type __UNUSED__, void *event
       case E_FM_OP_OVERWRITE_RESPONSE_YES:
       case E_FM_OP_OVERWRITE_RESPONSE_YES_ALL:
       {
-         _e_fm_ipc_slave_send(_e_fm_ipc_slave_get(e->ref), e->minor, NULL, 0);
+         E_Fm_Slave *slave = _e_fm_ipc_slave_get(e->ref);
+         if (slave)
+           _e_fm_ipc_slave_send(slave, e->minor, NULL, 0);
       }
       break;
 
@@ -1140,20 +1147,57 @@ _e_fm_ipc_file_add_mod(E_Dir *ed, const char *path, E_Fm_Op_Type op, int listing
 
    if (path)
      {
-        strcpy((char *)p, path);
-        p += strlen(path) + 1;
+        if(strlen(path) > (sizeof(buf)-(p-buf)))
+          {
+             if((sizeof(buf)-(p-buf))>1) 
+               {
+                  strncpy((char *)p, path,sizeof(buf)-(p-buf)-1);
+                  buf[sizeof(struct stat) + 4096 + 4096 + 4096]='\0';
+                  p += strlen(path) + 1;
+               } 
+          }
+        else
+          {
+             strncpy((char *)p, path, strlen(path));
+             p += strlen(path) + 1;
+          }
      }
 
    if (lnk)
      {
-        strcpy((char *)p, lnk);
-        p += strlen(lnk) + 1;
+        if(strlen(lnk) > (sizeof(buf)-(p-buf)))
+          {
+             if((sizeof(buf)-(p-buf))>1)  
+               {
+                  strncpy((char *)p,lnk ,sizeof(buf)-(p-buf)-1);
+                  buf[sizeof(struct stat) + 4096 + 4096 + 4096]='\0';
+                  p += strlen(lnk) + 1;
+               } 
+          }
+        else
+          {
+             strncpy((char *)p,lnk,strlen(lnk));
+             p += strlen(lnk) + 1;
+          }
      }
 
    if (rlnk)
      {
-        strcpy((char *)p, rlnk);
-        p += strlen(rlnk) + 1;
+        if(strlen(rlnk) > (sizeof(buf)-(p-buf)))
+          {
+             if((sizeof(buf)-(p-buf))>1)  
+               {
+                  strncpy((char *)p,rlnk ,sizeof(buf)-(p-buf)-1);
+                  buf[sizeof(struct stat) + 4096 + 4096 + 4096]='\0';
+                  p += strlen(rlnk) + 1;
+               } 
+          }
+        else
+          {
+             strncpy((char *)p,rlnk,strlen(rlnk));
+             p += strlen(rlnk) + 1;
+          }
+        
      }
 
    bsz = p - buf;
@@ -1275,13 +1319,17 @@ _e_fm_ipc_cb_fop_trash_idler(void *data)
    fop = (E_Fop *)data;
    if (!fop) return 0;
 
-   /* Check that 'home trash' and subsequesnt dirs exists, create if not */
+   memset(buf, 0, 4096);
+
+#ifndef _F_DISABLE_E_EFREET_
+    /* Check that 'home trash' and subsequesnt dirs exists, create if not */
    snprintf(buf, sizeof(buf), "%s/Trash", efreet_data_home_get());
    trash_dir = eina_stringshare_add(buf);
    snprintf(buf, sizeof(buf), "%s/files", trash_dir);
    if (!ecore_file_mkpath(buf)) return 0;
    snprintf(buf, sizeof(buf), "%s/info", trash_dir);
    if (!ecore_file_mkpath(buf)) return 0;
+#endif
 
    filename = eina_stringshare_add(strrchr(fop->src, '/'));
    escname = ecore_file_escape_name(filename);
@@ -1317,8 +1365,11 @@ _e_fm_ipc_cb_fop_trash_idler(void *data)
    info = fopen(buf, "w");
    if (info)
      {
+        struct tm temp_lt;
+
         t = time(NULL);
-        lt = localtime(&t);
+        localtime_r(&t, &temp_lt);
+        lt = &temp_lt;
 
         /* Insert info for trashed file */
         fprintf(info,
@@ -1333,7 +1384,9 @@ _e_fm_ipc_cb_fop_trash_idler(void *data)
        ERR("File could not be put back!");
 
    free(dest);
+#ifndef _F_DISABLE_E_EFREET_
    if (trash_dir) eina_stringshare_del(trash_dir);
+#endif
    eina_stringshare_del(fop->src);
    eina_stringshare_del(fop->dst);
    _e_fops = eina_list_remove(_e_fops, fop);
@@ -1462,15 +1515,15 @@ _e_fm_ipc_prepare_command(E_Fm_Op_Type type, const char *args)
    char command[4];
 
    if (type == E_FM_OP_MOVE)
-     strcpy(command, "mv");
+     strncpy(command, "mv", sizeof(command));
    else if (type == E_FM_OP_REMOVE)
-     strcpy(command, "rm");
+     strncpy(command, "rm", sizeof(command));
    else if (type == E_FM_OP_COPY)
-     strcpy(command, "cp");
+     strncpy(command, "cp", sizeof(command));
    else if (type == E_FM_OP_SYMLINK)
-     strcpy(command, "lns");
+     strncpy(command, "lns", sizeof(command));
    else if (type == E_FM_OP_RENAME)
-     strcpy(command, "mvf");
+     strncpy(command, "mvf", sizeof(command));
    else
      return NULL;
 

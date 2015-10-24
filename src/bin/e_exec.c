@@ -190,9 +190,11 @@ e_exec(E_Zone *zone, Efreet_Desktop *desktop, const char *exec,
              inst = _e_exec_cb_exec(launch, NULL, str, 0);
              free(str);
           }
+#ifndef _F_DISABLE_E_EFREET_
         else
           inst = efreet_desktop_command_get
           (desktop, files, (Efreet_Desktop_Command_Cb)_e_exec_cb_exec, launch);
+#endif
      }
    else
      {
@@ -442,8 +444,9 @@ _e_exec_cb_exec(void *data, Efreet_Desktop *desktop, char *exec, int remaining)
         e_util_library_path_strip();
         if ((desktop) && (desktop->terminal))
           {
-             Efreet_Desktop *tdesktop;
-             
+#ifndef _F_DISABLE_E_EFREET_
+             Efreet_Desktop *tdesktop = NULL;
+
              tdesktop = e_util_terminal_desktop_get();
              if (tdesktop)
                {
@@ -467,6 +470,7 @@ _e_exec_cb_exec(void *data, Efreet_Desktop *desktop, char *exec, int remaining)
                   efreet_desktop_free(tdesktop);
                }
              else
+#endif
                exe = ecore_exe_run(exec, inst);
           }
         else
@@ -497,7 +501,9 @@ _e_exec_cb_exec(void *data, Efreet_Desktop *desktop, char *exec, int remaining)
 
    if (desktop)
      {
+#ifndef _F_DISABLE_E_EFREET_
         efreet_desktop_ref(desktop);
+#endif
         inst->desktop = desktop;
         inst->key = eina_stringshare_add(desktop->orig_path);
      }
@@ -569,7 +575,9 @@ _e_exec_instance_free(E_Exec_Instance *inst)
      e_exec_start_pending = eina_list_remove(e_exec_start_pending,
                                              inst->desktop);
    if (inst->expire_timer) ecore_timer_del(inst->expire_timer);
+#ifndef _F_DISABLE_E_EFREET_
    if (inst->desktop) efreet_desktop_free(inst->desktop);
+#endif
    free(inst);
 }
 /*
@@ -706,7 +714,9 @@ _e_exec_error_dialog(Efreet_Desktop *desktop, const char *exec, Ecore_Exe_Event_
         return;
      }
    cfdata->desktop = desktop;
+#ifndef _F_DISABLE_E_EFREET_
    if (cfdata->desktop) efreet_desktop_ref(cfdata->desktop);
+#endif
    if (exec) cfdata->exec = strdup(exec);
    cfdata->error = exe_error;
    cfdata->read = exe_read;
@@ -714,8 +724,11 @@ _e_exec_error_dialog(Efreet_Desktop *desktop, const char *exec, Ecore_Exe_Event_
 
    v->create_cfdata = _create_data;
    v->free_cfdata = _free_data;
+
+#ifndef _F_DISABLE_E_WIDGET
    v->basic.create_widgets = _basic_create_widgets;
    v->advanced.create_widgets = _advanced_create_widgets;
+#endif
 
    con = e_container_current_get(e_manager_current_get());
    /* Create The Dialog */
@@ -822,7 +835,9 @@ _free_data(E_Config_Dialog *cfd __UNUSED__, E_Config_Dialog_Data *cfdata)
    if (cfdata->error) ecore_exe_event_data_free(cfdata->error);
    if (cfdata->read) ecore_exe_event_data_free(cfdata->read);
 
+#ifndef _F_DISABLE_E_EFREET_
    if (cfdata->desktop) efreet_desktop_free(cfdata->desktop);
+#endif
 
    E_FREE(cfdata->exec);
    E_FREE(cfdata->signal);
@@ -859,16 +874,17 @@ _dialog_scrolltext_create(Evas *evas, char *title, Ecore_Exe_Event_Data_Line *li
      }
    max_lines = i;
    text = alloca(tlen + 1);
+   int text_buf_size = tlen + 1;
 
    text[0] = 0;
    for (i = 0; i < max_lines; i++)
      {
-        strcat(text, lines[i].line);
-        strcat(text, "\n");
+        strncat(text, lines[i].line, text_buf_size - strlen(text) - 1);
+        strncat(text, "\n", text_buf_size - strlen(text) - 1);
      }
 
    /* Append the warning about truncated output. */
-   if (lines[max_lines].line) strcat(text, trunc_note);
+   if (lines[max_lines].line) strncat(text, trunc_note, text_buf_size - strlen(text) - 1);
 
    e_widget_textblock_plain_set(obj, text);
    e_widget_size_min_set(obj, 240, 120);
@@ -877,6 +893,7 @@ _dialog_scrolltext_create(Evas *evas, char *title, Ecore_Exe_Event_Data_Line *li
 
    return os;
 }
+#ifndef _F_DISABLE_E_WIDGET
 
 static Evas_Object *
 _basic_create_widgets(E_Config_Dialog *cfd __UNUSED__, Evas *evas, E_Config_Dialog_Data *cfdata)
@@ -1047,12 +1064,13 @@ _dialog_save_cb(void *data __UNUSED__, void *data2)
         for (i = 0; cfdata->read->lines[i].line; i++)
           tlen += cfdata->read->lines[i].size + 2;
         text = alloca(tlen + 1);
+        int text_buf_size = tlen + 1;
         text[0] = 0;
         for (i = 0; cfdata->read->lines[i].line; i++)
           {
-             strcat(text, "\t");
-             strcat(text, cfdata->read->lines[i].line);
-             strcat(text, "\n");
+             strncat(text, "\t",text_buf_size - strlen(text) - 1);
+             strncat(text, cfdata->read->lines[i].line, text_buf_size - strlen(text) - 1);
+             strncat(text, "\n", text_buf_size - strlen(text) - 1);
           }
         snprintf(buffer, sizeof(buffer), "Output Data:\n%s\n\n", text);
         fwrite(buffer, sizeof(char), strlen(buffer), f);
@@ -1073,12 +1091,13 @@ _dialog_save_cb(void *data __UNUSED__, void *data2)
         for (i = 0; cfdata->error->lines[i].line; i++)
           tlen += cfdata->error->lines[i].size + 1;
         text = alloca(tlen + 1);
+        int text_buf_size = tlen + 1;
         text[0] = 0;
         for (i = 0; cfdata->error->lines[i].line; i++)
           {
-             strcat(text, "\t");
-             strcat(text, cfdata->error->lines[i].line);
-             strcat(text, "\n");
+             strncat(text, "\t", text_buf_size - strlen(text) - 1);
+             strncat(text, cfdata->error->lines[i].line, text_buf_size - strlen(text) - 1);
+             strncat(text, "\n", text_buf_size - strlen(text) - 1);
           }
         snprintf(buffer, sizeof(buffer), "Error Logs:\n%s\n", text);
         fwrite(buffer, sizeof(char), strlen(buffer), f);
@@ -1091,3 +1110,4 @@ _dialog_save_cb(void *data __UNUSED__, void *data2)
 
    fclose(f);
 }
+#endif

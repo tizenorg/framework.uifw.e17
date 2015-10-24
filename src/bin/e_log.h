@@ -46,6 +46,7 @@ EINTERN int e_log_shutdown(void);
 #define ELBT_TRACE       0x00000080
 #define ELBT_DESK_LY     0x00000100
 #define ELBT_COMP_RENDER 0x00000200
+#define ELBT_TZSH        0x00000400
 #define ELBT_MAX         0x80000000
 #define ELBT_ALL         0xFFFFFFFF
 

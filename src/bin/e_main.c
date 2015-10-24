@@ -18,6 +18,17 @@
  * license.
  */
 #include "e.h"
+#include "dlog.h"
+#undef LOG_TAG
+#define LOG_TAG "E17"
+
+#include <sys/inotify.h>
+#include <sys/prctl.h>
+
+#ifndef PR_TASK_PERF_USER_TRACE
+#define PR_TASK_PERF_USER_TRACE 666
+#endif
+
 #ifdef HAVE_ECORE_IMF
 # include <Ecore_IMF.h>
 #endif
@@ -107,13 +118,16 @@ static int       _e_main_screens_init(void);
 static int       _e_main_screens_shutdown(void);
 static void      _e_main_desk_save(void);
 static void      _e_main_desk_restore(E_Manager *man, E_Container *con);
+#ifndef _F_DISABLE_E_EFREET_
 static void      _e_main_efreet_paths_init(void);
+#endif
 static void      _e_main_modules_load(Eina_Bool safe_mode);
 static void      _e_main_manage_all(void);
 static Eina_Bool _e_main_cb_x_flusher(void *data __UNUSED__);
 static Eina_Bool _e_main_cb_idle_before(void *data __UNUSED__);
 static Eina_Bool _e_main_cb_idle_after(void *data __UNUSED__);
 static Eina_Bool _e_main_cb_startup_fake_end(void *data __UNUSED__);
+static void      _e_main_check_tvviewer_init_type(void);
 
 /* local variables */
 static Eina_Bool really_know = EINA_FALSE;
@@ -128,6 +142,11 @@ static Eina_List *_idle_before_list = NULL;
 static Ecore_Idle_Enterer *_idle_before = NULL;
 static Ecore_Idle_Enterer *_idle_after = NULL;
 static Ecore_Idle_Enterer *_idle_flush = NULL;
+
+#define XORG_READY_PATH "/tmp/xorg_ready"
+#define DBUS_READY_PATH "/tmp/dbus_launch"
+#define TVVIEWER_READY_PATH "/tmp/tv-viewer_show_done"
+char *Check_Init_Type;
 
 /* external variables */
 EAPI Eina_Bool e_precache_end = EINA_FALSE;
@@ -146,7 +165,7 @@ _xdg_data_dirs_augment(void)
    char newpath[4096], buf[4096];
 
    if (!p) return;
-   
+
    snprintf(newpath, sizeof(newpath), "%s:%s/share", e_prefix_data_get(), p);
    if (s)
      {
@@ -375,6 +394,19 @@ main(int argc, char **argv)
 
    _idle_before = ecore_idle_enterer_before_add(_e_main_cb_idle_before, NULL);
 
+   if (getenv("E_STANDBY_XORG"))
+     {
+        TS("Wait xorg ready");
+        /* Check if xorg_ready file exist for xorg.service dependency */
+        prctl(PR_TASK_PERF_USER_TRACE, "Wait xorg ready", strlen("Wait xorg ready"));
+        while(access(XORG_READY_PATH, F_OK) != 0)
+          {
+             e_util_nanosleep(0, 50000000L);
+             //usleep(50 * 1000);
+          }
+        prctl(PR_TASK_PERF_USER_TRACE, "Wait xorg ready Done", strlen("Wait xorg ready Done"));
+     }
+
    TS("Ecore_X Init");
    if (!ecore_x_init(NULL))
      {
@@ -385,6 +417,25 @@ main(int argc, char **argv)
    _e_main_shutdown_push(_e_main_x_shutdown);
 
    ecore_x_io_error_handler_set(_e_main_cb_x_fatal, NULL);
+
+   if (getenv("DBUS_READY_PATH") || getenv("E_STANDBY_DBUS"))
+     {
+        TS("Wait dbus ready");
+        /* Check if dbus_launch file exist for dbus.service dependency */
+        prctl(PR_TASK_PERF_USER_TRACE, "Wait dbus ready", strlen("Wait dbus ready"));
+        while(access(DBUS_READY_PATH, F_OK) != 0)
+          {
+             e_util_nanosleep(0, 50000000L);
+             //usleep(50 * 1000);
+          }
+        prctl(PR_TASK_PERF_USER_TRACE, "Wait dbus ready Done", strlen("Wait dbus ready Done"));
+
+        if (!dbus_threads_init_default())
+          {
+             e_error_message_show(_("Enlightenment cannot initialize dbus_threads_init_default!\n"));
+          }
+        prctl(PR_TASK_PERF_USER_TRACE, "dbus_threads_init_default Done", strlen("dbus_threads_init_default Done"));
+     }
 
 #ifdef _F_E_LOGBUF_
    TS("E_Msgbus Init");
@@ -531,7 +582,7 @@ main(int argc, char **argv)
    _e_main_shutdown_push(e_config_shutdown);
 
    _xdg_data_dirs_augment();
-   
+
    _fix_user_default_edj();
 
    TS("E_Randr Init");
@@ -655,6 +706,7 @@ main(int argc, char **argv)
    TS("E_Intl Post Init Done");
    _e_main_shutdown_push(e_intl_post_shutdown);
 
+#ifndef _F_DISABLE_E_EFREET_
    TS("Efreet Init");
    if (!efreet_init())
      {
@@ -665,6 +717,7 @@ main(int argc, char **argv)
      }
    TS("Efreet Init Done");
    _e_main_shutdown_push(efreet_shutdown);
+#endif
 
    if (!really_know)
      {
@@ -674,10 +727,12 @@ main(int argc, char **argv)
      }
    else
      {
+#ifndef _F_DISABLE_E_EFREET_
         efreet_icon_extension_add(".svg");
         efreet_icon_extension_add(".jpg");
         efreet_icon_extension_add(".png");
         efreet_icon_extension_add(".edj");
+#endif
      }
 
    if (e_config->show_splash)
@@ -699,6 +754,7 @@ main(int argc, char **argv)
    TS("E_Acpi Init Done");
    _e_main_shutdown_push(e_acpi_shutdown);
 
+#ifndef _F_DISABLE_UNUSED_FEATURE_
    if (e_config->show_splash)
      e_init_status_set(_("Setup Backlight"));
    TS("E_Backlight Init");
@@ -709,6 +765,7 @@ main(int argc, char **argv)
      }
    TS("E_Backlight Init Done");
    _e_main_shutdown_push(e_backlight_shutdown);
+#endif
 
    if (e_config->show_splash)
      e_init_status_set(_("Setup DPMS"));
@@ -721,6 +778,7 @@ main(int argc, char **argv)
    TS("E_Dpms Init Done");
    _e_main_shutdown_push(e_dpms_shutdown);
 
+#ifndef _F_DISABLE_E_SCREENSAVER
    if (e_config->show_splash)
      e_init_status_set(_("Setup Screensaver"));
    TS("E_Screensaver Init");
@@ -731,6 +789,7 @@ main(int argc, char **argv)
      }
    TS("E_Screensaver Init Done");
    _e_main_shutdown_push(e_screensaver_shutdown);
+#endif
 
    if (e_config->show_splash)
      e_init_status_set(_("Setup Powersave Modes"));
@@ -742,7 +801,7 @@ main(int argc, char **argv)
      }
    TS("E_Powersave Init Done");
    _e_main_shutdown_push(e_powersave_shutdown);
-
+#ifndef _F_DISABLE_E_DESKLOCK //disabled as desklock feature is removed
    if (e_config->show_splash)
      e_init_status_set(_("Setup Desklock"));
    TS("E_Desklock Init");
@@ -753,6 +812,7 @@ main(int argc, char **argv)
      }
    TS("E_Desklock Init Done");
    _e_main_shutdown_push(e_desklock_shutdown);
+#endif
 
    if (e_config->show_splash)
      e_init_status_set(_("Setup Popups"));
@@ -765,10 +825,12 @@ main(int argc, char **argv)
    TS("E_Popups Init Done");
    _e_main_shutdown_push(e_popup_shutdown);
 
+#ifndef _F_DISABLE_E_DESKLOCK //disabled as desklock feature is removed
    if ((locked) && ((!e_config->show_splash) && (!after_restart)))
      e_desklock_show(EINA_TRUE);
    else if (waslocked)
      e_desklock_show(EINA_TRUE);
+#endif
 
 #ifndef _F_E_LOGBUF_
    if (e_config->show_splash)
@@ -781,9 +843,11 @@ main(int argc, char **argv)
 
    if (e_config->show_splash)
      e_init_status_set(_("Setup Paths"));
+#ifndef _F_DISABLE_E_EFREET_
    TS("Efreet Paths");
    _e_main_efreet_paths_init();
    TS("Efreet Paths Done");
+#endif
 
    if (e_config->show_splash)
      e_init_status_set(_("Setup System Controls"));
@@ -822,6 +886,7 @@ main(int argc, char **argv)
    e_container_all_freeze();
    TS("E_Container Freeze Done");
 
+#ifndef _F_DISABLE_E_FM
    if (e_config->show_splash)
      e_init_status_set(_("Setup Filemanager"));
    TS("E_Fm2 Init");
@@ -832,6 +897,7 @@ main(int argc, char **argv)
      }
    TS("E_Fm2 Init Done");
    _e_main_shutdown_push(e_fm2_shutdown);
+#endif
 
    if (e_config->show_splash)
      e_init_status_set(_("Setup Message System"));
@@ -888,6 +954,7 @@ main(int argc, char **argv)
    TS("E_Remember Init Done");
    _e_main_shutdown_push(e_remember_shutdown);
 
+#ifndef _F_DISABLE_E_COLOR_CLASS
    if (e_config->show_splash)
      e_init_status_set(_("Setup Color Classes"));
    TS("E_Color_Class Init");
@@ -898,6 +965,8 @@ main(int argc, char **argv)
      }
    TS("E_Color_Class Init Done");
    _e_main_shutdown_push(e_color_class_shutdown);
+#endif
+#ifndef _F_DISABLE_E_GADGETS
 
    if (e_config->show_splash)
      e_init_status_set(_("Setup Gadcon"));
@@ -910,6 +979,7 @@ main(int argc, char **argv)
    TS("E_Gadcon Init Done");
    _e_main_shutdown_push(e_gadcon_shutdown);
 
+#endif
    if (e_config->show_splash)
      e_init_status_set(_("Setup Wallpaper"));
    TS("E_Bg Init");
@@ -949,6 +1019,7 @@ main(int argc, char **argv)
    TS("E_Bindings Init Done");
    _e_main_shutdown_push(e_bindings_shutdown);
 
+#ifndef _F_DISABLE_E_SHELF //shelf functionality is disabled
    if (e_config->show_splash)
      e_init_status_set(_("Setup Shelves"));
    TS("E_Shelf Init");
@@ -960,6 +1031,8 @@ main(int argc, char **argv)
    TS("E_Shelf Init Done");
    _e_main_shutdown_push(e_shelf_shutdown);
 
+#endif
+#ifndef _F_DISABLE_E_THUMB //No thumbnails required as Per discussion with Ms Lee
    if (e_config->show_splash)
      e_init_status_set(_("Setup Thumbnailer"));
    TS("E_Thumb Init");
@@ -970,6 +1043,7 @@ main(int argc, char **argv)
      }
    TS("E_Thumb Init Done");
    _e_main_shutdown_push(e_thumb_shutdown);
+#endif
 
    TS("E_Icon Init");
    if (!e_icon_init())
@@ -989,6 +1063,7 @@ main(int argc, char **argv)
    TS("E_XSettings Init Done");
    _e_main_shutdown_push(e_xsettings_shutdown);
 
+#ifndef _F_DISABLE_E_UPDATE //update functionality is disabled
    TS("E_Update Init");
    if (!e_update_init())
      {
@@ -997,6 +1072,7 @@ main(int argc, char **argv)
      }
    TS("E_Update Init Done");
    _e_main_shutdown_push(e_update_shutdown);
+#endif
 
    if (!after_restart)
      {
@@ -1037,6 +1113,7 @@ main(int argc, char **argv)
    _e_main_modules_load(safe_mode);
    TS("Load Modules Done");
 
+#ifndef _F_DISABLE_E_STARTUP_APP //As  we have a launcher already
    TS("Run Startup Apps");
    if (!nostartup)
      {
@@ -1046,11 +1123,14 @@ main(int argc, char **argv)
           e_startup(E_STARTUP_START);
      }
    TS("Run Startup Apps Done");
+#endif
 
    if (!((!e_config->show_splash) || (after_restart)))
      {
         ecore_timer_add(2.0, _e_main_cb_startup_fake_end, NULL);
+#ifndef _F_DISABLE_E_DESKLOCK
         if (locked) e_desklock_show(EINA_TRUE);
+#endif
      }
 
    TS("E_Container Thaw");
@@ -1060,12 +1140,22 @@ main(int argc, char **argv)
    TS("E_Test Init");
    e_test();
    TS("E_Test Done");
+   if (e_config->use_e_test_runner)
+     {
+        TS("E_Test_Helper Init");
+        e_test_helper_init();
+        _e_main_shutdown_push(e_test_helper_shutdown);
+        TS("E_Test_Helper Done");
+     }
 
+
+#ifndef _F_DISABLE_E_SHELF
    if (e_config->show_splash)
      e_init_status_set(_("Configure Shelves"));
    TS("E_Shelf Config Update");
    e_shelf_config_update();
    TS("E_Shelf Config Update Done");
+#endif
 
    TS("Manage all windows");
    _e_main_manage_all();
@@ -1193,8 +1283,12 @@ _e_main_parse_arguments(int argc, char **argv)
              int x, y, w, h;
 
              i++;
+
+#ifndef _F_DISABLE_E_XINERMA
              if (sscanf(argv[i], "%ix%i+%i+%i", &w, &h, &x, &y) == 4)
                e_xinerama_fake_screen_add(x, y, w, h);
+#endif
+
           }
         else if (!strcmp(argv[i], "-good"))
           {
@@ -1583,8 +1677,10 @@ _e_main_test_formats(void)
         e_error_message_show(_("Enlightenment found Evas can't load SVG files. "
                                "Check Evas has SVG loader support.\n"));
      }
+#ifndef _F_DISABLE_E_EFREET_
    else
      efreet_icon_extension_add(".svg");
+#endif
 
    e_prefix_data_concat_static(buff, "data/images/test.jpg");
    evas_object_image_file_set(im, buff, NULL);
@@ -1594,7 +1690,9 @@ _e_main_test_formats(void)
                                "Check Evas has JPEG loader support.\n"));
         _e_main_shutdown(-1);
      }
+#ifndef _F_DISABLE_E_EFREET_
    efreet_icon_extension_add(".jpg");
+#endif
 
    e_prefix_data_concat_static(buff, "data/images/test.png");
    evas_object_image_file_set(im, buff, NULL);
@@ -1604,7 +1702,9 @@ _e_main_test_formats(void)
                                "Check Evas has PNG loader support.\n"));
         _e_main_shutdown(-1);
      }
+#ifndef _F_DISABLE_E_EFREET_
    efreet_icon_extension_add(".png");
+#endif
 
    e_prefix_data_concat_static(buff, "data/images/test.edj");
    evas_object_image_file_set(im, buff, "images/0");
@@ -1614,7 +1714,9 @@ _e_main_test_formats(void)
                                "Check Evas has EET loader support.\n"));
         _e_main_shutdown(-1);
      }
+#ifndef _F_DISABLE_E_EFREET_
    efreet_icon_extension_add(".edj");
+#endif
 
    evas_object_del(im);
 
@@ -1631,6 +1733,111 @@ _e_main_test_formats(void)
    evas_object_del(txt);
    e_canvas_del(ee);
    ecore_evas_free(ee);
+}
+
+static void
+_e_main_check_tvviewer_init_type(void)
+{
+   LOGE("begin e_main_check_tvviewer_init_type");
+   prctl( PR_TASK_PERF_USER_TRACE, "begin e_main_check_tvviewer_init_type"
+          ,strlen( "begin e_main_check_tvviewer_init_type" ) );
+
+   char strDirectoryPath[] = "/tmp";
+   char strFileNameNormal[] = "init_mode_normal";
+   char strFileNameBackGround[] = "init_mode_background";
+
+   Check_Init_Type = (char *)malloc(sizeof(char)*11);
+   memset(Check_Init_Type,0,sizeof(char)*11);
+
+   char strFullPath[255] = { 0, };
+   snprintf( strFullPath, sizeof( strFullPath ), "%s/%s", strDirectoryPath, strFileNameNormal );
+   if( access( strFullPath, F_OK ) == 0 )
+     {
+        strncpy(Check_Init_Type,"normal",sizeof("normal"));
+        LOGE("end e_main_check_tvviewer_init_type [%s]",Check_Init_Type);
+        prctl( PR_TASK_PERF_USER_TRACE, "end e_main_check_tvviewer_init_type"
+               ,strlen( "end e_main_check_tvviewer_init_type" ) );
+        return ;
+     }
+
+   snprintf( strFullPath, sizeof( strFullPath ), "%s/%s", strDirectoryPath, strFileNameBackGround );
+   if( access( strFullPath, F_OK ) == 0 )
+     {
+        strncpy(Check_Init_Type,"background",sizeof("background"));
+        LOGE("end e_main_check_tvviewer_init_type [%s]", Check_Init_Type);
+        prctl( PR_TASK_PERF_USER_TRACE, "end e_main_check_tvviewer_init_type"
+               ,strlen( "end e_main_check_tvviewer_init_type" ) );
+        return ;
+     }
+
+   int fd = inotify_init();
+   if ( fd < 0 )
+     {
+        LOGE("inotify_init failed");
+        prctl( PR_TASK_PERF_USER_TRACE, "inotify_init failed", strlen( "inotify_init failed" ) );
+        return ;
+     }
+
+   int wd = inotify_add_watch( fd, strDirectoryPath, IN_CREATE );
+   if ( wd < 0 )
+     {
+        close( fd );
+        LOGE("e_main_check_tvviewer_init_type inotify_add_watch failed");
+        prctl( PR_TASK_PERF_USER_TRACE, "e_main_check_tvviewer_init_type inotify_add_watch failed"
+               ,strlen( "e_main_check_tvviewer_init_type inotify_add_watch failed" ) );
+        return ;
+     }
+
+   char buffer[4096];
+   int inotify_event_size = sizeof(struct inotify_event);
+   int read_size = 0;
+   do
+     {
+        memset(buffer, 0, sizeof(buffer));
+        int length = read( fd, buffer, 4096 );
+        if ( length < 0 )
+          {
+             LOGE("e_main_check_tvviewer_init_type read error" );
+             goto end;
+          }
+
+        int i = 0;
+        while ( i + inotify_event_size < length )
+          {
+             struct inotify_event *event = ( struct inotify_event* ) &buffer[i];
+
+             read_size = inotify_event_size + event->len;
+             if (i + read_size > length)
+               {
+                  LOGE("read(%d) more than length(%d)error", read_size, length);
+                  goto end;
+               }
+
+             if ( event->len )
+               {
+                  LOGE("tv-viewer mode wait event->name %s", event->name);
+                  if ( !strncmp( event->name, strFileNameNormal, sizeof(strFileNameNormal) ) )
+                    {
+                       strncpy(Check_Init_Type,"normal",sizeof("normal"));
+                       goto end;
+                    }
+                  if ( !strncmp( event->name, strFileNameBackGround, sizeof(strFileNameBackGround) ) )
+                    {
+                       strncpy(Check_Init_Type,"background",sizeof("background"));
+                       goto end;
+                    }
+               }
+             i += read_size;
+          }
+     }
+   while ( 1 );
+
+end:
+   inotify_rm_watch( fd, wd );
+   close( fd );
+   LOGE("end e_main_check_tvviewer_init_type [%s]", Check_Init_Type);
+   prctl( PR_TASK_PERF_USER_TRACE, "end e_main_check_tvviewer_init_type"
+          ,strlen( "end e_main_check_tvviewer_init_type" ) );
 }
 
 static int
@@ -1670,6 +1877,15 @@ _e_main_screens_init(void)
         free(roots);
         return 0;
      }
+
+#ifdef _F_USE_TZSH_
+   if (!e_tzsh_init())
+     {
+        free(roots);
+        return 0;
+     }
+#endif
+
    TS("\tscreens: border");
    if (!e_border_init())
      {
@@ -1682,6 +1898,57 @@ _e_main_screens_init(void)
         free(roots);
         return 0;
      }
+
+   if (e_config->stand_by_tv_viewer_ready)
+     {
+        int timeout = 0;
+
+        /* Check init type
+           if "/tmp/init_mode_normal", WM will wait "tv-viewer_show_done"
+           if "/tmp/init_mode_background", WM will skip waiting "tv-viewer_show_done" */
+        _e_main_check_tvviewer_init_type();
+
+        if(Check_Init_Type)
+          {
+             LOGE("Check tv-viewer init type");
+             if(strncmp(Check_Init_Type,"normal",6) == 0 )
+               {
+                  /* Check if tv-viewer is launched */
+                  LOGE("WM wait /tmp/tv-viewer_show_done file");
+                  prctl(PR_TASK_PERF_USER_TRACE, "WM wait /tmp/tv-viewer_show_done file"
+                        ,strlen("WM wait /tmp/tv-viewer_show_done file"));
+
+                  while(access(TVVIEWER_READY_PATH, F_OK) != 0){
+                       e_util_nanosleep(0, 50000000L);
+                       //usleep(50 * 1000);
+                       timeout++;
+
+                       if(timeout%20==0) /* print per 1 sec */
+                          LOGE("WM waiting tv-viewer_show_done");
+
+                       if(timeout>100)   /* timeout after 5 sec */
+                         {
+                            LOGE("[TIMEOUT] not created tv-viewer_show_done file.");
+                            prctl(PR_TASK_PERF_USER_TRACE, "[TIMEOUT] not created tv-viewer_show_done file."
+                                  ,strlen("[TIMEOUT] not created tv-viewer_show_done file."));
+                            break;
+                         }
+                  }
+
+                  /* create tv-viewer_show_done file within 5 sec */
+                  if(timeout<100)
+                    {
+                       LOGE("created /tmp/tv-viewer_show_done file");
+                       prctl(PR_TASK_PERF_USER_TRACE, "created /tmp/tv-viewer_show_done file"
+                             ,strlen("created /tmp/tv-viewer_show_done file"));
+                    }
+               }
+
+             free(Check_Init_Type);
+             Check_Init_Type = NULL;
+          }
+     }
+
    TS("\tscreens: manage roots");
    for (i = 0; i < num; i++)
      {
@@ -1714,6 +1981,10 @@ _e_main_screens_init(void)
              free(roots);
              return 0;
           }
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+        ecore_x_e_window_profile_supported_set(roots[i],
+                                               e_config->use_desktop_window_profile);
+#endif
 #ifdef _F_ZONE_WINDOW_ROTATION_
         if (e_config->wm_win_rotation)
           {
@@ -1735,6 +2006,9 @@ _e_main_screens_shutdown(void)
 {
    e_win_shutdown();
    e_border_shutdown();
+#ifdef _F_USE_TSZH_
+   e_tzsh_shutdown();
+#endif
    e_focus_shutdown();
    e_exehist_shutdown();
    e_menu_shutdown();
@@ -1799,6 +2073,7 @@ _e_main_desk_restore(E_Manager *man, E_Container *con)
      }
 }
 
+#ifndef _F_DISABLE_E_EFREET_
 static void
 _e_main_efreet_paths_init(void)
 {
@@ -1814,6 +2089,7 @@ _e_main_efreet_paths_init(void)
         *list = eina_list_prepend(*list, (void *)eina_stringshare_add(buff));
      }
 }
+#endif
 
 static void
 _e_main_modules_load(Eina_Bool safe_mode)

@@ -175,19 +175,40 @@ e_util_head_exec(int head, const char *cmd)
         /* yes it could overflow... but who will overflow DISPLAY eh? why? to
          * "exploit" your own applications running as you?
          */
-        strcpy(buf, penv_display);
+        if(strlen(penv_display)> sizeof(buf))
+           {
+              strncpy(buf, penv_display,sizeof(buf)-1);
+              buf[4095]='\0';
+           }
+        else
+          strncpy(buf, penv_display, sizeof(buf) - 1);
         buf[p2 - penv_display + 1] = 0;
         snprintf(buf2, sizeof(buf2), "%i", head);
-        strcat(buf, buf2);
+        strncat(buf, buf2, sizeof(buf) - strlen(penv_display) - 1);
      }
    else if (p1) /* "blah:x */
      {
-        strcpy(buf, penv_display);
+         if(strlen(penv_display)> sizeof(buf))
+           {
+              strncpy(buf, penv_display,sizeof(buf)-1);
+              buf[4095]='\0';
+           }
+        else
+          strncpy(buf, penv_display, sizeof(buf) - 1);
         snprintf(buf2, sizeof(buf2), ".%i", head);
-        strcat(buf, buf2);
+        strncat(buf, buf2, sizeof(buf) - strlen(penv_display) - 1);
      }
    else
-     strcpy(buf, penv_display);
+     {
+         if(strlen(penv_display)> sizeof(buf))
+           {
+              strncpy(buf, penv_display,sizeof(buf)-1);
+              buf[4095]='\0';
+           }
+        else
+          strncpy(buf, penv_display, sizeof(buf) - 1);
+         
+     }
 
    ok = 1;
    e_util_library_path_strip();
@@ -280,7 +301,7 @@ e_util_edje_icon_list_check(const char *list)
           }
         else
           {
-             strcpy(buf, p);
+             strncpy(buf, p, strlen(list));
              if (e_util_edje_icon_check(buf)) return 1;
              return 0;
           }
@@ -310,7 +331,7 @@ e_util_edje_icon_list_set(Evas_Object *obj, const char *list)
           }
         else
           {
-             strcpy(buf, p);
+             strncpy(buf, p, strlen(list));
              if (e_util_edje_icon_set(obj, buf)) return 1;
              return 0;
           }
@@ -324,9 +345,11 @@ e_util_menu_item_edje_icon_list_set(E_Menu_Item *mi, const char *list)
    char *buf;
    const char *p;
    char *c;
+   int len_list;
 
    if ((!list) || (!list[0])) return 0;
-   buf = alloca(strlen(list) + 1);
+   len_list = strlen(list);
+   buf = alloca(len_list + 1);
    p = list;
    while (*p)
      {
@@ -340,7 +363,8 @@ e_util_menu_item_edje_icon_list_set(E_Menu_Item *mi, const char *list)
           }
         else
           {
-             strcpy(buf, p);
+             strncpy(buf, p, len_list);
+             buf[len_list] = '\0';
              if (e_util_menu_item_theme_icon_set(mi, buf)) return 1;
              return 0;
           }
@@ -415,8 +439,10 @@ _e_util_icon_fdo_set(Evas_Object *obj, const char *icon)
    if (size < 16) size = 16;
    size = e_util_icon_size_normalize(size * e_scale);
 
+#ifndef _F_DISABLE_E_EFREET_
    path = efreet_icon_path_find(e_config->icon_theme, icon, size);
    if (!path) return 0;
+#endif
 
    e_icon_file_set(obj, path);
    return 1;
@@ -495,10 +521,14 @@ _e_util_menu_item_fdo_icon_set(E_Menu_Item *mi, const char *icon)
 
    if ((!icon) || (!icon[0])) return 0;
    size = e_util_icon_size_normalize(24 * e_scale);
+#ifndef _F_DISABLE_E_EFREET_
    path = efreet_icon_path_find(e_config->icon_theme, icon, size);
    if (!path) return 0;
    e_menu_item_icon_file_set(mi, path);
    return 1;
+#else
+   return 0;
+#endif
 }
 
 EAPI int
@@ -528,16 +558,22 @@ e_util_mime_icon_get(const char *mime, unsigned int size)
    char buf[1024];
    const char *file = NULL;
 
+#ifndef _F_DISABLE_E_EFREET_
    if (e_config->icon_theme_overrides)
      file = efreet_mime_type_icon_get(mime, e_config->icon_theme, e_util_icon_size_normalize(size));
    if (file) return file;
+#endif
 
    if (snprintf(buf, sizeof(buf), "e/icons/fileman/mime/%s", mime) >= (int)sizeof(buf))
      return NULL;
 
    file = e_theme_edje_file_get("base/theme/icons", buf);
    if (file && file[0]) return file;
+#ifndef _F_DISABLE_E_EFREET_
    return efreet_mime_type_icon_get(mime, e_config->icon_theme, e_util_icon_size_normalize(size));
+#else
+   return NULL;
+#endif
 }
 
 EAPI E_Container *
@@ -794,6 +830,7 @@ e_util_shell_env_path_eval(const char *path)
                        s[v2 - v1 - 1] = 0;
                        if (strncmp(s, "XDG", 3))
                          v = getenv(s);
+#ifndef _F_DISABLE_E_EFREET_
                        else
                          {
                             if (!strcmp(s, "XDG_CONFIG_HOME"))
@@ -803,6 +840,7 @@ e_util_shell_env_path_eval(const char *path)
                             else if (!strcmp(s, "XDG_DATA_HOME"))
                               v = (char *)efreet_data_home_get();
                          }
+#endif
 
                        if (v)
                          {
@@ -1019,10 +1057,11 @@ e_util_icon_theme_icon_add(const char *icon_name, unsigned int size, Evas *evas)
 {
    if (!icon_name) return NULL;
    if (icon_name[0] == '/') return _e_util_icon_add(icon_name, evas, size);
+#ifndef _F_DISABLE_E_EFREET_
    else
      {
         Evas_Object *obj;
-        const char *path;
+        const char *path = NULL;
 
         path = efreet_icon_path_find(e_config->icon_theme, icon_name, size);
         if (path)
@@ -1031,6 +1070,8 @@ e_util_icon_theme_icon_add(const char *icon_name, unsigned int size, Evas *evas)
              return obj;
           }
      }
+#endif
+
    return NULL;
 }
 
@@ -1042,7 +1083,9 @@ e_util_desktop_menu_item_icon_add(Efreet_Desktop *desktop, unsigned int size, E_
    if ((!desktop) || (!desktop->icon)) return;
 
    if (desktop->icon[0] == '/') path = desktop->icon;
+#ifndef _F_DISABLE_E_EFREET_
    else path = efreet_icon_path_find(e_config->icon_theme, desktop->icon, size);
+#endif
 
    if (path)
      {
@@ -1302,7 +1345,8 @@ e_util_fullscreen_curreny_any(void)
    E_Zone *zone = e_zone_current_get(con);
    E_Desk *desk;
 
-   if ((zone) && (zone->fullscreen > 0)) return EINA_TRUE;
+   if (!zone) return EINA_FALSE;
+   if (zone->fullscreen > 0) return EINA_TRUE;
    desk = e_desk_current_get(zone);
    if ((desk) && (desk->fullscreen_borders > 0)) return EINA_TRUE;
    return EINA_FALSE;
@@ -1434,6 +1478,7 @@ e_util_size_debug_set(Evas_Object *obj, Eina_Bool enable)
      }
 }
 
+#ifndef _F_DISABLE_E_EFREET_
 static Efreet_Desktop *
 _e_util_default_terminal_get(const char *defaults_list)
 {
@@ -1452,7 +1497,9 @@ _e_util_default_terminal_get(const char *defaults_list)
    if (ini) efreet_ini_free(ini);
    return tdesktop;
 }
+#endif
 
+#ifndef _F_DISABLE_E_EFREET_
 EAPI Efreet_Desktop *
 e_util_terminal_desktop_get(void)
 {
@@ -1506,7 +1553,7 @@ e_util_terminal_desktop_get(void)
      }
    return tdesktop;
 }
-
+#endif
 
 EAPI E_Config_Binding_Key *
 e_util_binding_match(const Eina_List *bindlist, Ecore_Event_Key *ev, unsigned int *num, const E_Config_Binding_Key *skip)
@@ -1658,6 +1705,18 @@ e_util_gadcon_orient_menu_item_icon_set(E_Gadcon_Orient orient, E_Menu_Item *mi)
         e_util_menu_item_theme_icon_set(mi, "enlightenment");
         break;
      }
+}
+
+EAPI void
+e_util_nanosleep(time_t sec, long nsec)
+{
+   struct timespec req, rem;
+   if (sec == 0 && nsec == 0) return;
+
+   req.tv_sec = sec;
+   req.tv_nsec = nsec;
+
+   nanosleep(&req, &rem);
 }
 
 #if _F_USE_EXTN_DIALOG_

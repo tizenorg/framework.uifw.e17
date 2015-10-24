@@ -52,8 +52,10 @@ void *alloca(size_t);
   do                                                                                         \
     {                                                                                        \
        int _errno = errno;                                                                   \
+       char _buf[256] = {0};                                                                 \
+       strerror_r(_errno, _buf, sizeof(char) * 256);                                         \
        _e_fm_op_scan_error = 1;                                                              \
-       _e_fm_op_send_error(_task, _e_fm_op_error_type, _fmt, __VA_ARGS__, strerror(_errno)); \
+       _e_fm_op_send_error(_task, _e_fm_op_error_type, _fmt, __VA_ARGS__, _buf);             \
        return 1;                                                                             \
     }                                                                                        \
   while (0)
@@ -62,8 +64,10 @@ void *alloca(size_t);
   do                                                                                         \
     {                                                                                        \
        int _errno = errno;                                                                   \
+       char _buf[256] = {0};                                                                 \
+       strerror_r(_errno, _buf, sizeof(char) * 256);                                         \
        _e_fm_op_work_error = 1;                                                              \
-       _e_fm_op_send_error(_task, _e_fm_op_error_type, _fmt, __VA_ARGS__, strerror(_errno)); \
+       _e_fm_op_send_error(_task, _e_fm_op_error_type, _fmt, __VA_ARGS__, _buf);             \
        return 1;                                                                             \
     }                                                                                        \
   while (0)
@@ -331,6 +335,8 @@ skip_arg:
              /* Don't move a file on top of itself. */
              if (p && p2)
                i = (strcmp(p, p2) == 0);
+             else
+               i = 0;
              E_FREE(p);
              E_FREE(p2);
              if (i) goto quit;
@@ -476,6 +482,9 @@ _e_fm_op_stdin_data(void *data __UNUSED__, Ecore_Fd_Handler *fd_handler)
    char *begin = NULL;
    ssize_t num = 0;
    int msize, identity;
+   char str_err[256] = {0};
+   int err_size = 256;
+   char *tmp = NULL;
 
    fd = ecore_main_fd_handler_fd_get(fd_handler);
    if (!buf)
@@ -494,7 +503,8 @@ _e_fm_op_stdin_data(void *data __UNUSED__, Ecore_Fd_Handler *fd_handler)
      }
    else if (num < 0)
      {
-        E_FM_OP_DEBUG("Error while reading from STDIN: read returned -1. (%s) Abort. \n", strerror(errno));
+        tmp = strerror_r(errno, str_err, err_size);
+        E_FM_OP_DEBUG("Error while reading from STDIN: read returned -1. (%s) Abort. \n", str_err);
         _e_fm_op_abort = 1;
      }
    else

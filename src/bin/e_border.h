@@ -116,13 +116,20 @@ typedef enum _E_Border_Hook_Point
 #ifdef _F_USE_TILED_DESK_LAYOUT_
    E_BORDER_HOOK_DESKTOP_LAYOUT_PRE_SHOW_SET,
    E_BORDER_HOOK_DESKTOP_LAYOUT_PRE_HIDE_SET,
+   E_BORDER_HOOK_DESKTOP_LAYOUT_UPDATE,
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
 #ifdef _F_E_WIN_AUX_HINT_
    E_BORDER_HOOK_AUX_HINT_EVAL,
 #endif /* end of _F_E_WIN_AUX_HINT_ */
 #ifdef _F_BORDER_HOOK_PATCH_
    E_BORDER_HOOK_POST_NEW_BORDER,
+   E_BORDER_HOOK_ICONIFY_BORDER,
+   E_BORDER_HOOK_UNICONIFY_BORDER,
 #endif
+#ifdef _F_USE_BORDER_TRANSFORM_
+   E_BORDER_HOOK_TRANSFORM_UPDATE,
+#endif
+
 } E_Border_Hook_Point;
 
 #ifdef _F_ZONE_WINDOW_ROTATION_
@@ -142,6 +149,14 @@ typedef enum _E_Border_Rotation_Type
    E_BORDER_ROTATION_TYPE_DESK_LAYOUT = 2
 } E_Border_Rotation_Type;
 #endif
+
+typedef enum _E_Visibility
+{
+   E_VISIBILITY_UNKNOWN = -1,
+   E_VISIBILITY_UNOBSCURED = 0,
+   E_VISIBILITY_PARTIALLY_OBSCURED = 1,
+   E_VISIBILITY_FULLY_OBSCURED = 2
+} E_Visibility;
 
 typedef struct _E_Border                     E_Border;
 typedef struct _E_Border_Pending_Move_Resize E_Border_Pending_Move_Resize;
@@ -166,6 +181,11 @@ typedef struct _E_Event_Border_Simple        E_Event_Border_Focus_Out;
 typedef struct _E_Event_Border_Simple        E_Event_Border_Property;
 typedef struct _E_Event_Border_Simple        E_Event_Border_Fullscreen;
 typedef struct _E_Event_Border_Simple        E_Event_Border_Unfullscreen;
+#ifdef _F_USE_BORDER_TRANSFORM_
+typedef struct _E_Event_Border_Simple        E_Event_Border_Transform_Changed;
+typedef struct _E_Border_Transform_Rect      E_Border_Transform_Rect;
+typedef struct _E_Border_Transform_Vertex    E_Border_Transform_Vertex;
+#endif /* end of _F_USE_BORDER_TRANSFORM_ */
 #ifdef _F_ZONE_WINDOW_ROTATION_
 typedef struct _E_Event_Border_Simple        E_Event_Border_Rotation; /* deprecated */
 typedef struct _E_Event_Border_Simple        E_Event_Border_Rotation_Change_Begin;
@@ -177,12 +197,25 @@ typedef struct _E_Event_Border_Desk_Layout   E_Event_Border_Desk_Layout_Set_Begi
 typedef struct _E_Event_Border_Desk_Layout   E_Event_Border_Desk_Layout_Set_Cancel;
 typedef struct _E_Event_Border_Desk_Layout   E_Event_Border_Desk_Layout_Set_End;
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+typedef struct _E_Event_Border_Simple        E_Event_Border_Anr;
 #ifdef _F_E_WIN_AUX_HINT_
 typedef struct _E_Border_Aux_Hint            E_Border_Aux_Hint;
 #endif /* end of _F_E_WIN_AUX_HINT_ */
 #ifdef _F_DEICONIFY_APPROVE_
 typedef struct _E_Event_Border_Simple        E_Event_Border_Force_Render_Done;
 #endif
+
+#ifdef _F_USE_BORDER_TRANSFORM_
+struct _E_Border_Transform_Rect
+{
+   int x, y, w, h, angle;
+};
+
+struct _E_Border_Transform_Vertex
+{
+   double vertexPosition[4][3];
+};
+#endif /* _F_USE_BORDER_TRANSFORM_ */
 
 typedef void                               (*E_Border_Move_Intercept_Cb)(E_Border *, int x, int y);
 #else
@@ -444,8 +477,14 @@ struct _E_Border
             E_Border      *video_parent_border;
             Eina_List     *video_child;
 #ifdef _F_USE_DESK_WINDOW_PROFILE_
-            const char    *profile;
-            Eina_List     *profiles;
+            struct
+            {
+               const char     *name;
+               const char    **available_list;
+               int             num;
+               unsigned char   wait_for_done : 1;
+               unsigned char   use : 1;
+            } profile;
 #endif
 
             unsigned char  centered : 1;
@@ -490,13 +529,15 @@ struct _E_Border
                   Ecore_X_Window_Stack_Mode detail;
                   unsigned long value_mask;
                } lower;
+               struct
+               {
+                  unsigned char pending;
+                  Ecore_X_Window win;
+               } iconify;
                unsigned char done : 1;  // pending done or not
                unsigned char pending: 1; // currently pending
                Eina_List *wait_for_list;
             } pending_event;
-#endif
-#ifdef _F_USE_DESK_WINDOW_PROFILE_
-            unsigned char  profile_list : 1;
 #endif
 #ifdef _F_ZONE_WINDOW_ROTATION_
             struct
@@ -548,7 +589,7 @@ struct _E_Border
             unsigned char video_parent : 1;
             unsigned char video_position : 1;
 #ifdef _F_USE_DESK_WINDOW_PROFILE_
-            unsigned char profile_list : 1;
+            unsigned char profile : 1;
 #endif
 #ifdef _F_ZONE_WINDOW_ROTATION_
             struct
@@ -657,6 +698,7 @@ struct _E_Border
       } illume;
 
       Ecore_X_Window_Attributes initial_attributes;
+      int app_type;
    } client;
 
    E_Container_Shape *shape;
@@ -843,21 +885,61 @@ struct _E_Border
 
 #ifdef _F_USE_TILED_DESK_LAYOUT_
    struct
-   {
-      int first; // new launch or re-launch
-      int launch_by; // split-launcher, taskmanager, other
-      int launch_to; // top, bottom pos, -1:no consider
-   } launch_info;
-#endif
+     {
+        int first; // new launch or re-launch
+        int launch_by; // launcher, taskmanager, other
+        int launch_to; // tile number, -1:no consider
+        int maximize_direct; // window maximize direction in tile.
+        Ecore_X_Window parent; //window to be launched when <parent> launched during MLS initialize.
+        int launch_size; // window size for MLS launch (fhd 1080p, hd 720p, sd 540p)
+        unsigned char  pack_ly_ctrl : 1;  // pack in ly-ctrl layout
+     } launch_info;
+
+   struct
+     {
+        Eina_Bool maximizable; // if true, maximize button will show over window otherwise not
+        Eina_Bool replace_maximize; // if true, special handling for maximize
+     } maximize_info;
+#endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+
+#ifdef _F_USE_BORDER_TRANSFORM_
+   struct
+     {
+        E_Border_Transform_Rect geometry;
+        E_Border_Transform_Rect border_geometry;  // a geometry transformed keeping ratio, couldn't be equal to screen size
+        E_Border_Transform_Rect input_geometry;
+        E_Border_Transform_Vertex vertex;
+
+        Eina_Bool enable;
+        Eina_Bool ratio_fit;
+        Eina_Bool force_pending;
+
+        Eina_List *child_wins;
+        Ecore_X_Window parent;
+
+        double matrix[3][3];
+     } transform;
+#endif /* end of _F_USE_BORDER_TRANSFORM_ */
 
 #ifdef _F_USE_ICONIFY_RESIZE_
    struct
-   {
-      unsigned char support;
-      unsigned char set;
-      int           w, h;
-   } iconify_resize;
+     {
+        unsigned char support;
+        unsigned char set;
+        unsigned char need_draw;
+        int x, y, w, h;
+     } iconify_resize;
+#endif /* end of _F_USE_ICONIFY_RESIZE_ */
+
+#ifdef _F_USE_CAPTURE_
+   unsigned char use_capture_support;
 #endif
+
+   int                        hung_count;
+   unsigned char              iconify_by_client : 1;
+
+   unsigned char              post_raise   : 1;
+   unsigned char              post_lower   : 1;
 };
 
 struct _E_Border_Pending_Move_Resize
@@ -1024,6 +1106,8 @@ EAPI void           e_border_tmp_input_hidden_pop(E_Border *bd);
 
 EAPI void           e_border_activate(E_Border *bd, Eina_Bool just_do_it);
 
+EAPI void           e_border_geometry_get(E_Border *bd, int *x, int *y, int *w, int *h);
+
 #ifdef _F_ZONE_WINDOW_ROTATION_
 EAPI Eina_Bool      e_border_rotation_is_progress(E_Border *bd);
 EAPI Eina_Bool      e_border_rotation_is_available(E_Border *bd, int ang);
@@ -1037,6 +1121,7 @@ EAPI Eina_Bool      e_border_rotation_set(E_Border *bd, int rotation);
 
 #ifdef _F_USE_TILED_DESK_LAYOUT_
 EAPI void           e_border_desk_layout_set(E_Border *bd, E_Desk_Layout *desk_ly, Eina_Bool show, Eina_Bool hook);
+EAPI void           e_border_desk_layout_border_update(E_Border *bd);
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
 
 #ifdef _F_E_WIN_AUX_HINT_
@@ -1048,8 +1133,29 @@ EAPI void           e_border_aux_hint_info_update(E_Border *bd);
 EAPI void           e_border_force_render_request(E_Border *bd, Eina_Bool uniconify);
 EAPI Eina_List     *e_border_uniconify_pending_list_get(void);
 EAPI Eina_List     *e_border_uniconify_waiting_list_get(void);
+EAPI void           e_border_pending_iconify(E_Border *bd);
 #endif /* end of _F_DEICONIFY_APPROVE_ */
 
+#ifdef _F_USE_BORDER_TRANSFORM_
+EAPI void                       e_border_transform_enable_set(E_Border *bd, Eina_Bool enable);
+EAPI Eina_Bool                  e_border_transform_enable_get(E_Border *bd);
+EAPI void                       e_border_transform_set(E_Border *bd, int x, int y, int w, int h, int angle);
+EAPI void                       e_border_transform_get(E_Border *bd, int *x, int *y, int *w, int *h, int *angle);
+EAPI void                       e_border_transform_border_get(E_Border *bd, int *x, int *y, int *w, int *h, int*angle);
+EAPI void                       e_border_transform_update(E_Border* bd);
+EAPI void                       e_border_transform_force_pending_set(E_Border *bd, Eina_Bool force_pending);
+EAPI Eina_Bool                  e_border_transform_force_pending_get(E_Border *bd);
+EAPI void                       e_border_transform_ratio_fit_set(E_Border *bd, Eina_Bool ratio_fit);
+EAPI Eina_Bool                  e_border_transform_ratio_fit_get(E_Border *bd);
+EAPI E_Border_Transform_Vertex  e_border_transform_vertex_get(E_Border *bd);
+EAPI void                       e_border_transform_child_add(E_Border* bd, E_Border* parent);
+EAPI void                       e_border_transform_child_remove(E_Border* bd, E_Border* parent);
+#endif /* end of _F_USE_BORDER_TRANSFORM_ */
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+EAPI void                       e_border_input_transform_enable_set(E_Border *bd, Eina_Bool enable);
+EAPI void                       e_border_input_transform_set(E_Border *bd, int x, int y, int w, int h, int angle);
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
 
 extern EAPI int E_EVENT_BORDER_RESIZE;
 extern EAPI int E_EVENT_BORDER_MOVE;
@@ -1071,6 +1177,9 @@ extern EAPI int E_EVENT_BORDER_FOCUS_OUT;
 extern EAPI int E_EVENT_BORDER_PROPERTY;
 extern EAPI int E_EVENT_BORDER_FULLSCREEN;
 extern EAPI int E_EVENT_BORDER_UNFULLSCREEN;
+#ifdef _F_USE_BORDER_TRANSFORM_
+extern EAPI int E_EVENT_BORDER_TRANSFORM_CHANGED;
+#endif /* end of _F_USE_BORDER_TRANSFORM_ */
 #ifdef _F_ZONE_WINDOW_ROTATION_
 extern EAPI int E_EVENT_BORDER_ROTATION; /* deprecated */
 extern EAPI int E_EVENT_BORDER_ROTATION_CHANGE_BEGIN;
@@ -1085,6 +1194,6 @@ extern EAPI int E_EVENT_BORDER_DESK_LAYOUT_SET_END;
 #ifdef _F_DEICONIFY_APPROVE_
 extern EAPI int E_EVENT_BORDER_FORCE_RENDER_DONE;
 #endif /* end of _F_DEICONIFY_APPROVE_ */
-
+extern EAPI int E_EVENT_BORDER_ANR;
 #endif
 #endif

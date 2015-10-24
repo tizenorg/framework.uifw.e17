@@ -3,6 +3,8 @@
 #ifndef E_WIDGET_SLIDER_H
 #define E_WIDGET_SLIDER_H
 
+#ifndef _F_DISABLE_E_WIDGET
+
 EAPI Evas_Object *e_widget_slider_add(Evas *evas, int horiz, int rev, const char *fmt, double min, double max, double step, int count, double *dval, int *ival, Evas_Coord size);
 EAPI int e_widget_slider_value_double_set(Evas_Object *slider, double dval);
 EAPI int e_widget_slider_value_int_set(Evas_Object *slider, int ival);
@@ -14,5 +16,6 @@ EAPI void e_widget_slider_value_step_size_set(Evas_Object *slider, double step_s
 
 EAPI void e_widget_slider_special_value_add(Evas_Object *obj, double value, double error, const char *label);
 
+#endif
 #endif
 #endif

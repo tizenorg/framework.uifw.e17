@@ -258,11 +258,10 @@ e_init_init(void)
 
    num = 0;
    roots = ecore_x_window_root_list(&num);
-   if ((!roots) || (num <= 0))
+   if (!roots) return 0;
+   if (num <= 0)
      {
-        if (roots)
-          free(roots);
-
+        free(roots);
         return 0;
      }
    root = roots[0];

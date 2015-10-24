@@ -288,18 +288,26 @@ _e_sys_cb_timer(void *data __UNUSED__)
    snprintf(buf, sizeof(buf),
             "%s/enlightenment/utils/enlightenment_sys -t halt",
             e_prefix_lib_get());
+   if (_e_sys_halt_check_exe)
+     ecore_exe_free(_e_sys_halt_check_exe);
    _e_sys_halt_check_exe = ecore_exe_run(buf, NULL);
    snprintf(buf, sizeof(buf),
             "%s/enlightenment/utils/enlightenment_sys -t reboot",
             e_prefix_lib_get());
+   if (_e_sys_reboot_check_exe)
+     ecore_exe_free(_e_sys_reboot_check_exe);
    _e_sys_reboot_check_exe = ecore_exe_run(buf, NULL);
    snprintf(buf, sizeof(buf),
             "%s/enlightenment/utils/enlightenment_sys -t suspend",
             e_prefix_lib_get());
+   if (_e_sys_suspend_check_exe)
+     ecore_exe_free(_e_sys_suspend_check_exe);
    _e_sys_suspend_check_exe = ecore_exe_run(buf, NULL);
    snprintf(buf, sizeof(buf),
             "%s/enlightenment/utils/enlightenment_sys -t hibernate",
             e_prefix_lib_get());
+   if (_e_sys_hibernate_check_exe)
+     ecore_exe_free(_e_sys_hibernate_check_exe);
    _e_sys_hibernate_check_exe = ecore_exe_run(buf, NULL);
    return ECORE_CALLBACK_CANCEL;
 }
@@ -325,6 +333,7 @@ _e_sys_cb_exit(void *data __UNUSED__, int type __UNUSED__, void *event)
                }
           }
         _e_sys_action_current = E_SYS_NONE;
+        ecore_exe_free(_e_sys_exe);
         _e_sys_exe = NULL;
         return ECORE_CALLBACK_RENEW;
      }
@@ -336,6 +345,7 @@ _e_sys_cb_exit(void *data __UNUSED__, int type __UNUSED__, void *event)
         if (ev->exit_code == 0)
           {
              _e_sys_can_halt = 1;
+             ecore_exe_free(_e_sys_halt_check_exe);
              _e_sys_halt_check_exe = NULL;
           }
      }
@@ -345,6 +355,7 @@ _e_sys_cb_exit(void *data __UNUSED__, int type __UNUSED__, void *event)
         if (ev->exit_code == 0)
           {
              _e_sys_can_reboot = 1;
+             ecore_exe_free(_e_sys_reboot_check_exe);
              _e_sys_reboot_check_exe = NULL;
           }
      }
@@ -354,6 +365,7 @@ _e_sys_cb_exit(void *data __UNUSED__, int type __UNUSED__, void *event)
         if (ev->exit_code == 0)
           {
              _e_sys_can_suspend = 1;
+             ecore_exe_free(_e_sys_suspend_check_exe);
              _e_sys_suspend_check_exe = NULL;
           }
      }
@@ -363,6 +375,7 @@ _e_sys_cb_exit(void *data __UNUSED__, int type __UNUSED__, void *event)
         if (ev->exit_code == 0)
           {
              _e_sys_can_hibernate = 1;
+             ecore_exe_free(_e_sys_hibernate_check_exe);
              _e_sys_hibernate_check_exe = NULL;
           }
      }
@@ -817,8 +830,10 @@ _e_sys_action_do(E_Sys_Action a, char *param __UNUSED__, Eina_Bool raw)
              if (raw)
                {
                   _e_sys_susp_hib_check();
+#ifndef _F_DISABLE_E_DESKLOCK
                   if (e_config->desklock_on_suspend)
                     e_desklock_show(EINA_TRUE);
+#endif
                   _e_sys_begin_time = ecore_time_get();
                   _e_sys_exe = ecore_exe_run(buf, NULL);
                }
@@ -831,11 +846,12 @@ _e_sys_action_do(E_Sys_Action a, char *param __UNUSED__, Eina_Bool raw)
                     }
                   else
                     {
+#ifndef _F_DISABLE_E_DESKLOCK
                        if (e_config->desklock_on_suspend)
                          e_desklock_show(EINA_TRUE);
-                       
+#endif
                        _e_sys_susp_hib_check();
-                       
+
                        _e_sys_begin_time = ecore_time_get();
                        _e_sys_exe = ecore_exe_run(buf, NULL);
                        od = e_obj_dialog_new(e_container_current_get(e_manager_current_get()),
@@ -877,20 +893,22 @@ _e_sys_action_do(E_Sys_Action a, char *param __UNUSED__, Eina_Bool raw)
                {
                   if (raw)
                     {
+#ifndef _F_DISABLE_E_DESKLOCK
                        if (e_config->desklock_on_suspend)
                          e_desklock_show(EINA_TRUE);
-                       
+#endif
                        _e_sys_susp_hib_check();
                        _e_sys_begin_time = ecore_time_get();
                        _e_sys_exe = ecore_exe_run(buf, NULL);
                     }
                   else
                     {
+#ifndef _F_DISABLE_E_DESKLOCK
                        if (e_config->desklock_on_suspend)
                          e_desklock_show(EINA_TRUE);
-                       
+#endif
                        _e_sys_susp_hib_check();
-                       
+
                        _e_sys_begin_time = ecore_time_get();
                        _e_sys_exe = ecore_exe_run(buf, NULL);
                        od = e_obj_dialog_new(e_container_current_get(e_manager_current_get()),

@@ -1,5 +1,9 @@
 #include "e.h"
 
+#include "dlog.h"
+#undef LOG_TAG
+#define LOG_TAG "E17"
+
 /* TODO List:
  *
  * * add module types/classes
@@ -20,9 +24,15 @@ static Eina_List *_e_modules = NULL;
 static Ecore_Idle_Enterer *_e_module_idler = NULL;
 static Eina_List *_e_modules_delayed = NULL;
 
+/* start check */
+static Eina_Bool           _e_module_start_checker_cb_idler(void *data);
+
 EAPI int E_EVENT_MODULE_UPDATE = 0;
 EAPI int E_EVENT_MODULE_INIT_END = 0;
 
+#ifdef _F_USE_VCONF_READY_
+#define VCONF_WAIT_TIME 10000 /* 0.001 sec */
+#endif /* end of _F_USE_VCONF_READY_ */
 /* externally accessible functions */
 EINTERN int
 e_module_init(void)
@@ -74,7 +84,14 @@ e_module_all_load(void)
    Eina_List *l;
    E_Config_Module *em;
    char buf[128];
-
+#ifdef _F_USE_VCONF_READY_
+   /* Check if vconf_ready file exist per 10000 micro sec in order to solve smack error */
+   while(access("/tmp/vconf_ready", F_OK) != 0)
+     {
+        e_util_nanosleep(0, VCONF_WAIT_TIME * 1000);
+        //usleep(VCONF_WAIT_TIME);
+     }
+#endif /* end of _F_USE_VCONF_READY_ */
    e_config->modules =
      eina_list_sort(e_config->modules, 0, _e_module_sort_priority);
 
@@ -82,6 +99,7 @@ e_module_all_load(void)
      {
         if (!em) continue;
         printf ("[E17_MODULE_INFO] NAME:%s,   ENABLE:%d,  DELAYED:%d\n", em->name, em->enabled, em->delayed);
+        LOGE("[E17_MODULE_INFO] NAME:%s,   ENABLE:%d,  DELAYED:%d", em->name, em->enabled, em->delayed);
 
         if ((em->delayed) && (em->enabled))
           {
@@ -392,6 +410,7 @@ e_module_dialog_show(E_Module *m, const char *title, const char *body)
    e_dialog_title_set(dia, title);
    if (m)
      {
+#ifndef _F_DISABLE_E_EFREET_
         Efreet_Desktop *desktop;
 
         snprintf(buf, sizeof(buf), "%s/module.desktop", e_module_dir_get(m));
@@ -413,6 +432,7 @@ e_module_dialog_show(E_Module *m, const char *title, const char *body)
              evas_object_show(dia->icon_object);
           }
         if (desktop) efreet_desktop_free(desktop);
+#endif
      }
    else
      e_dialog_icon_set(dia, "preferences-plugin", 64);
@@ -570,6 +590,8 @@ _e_module_cb_idler(void *data __UNUSED__)
              snprintf(buf, sizeof(buf), "DELAYED MODULE LOAD: %s", name);
              e_main_ts(buf);
 #endif
+             LOGE("[E17_MODULE_INFO] Delayed Load %s", name ? name : "NONAME");
+             ELBF(ELBT_MNG, 0, 0, "[E17_MODULE_INFO] Delayed Load %s", name ? name : "NONAME");
              e_module_enable(m);
           }
         eina_stringshare_del(name);
@@ -605,4 +627,26 @@ _e_module_event_update_free(void *data __UNUSED__, void *event)
    E_FREE(ev->name);
    E_FREE(ev);
 }
+
+EAPI void
+e_module_wm_start_start(void)
+{
+   Ecore_Idle_Enterer *idle_enterer = ecore_idle_enterer_add(_e_module_start_checker_cb_idler, NULL);
+   return;
+}
+
+static Eina_Bool
+_e_module_start_checker_cb_idler(void *data)
+{
+   FILE *_wm_start_checker = NULL;
+   _wm_start_checker = fopen("/tmp/wm_start", "wb");
+   if (_wm_start_checker )
+     {
+        LOGE("[E17_MODULE_INFO] WM_START");
+        ELBF(ELBT_MNG, 0, 0, "[E17_MODULE_INFO] WM_START");
+        fclose(_wm_start_checker);
+     }
+   return ECORE_CALLBACK_CANCEL;
+}
+
 

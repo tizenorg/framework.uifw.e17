@@ -23,6 +23,7 @@ _serialized_setup_11_new(void)
    if (e_randr_screen_info.randr_version == ECORE_X_RANDR_1_1)
      {
         if (e_randr_screen_info.rrvd_info.randr_info_11->csize_index >= e_randr_screen_info.rrvd_info.randr_info_11->nsizes) goto _serialized_setup_11_new_failed_free_ss;
+        if (!e_randr_screen_info.rrvd_info.randr_info_11->sizes) goto _serialized_setup_11_new_failed_free_ss;;
         size = e_randr_screen_info.rrvd_info.randr_info_11->sizes + e_randr_screen_info.rrvd_info.randr_info_11->csize_index;
         if (!size) goto _serialized_setup_11_new_failed_free_ss;;
         rate = e_randr_screen_info.rrvd_info.randr_info_11->current_rate;
@@ -122,15 +123,13 @@ _11_try_restore_configuration(void)
    else if (e_randr_screen_info.randr_version > ECORE_X_RANDR_1_1)
      {
         sizes = ecore_x_randr_screen_primary_output_sizes_get(e_randr_screen_info.root, &nsizes);
-        if (sizes)
+        if (!sizes) return EINA_FALSE;
+        for (i = 0; i < nsizes; i++)
           {
-             for (i = 0; i < nsizes; i++)
+             if (SIZE_EQUAL(sizes[i]))
                {
-                  if (SIZE_EQUAL(sizes[i]))
-                    {
-                       free(sizes);
-                       return ecore_x_randr_screen_primary_output_size_set(e_randr_screen_info.root, i);
-                    }
+                  free(sizes);
+                  return ecore_x_randr_screen_primary_output_size_set(e_randr_screen_info.root, i);
                }
           }
      }

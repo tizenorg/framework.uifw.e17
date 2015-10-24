@@ -272,6 +272,7 @@ e_exehist_sorted_list_get(E_Exehist_Sort sort_type, int max)
    return list;
 }
 
+#ifndef _F_DISABLE_E_EFREET_
 EAPI void
 e_exehist_mime_desktop_add(const char *mime, Efreet_Desktop *desktop)
 {
@@ -279,7 +280,7 @@ e_exehist_mime_desktop_add(const char *mime, Efreet_Desktop *desktop)
    E_Exehist_Item *ei;
    Eina_List *l;
    char buf[PATH_MAX];
-   Efreet_Ini *ini;
+   Efreet_Ini *ini = NULL;
 
    if ((!mime) || (!desktop)) return;
    if (!desktop->orig_path) return;
@@ -306,7 +307,7 @@ e_exehist_mime_desktop_add(const char *mime, Efreet_Desktop *desktop)
         efreet_ini_save(ini, buf);
         efreet_ini_free(ini);
      }
-   
+
    EINA_LIST_FOREACH(_e_exehist->mimes, l, ei)
      {
 	if ((ei->launch_method) && (!strcmp(mime, ei->launch_method)))
@@ -342,7 +343,7 @@ e_exehist_mime_desktop_add(const char *mime, Efreet_Desktop *desktop)
 EAPI Efreet_Desktop *
 e_exehist_mime_desktop_get(const char *mime)
 {
-   Efreet_Desktop *desktop;
+   Efreet_Desktop *desktop = NULL;
    E_Exehist_Item *ei;
    Eina_List *l;
 
@@ -354,21 +355,22 @@ e_exehist_mime_desktop_get(const char *mime)
    EINA_LIST_FOREACH(_e_exehist->mimes, l, ei)
      {
         fprintf(stderr, "look for %s == %s\n", mime, ei->launch_method);
-	if ((ei->launch_method) && (!strcmp(mime, ei->launch_method)))
-	  {
-	     desktop = NULL;
-	     if (ei->exe) desktop = efreet_util_desktop_file_id_find(ei->exe);
+        if ((ei->launch_method) && (!strcmp(mime, ei->launch_method)))
+          {
+             desktop = NULL;
+             if (ei->exe) desktop = efreet_util_desktop_file_id_find(ei->exe);
              fprintf(stderr, "  desk = %p\n", desktop);
-	     if (desktop)
-	       {
-		  _e_exehist_unload_queue();
-		  return desktop;
-	       }
-	  }
+             if (desktop)
+               {
+                  _e_exehist_unload_queue();
+                  return desktop;
+               }
+          }
      }
    _e_exehist_unload_queue();
    return NULL;
 }
+#endif
 
 /* local subsystem functions */
 static void

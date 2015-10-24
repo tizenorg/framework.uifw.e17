@@ -20,7 +20,11 @@ static Eina_Hash *_glob_handlers = NULL;
 EAPI const char *
 e_fm_mime_filename_get(const char *fname)
 {
+#ifndef _F_DISABLE_E_EFREET_
    return efreet_mime_globs_type_get(fname);
+#else
+   return NULL;
+#endif
 }
 
 /* returns:

@@ -451,26 +451,24 @@ e_bg_handler_set(void *data __UNUSED__, Evas_Object *obj __UNUSED__, const char 
    E_Container *con;
    char buf[4096];
    int copy = 1;
-   int x = 0, y = 0;
    E_Zone *zone;
    E_Desk *desk;
 
    if (!path) return;
 
    con = e_container_current_get(e_manager_current_get());
+   if (!con) return;
+#ifndef _F_DISABLE_E_IMPORT_CONFIG_DIALOG
    if (!eina_str_has_extension(path, "edj"))
      {
         e_import_config_dialog_show(con, path, (Ecore_End_Cb)_e_bg_handler_image_imported, NULL);
         return;
      }
+#endif
    zone = e_zone_current_get(con);
+   if (!zone) return;
    desk = e_desk_current_get(zone);
-
-   if (desk)
-     {
-        x = desk->x;
-        y = desk->y;
-     }
+   if (!desk) return;
 
    /* if not in system dir or user dir, copy to user dir */
    e_prefix_data_concat_static(buf, "data/backgrounds");
@@ -496,13 +494,13 @@ e_bg_handler_set(void *data __UNUSED__, Evas_Object *obj __UNUSED__, const char 
         if (!ecore_file_exists(buf))
           {
              if (!ecore_file_cp(path, buf)) return;
-             e_bg_add(con->num, zone->num, x, y, buf);
+             e_bg_add(con->num, zone->num, desk->x, desk->y, buf);
           }
         else
-          e_bg_add(con->num, zone->num, x, y, path);
+          e_bg_add(con->num, zone->num, desk->x, desk->y, path);
      }
    else
-     e_bg_add(con->num, zone->num, x, y, path);
+     e_bg_add(con->num, zone->num, desk->x, desk->y, path);
 
    e_bg_update();
    e_config_save_queue();
@@ -567,17 +565,12 @@ static void
 _e_bg_handler_image_imported(const char *image_path, void *data __UNUSED__)
 {
    E_Container *con = e_container_current_get(e_manager_current_get());
+   if (!con) return;
    E_Zone *zone = e_zone_current_get(con);
+   if (!zone) return;
    E_Desk *desk = e_desk_current_get(zone);
-   int x = 0, y = 0;
-
-   if (desk)
-     {
-        x = desk->x;
-        y = desk->y;
-     }
-
-   e_bg_add(con->num, zone->num, x, y, image_path);
+   if (!desk) return;
+   e_bg_add(con->num, zone->num, desk->x, desk->y, image_path);
    e_bg_update();
    e_config_save_queue();
 }

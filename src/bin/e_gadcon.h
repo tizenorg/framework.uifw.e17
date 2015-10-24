@@ -59,10 +59,12 @@ typedef struct _E_Gadcon_Location     E_Gadcon_Location;
 #define E_GADCON_DUMMY_TYPE  0xE0b01016
 #define E_GADCON_CLIENT_TYPE 0xE0b01007
 
+#ifndef _F_DISABLE_E_GADGETS
 EAPI extern int E_EVENT_GADCON_CLIENT_ADD;
 EAPI extern int E_EVENT_GADCON_CLIENT_DEL;
 EAPI extern int E_EVENT_GADCON_CLIENT_CLASS_ADD;
 EAPI extern int E_EVENT_GADCON_CLIENT_CLASS_DEL;
+#endif
 
 struct _E_Gadcon
 {
@@ -263,6 +265,8 @@ struct _E_Gadcon_Location
    } gadget_remove;
 };
 
+#ifndef _F_DISABLE_E_GADGETS
+
 EINTERN int                  e_gadcon_init(void);
 EINTERN int                  e_gadcon_shutdown(void);
 EAPI void                    e_gadcon_provider_register(const E_Gadcon_Client_Class *cc);
@@ -361,6 +365,7 @@ EAPI void                    e_gadcon_client_drag_set(E_Gadcon_Client *gcc);
     {                                                                                       \
        char *_buf;                                                                          \
        int _num = 0;                                                                        \
+       int _len = 0;                                                                        \
        _type *_ci;                                                                          \
        if (_items)                                                                          \
          {                                                                                  \
@@ -369,8 +374,9 @@ EAPI void                    e_gadcon_client_drag_set(E_Gadcon_Client *gcc);
             _p = strrchr(_ci->id, '.');                                                     \
             if (_p) _num = atoi(_p + 1) + 1;                                                \
          }                                                                                  \
-       _buf = alloca(sizeof (char) * ((_gc_class.name ? strlen(_gc_class.name) : 6) + 11)); \
-       sprintf(_buf, "%s.%d", _gc_class.name, _num);                                        \
+       _len = sizeof(char) * ((_gc_class.name ? strlen(_gc_class.name) : 6) + 11);          \
+       _buf = alloca(_len);                                                                 \
+       snprintf(_buf, _len - 1, "%s.%d", _gc_class.name, _num);                             \
        _id = _buf;                                                                          \
     }                                                                                       \
   else                                                                                      \
@@ -381,5 +387,6 @@ EAPI void                    e_gadcon_client_drag_set(E_Gadcon_Client *gcc);
          if ((_ci->id) && (!strcmp(_ci->id, _id))) return _ci;                              \
     }
 
+#endif
 #endif
 #endif

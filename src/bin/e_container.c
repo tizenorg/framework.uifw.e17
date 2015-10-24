@@ -27,8 +27,6 @@ static void         _e_container_event_container_resize_free(void *data, void *e
 
 EAPI int E_EVENT_CONTAINER_RESIZE = 0;
 static Eina_List *handlers = NULL;
-/*Add layer for Tizen UX */
-#define NUM_OF_LAYERS 12
 
 /* externally accessible functions */
 EINTERN int
@@ -158,7 +156,7 @@ e_container_new(E_Manager *man)
                               ECORE_X_WINDOW_CONFIGURE_MASK_SIBLING |
                               ECORE_X_WINDOW_CONFIGURE_MASK_STACK_MODE,
                               0, 0, 0, 0, 0,
-                              con->layers[10].win, ECORE_X_WINDOW_STACK_ABOVE);
+                              con->layers[11].win, ECORE_X_WINDOW_STACK_ABOVE);
 
    /* Put menu win on top */
    mwin = e_menu_grab_window_get();
@@ -167,7 +165,7 @@ e_container_new(E_Manager *man)
                               ECORE_X_WINDOW_CONFIGURE_MASK_SIBLING |
                               ECORE_X_WINDOW_CONFIGURE_MASK_STACK_MODE,
                               0, 0, 0, 0, 0,
-                              con->layers[10].win, ECORE_X_WINDOW_STACK_ABOVE);
+                              con->layers[11].win, ECORE_X_WINDOW_STACK_ABOVE);
 
    /* Put background win at the bottom */
    ecore_x_window_configure(con->bg_win,
@@ -382,6 +380,7 @@ e_container_desk_window_profile_get(E_Container *con,
 
    E_OBJECT_CHECK_RETURN(con, NULL);
    E_OBJECT_TYPE_CHECK_RETURN(con, E_CONTAINER_TYPE, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(profile, NULL);
 
    EINA_LIST_FOREACH(con->zones, l, zone)
      {
@@ -616,7 +615,7 @@ _e_container_layer_map(int layer)
 
    if (layer < 0) layer = 0;
    pos = 1 + (layer / 50);
-   if (pos > 11) pos = 11;
+   if (pos > (NUM_OF_LAYERS -1)) pos = (NUM_OF_LAYERS -1);
    return pos;
 }
 

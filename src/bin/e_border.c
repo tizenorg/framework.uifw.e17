@@ -19,10 +19,22 @@
  */
 #include "e.h"
 
+#include <pixman.h>
+#include <X11/extensions/Xrender.h>
 //#define INOUTDEBUG_MOUSE 1
 //#define INOUTDEBUG_FOCUS 1
 
+#ifdef _F_USE_BORDER_TRANSFORM_
+#include <X11/extensions/Xcomposite.h>
+#endif
+
 #include "dlog.h"
+
+#ifdef _F_USE_WM_ZONE_HOST_
+#define _GNU_SOURCE
+#include <vasum.h>
+#endif
+
 #undef LOG_TAG
 #define LOG_TAG "E17"
 
@@ -110,9 +122,11 @@ static Eina_Bool _e_border_cb_desktop_change(void *data,
 static Eina_Bool _e_border_cb_sync_alarm(void *data,
                                          int   ev_type,
                                          void *ev);
+#ifndef _F_DISABLE_E_EFREET_
 static Eina_Bool _e_border_cb_efreet_cache_update(void *data,
                                                   int   ev_type,
                                                   void *ev);
+#endif
 static Eina_Bool _e_border_cb_config_icon_theme(void *data,
                                                 int   ev_type,
                                                 void *ev);
@@ -301,7 +315,17 @@ static void _e_border_shape_input_rectangle_set(E_Border* bd);
 static void _e_border_show(E_Border *bd);
 static void _e_border_hide(E_Border *bd);
 
+#ifdef _F_USE_VIRT_RESOLUTION_
+static Eina_Bool
+_e_mod_revert_resolution( Ecore_X_Window win);
 
+static Eina_Bool
+_e_mod_check_change_resolution( Ecore_X_Window win);
+
+#define INIT_ZERO 0
+#define PLANE_MUTE_TIMER 2
+#define PLANE_MUTE_DELAY_TIMER 0.5
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
 #ifdef _F_FOCUS_WINDOW_IF_TOP_STACK_
 static void _e_border_latest_stacked_focus (E_Border* bd);
 static void _e_border_check_stack (E_Border *bd);
@@ -334,6 +358,30 @@ static int _e_border_desk_layout_launcher_get(E_Border *bd);
 static void _e_border_desk_layout_clear(E_Border *bd);
 static void _e_border_desk_layout_set(E_Border *bd);
 #endif
+
+#ifdef _F_USE_BORDER_TRANSFORM_
+static E_Border_Transform_Rect   _e_border_transform_rect_client_rect_get(E_Border *bd);
+static E_Border_Transform_Rect   _e_border_transform_rect_create(int x, int y, int w, int h, int angle);
+static E_Border_Transform_Rect   _e_border_transform_vertex_to_rect(E_Border_Transform_Vertex* vertex);
+static E_Border_Transform_Rect   _e_border_transform_rect_ratio_rect_get(E_Border_Transform_Rect *dest,
+                                                                         E_Border_Transform_Rect *source);
+static pixman_transform_t        _e_border_transform_matrix_calculate(E_Border_Transform_Rect *dest,
+                                                                      E_Border_Transform_Rect *source);
+static E_Border_Transform_Vertex _e_border_transform_matrix_apply(E_Border_Transform_Rect *source,
+                                                                  pixman_transform_t *matrix);
+static void                      _e_border_transform_input_redirect_send(E_Border *bd,
+                                                                         pixman_transform_t *matrix);
+static void                      _e_border_transform_change_event_send(E_Border *bd);
+static void                      _e_border_event_border_transform_changed_free(void *data,
+                                                                               void *ev);
+static pixman_transform_t _e_border_transform_matrix_get(E_Border *bd);
+static void               _e_border_transform_matrix_set(E_Border* bd,
+                                                         pixman_transform_t* matrix);
+#endif /* end of _F_USE_BORDER_TRANSFORM_ */
+
+static void
+_e_border_event_border_anr_free(void *data __UNUSED__,
+                                void      *ev);
 
 #ifdef _F_E_WIN_AUX_HINT_
 static void _e_border_aux_hint_job(void *data);
@@ -371,10 +419,12 @@ static int warp_x = 0;
 static int warp_y = 0;
 static Ecore_X_Window warp_to_win;
 static Ecore_Timer *warp_timer = NULL;
-
-#ifdef _F_KILL_HUNG_PROCESS_THROUGH_RD_
-static E_DBus_Connection *conn = NULL;
-#endif
+#ifdef _F_USE_VIRT_RESOLUTION_
+static Eina_List *res_windows_list = NULL;
+static Ecore_Timer *mute_timer = NULL;
+static unsigned int pref_w      = INIT_ZERO;
+static unsigned int pref_h      = INIT_ZERO;
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
 
 #ifdef _F_DEICONIFY_APPROVE_
 static E_Msg_Handler *_msg_handler = NULL;
@@ -469,6 +519,9 @@ EAPI int E_EVENT_BORDER_FOCUS_OUT = 0;
 EAPI int E_EVENT_BORDER_PROPERTY = 0;
 EAPI int E_EVENT_BORDER_FULLSCREEN = 0;
 EAPI int E_EVENT_BORDER_UNFULLSCREEN = 0;
+#ifdef _F_USE_BORDER_TRANSFORM_
+EAPI int E_EVENT_BORDER_TRANSFORM_CHANGED = 0;
+#endif /* end of _F_USE_BORDER_TRANSFORM_ */
 #ifdef _F_ZONE_WINDOW_ROTATION_
 EAPI int E_EVENT_BORDER_ROTATION = 0; /* deprecated */
 EAPI int E_EVENT_BORDER_ROTATION_CHANGE_BEGIN = 0;
@@ -483,8 +536,7 @@ EAPI int E_EVENT_BORDER_DESK_LAYOUT_SET_END = 0;
 #ifdef _F_DEICONIFY_APPROVE_
 EAPI int E_EVENT_BORDER_FORCE_RENDER_DONE = 0;
 #endif /* end of _F_DEICONIFY_APPROVE_ */
-
-
+EAPI int E_EVENT_BORDER_ANR = 0;
 #define GRAV_SET(bd, grav)                                \
   ecore_x_window_gravity_set(bd->bg_win, grav);           \
   ecore_x_window_gravity_set(bd->client.shell_win, grav); \
@@ -503,6 +555,67 @@ _e_border_sub_borders_new(E_Border *bd)
      }
    return list;
 }
+#ifdef _F_USE_WM_ZONE_HOST_
+static int tizen_zone_event_change_callback_listener(vsm_zone_h zone, vsm_zone_event_t event, void *user_data)
+{
+   unsigned int i;
+   char* zone_name;
+   E_Container *e_con = e_container_current_get(e_manager_current_get());
+   E_Zone *e_zone = e_util_zone_current_get(e_manager_current_get());
+
+   zone_name =  vsm_get_zone_name(zone);
+
+   if(VSM_ZONE_EVENT_CREATED == event)
+     {
+        /* add desk dynamically */
+        e_desk_row_add(e_zone);
+
+        for ( i = 0 ; i < e_zone->desk_x_count ; i++)
+          {
+             e_desk_name_add(e_con->num, e_zone->num, i, e_zone->desk_y_count - 1, zone_name);
+          }
+
+        e_desk_name_update();
+     }
+
+   if(VSM_ZONE_EVENT_DESTROYED == event)
+     {
+        e_desk_row_remove(e_zone);
+
+        e_desk_name_update();
+     }
+
+   if(VSM_ZONE_EVENT_SWITCHED == event)
+     {
+        /* search the desk name & change desk if zone_name matches deskname */
+        for(i=0; i < (e_zone->desk_x_count * e_zone->desk_y_count); i++)
+          {
+             if(strcmp(e_zone->desks[i]->name, zone_name) == 0)
+               {
+                  /* TO DO : profile handling need to be add here. */
+                  e_desk_show(e_zone->desks[i]);
+                  break;
+               }
+
+             if(strcmp(zone_name, "personal") == 0)
+               {
+                  e_desk_show(e_zone->desks[0]);
+                  break;
+               }
+
+          }
+     }
+
+   return 0;
+}
+
+static Eina_Bool _ecore_tizen_zone_cb_handle_data(void *data, Ecore_Fd_Handler *hdl)
+{
+   vsm_context_h ctx = data;
+   vsm_enter_eventloop(ctx, 0, 0);
+
+}
+#endif
 
 /* externally accessible functions */
 EINTERN int
@@ -533,8 +646,10 @@ e_border_init(void)
    ecore_x_passive_grab_replay_func_set(_e_border_cb_grab_replay, NULL);
 
    handlers = eina_list_append(handlers, ecore_event_handler_add(E_EVENT_POINTER_WARP, _e_border_cb_pointer_warp, NULL));
+#ifndef _F_DISABLE_E_EFREET_
    handlers = eina_list_append(handlers, ecore_event_handler_add(EFREET_EVENT_DESKTOP_CACHE_UPDATE, _e_border_cb_efreet_cache_update, NULL));
    handlers = eina_list_append(handlers, ecore_event_handler_add(EFREET_EVENT_ICON_CACHE_UPDATE, _e_border_cb_efreet_cache_update, NULL));
+#endif
    handlers = eina_list_append(handlers, ecore_event_handler_add(E_EVENT_CONFIG_ICON_THEME, _e_border_cb_config_icon_theme, NULL));
 #ifdef _F_USE_DESK_WINDOW_PROFILE_
    handlers = eina_list_append(handlers, ecore_event_handler_add(E_EVENT_DESK_WINDOW_PROFILE_CHANGE, _e_border_cb_desk_window_profile_change, NULL));
@@ -572,6 +687,9 @@ e_border_init(void)
    E_EVENT_BORDER_PROPERTY = ecore_event_type_new();
    E_EVENT_BORDER_FULLSCREEN = ecore_event_type_new();
    E_EVENT_BORDER_UNFULLSCREEN = ecore_event_type_new();
+#ifdef _F_USE_BORDER_TRANSFORM_
+   E_EVENT_BORDER_TRANSFORM_CHANGED = ecore_event_type_new();
+#endif /* end of _F_USE_BORDER_TRANSFORM_ */
 #ifdef _F_ZONE_WINDOW_ROTATION_
    E_EVENT_BORDER_ROTATION = ecore_event_type_new(); /* deprecated */
    E_EVENT_BORDER_ROTATION_CHANGE_BEGIN = ecore_event_type_new();
@@ -587,16 +705,33 @@ e_border_init(void)
    E_EVENT_BORDER_FORCE_RENDER_DONE = ecore_event_type_new();
 #endif /* end of _F_DEICONIFY_APPROVE_ */
 
-#ifdef _F_KILL_HUNG_PROCESS_THROUGH_RD_
-   if (e_config->ping_clients)
+   E_EVENT_BORDER_ANR = ecore_event_type_new();
+
+#ifdef _F_USE_WM_ZONE_HOST_
+   if(e_config->tizen_zone_active)
      {
-        conn = e_dbus_bus_get(DBUS_BUS_SYSTEM);
-        if (!conn)
-          ELB(ELBT_BD, "ERR Could not DBus SESSION bus", 0);
+        vsm_context_h ctx;
+        int vsm_fd;
+
+        ctx = vsm_create_context();
+
+        if (ctx == NULL) {
+             fprintf(stderr, "Failed to initialize domain control context");
+             return 0;
+        }
+
+        vsm_fd = vsm_get_poll_fd (ctx);
+
+        ecore_main_fd_handler_add(vsm_fd,
+                                  ECORE_FD_READ | ECORE_FD_WRITE | ECORE_FD_ERROR,
+                                  _ecore_tizen_zone_cb_handle_data, ctx,
+                                  NULL, NULL);
+
+        vsm_add_event_callback(ctx, tizen_zone_event_change_callback_listener, NULL);
+
      }
 #endif
-
-//   e_init_undone();
+   //   e_init_undone();
 
    return 1;
 }
@@ -606,17 +741,12 @@ e_border_shutdown(void)
 {
    E_FREE_LIST(handlers, ecore_event_handler_del);
 
-#ifdef _F_KILL_HUNG_PROCESS_THROUGH_RD_
-   if (conn)
-     {
-        e_dbus_connection_close(conn);
-        conn = NULL;
-     }
-#endif
-
    if (borders_hash) eina_hash_free(borders_hash);
    borders_hash = NULL;
+
+#ifndef _F_DISABLE_E_MENU
    e_int_border_menu_hooks_clear();
+#endif
 
    return 1;
 }
@@ -683,6 +813,7 @@ e_border_new(E_Container   *con,
           e_bindings_wheel_ungrab(E_BINDING_CONTEXT_WINDOW, bd->win);
           ecore_x_window_free(bd->win);
           free(bd);
+	      bd = NULL;
           return NULL;
      }
 
@@ -757,6 +888,22 @@ e_border_new(E_Container   *con,
    bd->client.netwm.action.change_desktop = 0;
    bd->client.netwm.action.close = 0;
    bd->client.netwm.type = ECORE_X_WINDOW_TYPE_UNKNOWN;
+
+#ifdef _F_USE_BORDER_TRANSFORM_
+   bd->transform.enable = 0;
+   bd->transform.ratio_fit = 0;
+   bd->transform.force_pending = 0;
+   bd->transform.parent = 0;
+   bd->transform.child_wins = 0;
+   bd->transform.geometry = _e_border_transform_rect_create(0, 0, 0, 0, 0);
+   bd->transform.border_geometry = _e_border_transform_rect_create(0, 0, 0, 0, 0);
+   bd->transform.input_geometry = _e_border_transform_rect_create(0, 0, 0, 0, 0);
+#endif /* end of _F_USE_BORDER_TRANSFORM_ */
+
+#ifdef _F_USE_ICONIFY_RESIZE_
+   if (e_config->use_iconify_resize)
+     bd->iconify_resize.support = 1;
+#endif /* end of _F_USE_ICONIFY_RESIZE_ */
 
    {
       int at_num = 0, i;
@@ -888,9 +1035,9 @@ e_border_new(E_Container   *con,
                   else if (atoms[i] == ECORE_X_ATOM_E_VIDEO_POSITION)
                     video_position = EINA_TRUE;
 #ifdef _F_USE_DESK_WINDOW_PROFILE_
-     /* loop to check for window profile list atom */
-                  else if (atoms[i] == ECORE_X_ATOM_E_PROFILE_LIST)
-                    bd->client.e.fetch.profile_list = 1;
+                   /* loop to check for window profile list atom */
+                  else if (atoms[i] == ECORE_X_ATOM_E_WINDOW_PROFILE_SUPPORTED)
+                    bd->client.e.fetch.profile = 1;
 #endif
 #ifdef _F_ZONE_WINDOW_ROTATION_
                   /* loop to check for wm rotation */
@@ -1009,13 +1156,57 @@ e_border_new(E_Container   *con,
 #endif
 
 //   bd->zone = e_zone_current_get(con);
+#ifdef _F_USE_WM_ZONE_HOST_
+   if(e_config->tizen_zone_active)
+     {
+        unsigned int i;
+        char* zone_name;
+        vsm_context_h * vsm_ctx;
+        pid_t client_win_pid;
+        vsm_zone_h vsm_zone;
+        EAPI Ecore_X_Atom E_ATOM_X_WIN_PID= 0;
+
+        vsm_ctx = vsm_create_context();
+
+        E_ATOM_X_WIN_PID = ecore_x_atom_get("X_CLIENT_PID");
+
+        ecore_x_window_prop_card32_get(bd->client.win, E_ATOM_X_WIN_PID, &client_win_pid, 1);
+
+        vsm_zone = vsm_lookup_zone_by_pid(vsm_ctx, client_win_pid);
+
+        zone_name =  vsm_get_zone_name(vsm_zone);
+
+        /* search the desk name & change desk if zone_name matches deskname */
+        for(i=0; i < (bd->zone->desk_x_count * bd->zone->desk_y_count); i++)
+          {
+             if(strcmp(bd->zone->desks[i]->name, zone_name) == 0)
+               {
+                  /* TO DO : profile handling need to be added here. */
+                  bd->desk = bd->zone->desks[i];
+                  break;
+               }
+
+             if(strcmp(zone_name, "personal") == 0)
+               {
+                  bd->desk = bd->zone->desks[0];
+                  break;
+               }
+
+             if(strcmp(zone_name, "") == 0) /* for the case it's created in HOST */
+               {
+                  bd->desk = e_desk_current_get(bd->zone);
+                  break;
+               }
+          }
+
+     }
+   else
+     bd->desk = e_desk_current_get(bd->zone);
+#else
    bd->desk = e_desk_current_get(bd->zone);
+#endif
    e_container_border_add(bd);
    borders = eina_list_append(borders, bd);
-
-#ifdef _F_BORDER_HOOK_PATCH_
-   _e_border_hook_call(E_BORDER_HOOK_POST_NEW_BORDER, bd);
-#endif
 
    bd2 = eina_hash_find(borders_hash, e_util_winid_str_get(bd->client.win));
    if (bd2)
@@ -1127,19 +1318,15 @@ e_border_new(E_Container   *con,
    desk[0] = deskx;
    desk[1] = desky;
    ecore_x_window_prop_card32_set(win, E_ATOM_DESK, desk, 2);
-#ifdef _F_USE_DESK_WINDOW_PROFILE_
-   if ((bd->desk) &&
-       (strcmp(bd->desk->window_profile,
-               e_config->desktop_default_window_profile) != 0))
-     {
-        ecore_x_e_window_profile_set(bd->client.win,
-                                     bd->desk->window_profile);
-     }
-#endif
 
    focus_stack = eina_list_append(focus_stack, bd);
 
    bd->pointer = e_pointer_window_new(bd->win, 0);
+
+#ifdef _F_BORDER_HOOK_PATCH_
+   _e_border_hook_call(E_BORDER_HOOK_POST_NEW_BORDER, bd);
+#endif
+
    return bd;
 }
 
@@ -1228,7 +1415,18 @@ e_border_res_change_geometry_restore(E_Border *bd)
           x = zx + zw - w;
         if ((y + h) > (zy + zh))
           y = zy + zh - h;
-        e_border_move_resize(bd, x, y, w, h);
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+        if (e_virtual_res_type_get() != E_VIRTUAL_RES_DOUBLE_SOURCE)
+          {
+             /* Dont resize windows if double stereo mode is enabled */
+          }
+        else
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
+
+          {
+             e_border_move_resize(bd, x, y, w, h);
+          }
      }
    memcpy(&bd->pre_res_change, &pre_res_change, sizeof(pre_res_change));
 }
@@ -1317,6 +1515,20 @@ e_border_desk_set(E_Border *bd,
    E_OBJECT_CHECK(desk);
    E_OBJECT_TYPE_CHECK(desk, E_DESK_TYPE);
    if (bd->desk == desk) return;
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+   if ((e_config->use_desktop_window_profile) &&
+       (bd->client.e.state.profile.use))
+     {
+        if (bd->client.e.state.profile.wait_for_done) return;
+        if (strcmp(bd->client.e.state.profile.name, desk->window_profile) != 0)
+          {
+             ecore_x_e_window_profile_change_request_send(bd->client.win,
+                                                          desk->window_profile);
+             bd->client.e.state.profile.wait_for_done = 1;
+             return;
+          }
+     }
+#endif
    ecore_x_window_shadow_tree_flush();
    if (bd->fullscreen)
      {
@@ -1813,13 +2025,11 @@ _e_border_aux_hint_handle(E_Border *bd)
                                  bd->client.e.state.aux_hint.hints = eina_list_append(bd->client.e.state.aux_hint.hints, hint);
                               }
                          }
-
-                       if (r[0]) free(r[0]);
                     }
-
+                  if (r && r[0]) free(r[0]);
                   free(r);
                }
-             free(result[0]);
+             if (result && result[0]) free(result[0]);
              free(result);
           }
 
@@ -1848,6 +2058,7 @@ e_border_show(E_Border *bd)
    E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
    if (bd->visible) return;
    if (bd->client.e.state.rot.pending_show) return;
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:SHOW");
 #ifdef _F_ZONE_WINDOW_ROTATION_
    // newly created window that has to be rotated will be show after rotation done.
    // so, skip at this time. it will be called again after GETTING ROT_DONE.
@@ -1855,6 +2066,7 @@ e_border_show(E_Border *bd)
        (bd->client.e.state.rot.ang.next != -1))
      {
         bd->client.e.state.rot.pending_show = 1;
+        traceEnd(TTRACE_TAG_WINDOW_MANAGER);
         return;
      }
    if ((e_config->wm_win_rotation) &&
@@ -1869,10 +2081,11 @@ e_border_show(E_Border *bd)
         rot.vkbd_show_prepare_timer = ecore_timer_add(1.5f,
                                                       _e_border_vkbd_show_prepare_timeout,
                                                       bd);
+        traceEnd(TTRACE_TAG_WINDOW_MANAGER);
         return;
      }
-   ELB(ELBT_BD, "SHOW", bd->client.win);
-   SLOGI("BD_SHOW(0x%08x)", bd->client.win);
+   ELB(ELBT_BD, "BD_SHOW", bd->client.win);
+   LOGE("BD_SHOW(0x%08x)", bd->client.win);
 #endif
    ecore_x_window_shadow_tree_flush();
    e_container_shape_show(bd->shape);
@@ -1918,6 +2131,7 @@ e_border_show(E_Border *bd)
           }
      }
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 EAPI void
@@ -1928,6 +2142,7 @@ e_border_hide(E_Border *bd,
 
    E_OBJECT_CHECK(bd);
    E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:HIDE");
 
 #ifdef _F_ZONE_WINDOW_ROTATION_
    if ((e_config->wm_win_rotation) &&
@@ -1978,6 +2193,7 @@ e_border_hide(E_Border *bd,
              rot.vkbd_hide_prepare_timer = ecore_timer_add(1.5f,
                                                            _e_border_vkbd_hide_prepare_timeout,
                                                            bd);
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
              return;
           }
         else
@@ -2010,7 +2226,7 @@ e_border_hide(E_Border *bd,
    /* if vkbd's parent has to be hidden,
     * vkbd and prediction widnow will be hidden with its parent.
     */
-   else if (bd == rot.vkbd_parent)
+   else if ((bd == rot.vkbd_parent) && (!bd->iconic))
      {
         ELBF(ELBT_BD, 0, bd->client.win, "VKBD'S PARENT HIDE visible:%d", bd->visible);
         if ((rot.vkbd) && (rot.vkbd->visible))
@@ -2029,7 +2245,7 @@ e_border_hide(E_Border *bd,
    // clear pending_show, because this window is hidden now.
    bd->client.e.state.rot.pending_show = 0;
    ELBF(ELBT_BD, 0, bd->client.win, "HIDE visible:%d", bd->visible);
-   SLOGI("HIDE visible:%d(0x%08x)", bd->visible, bd->client.win);
+   LOGE("BD_HIDE(0x%08x), visible:%d", bd->client.win, bd->visible);
 #endif
    if (!bd->visible) goto send_event;
    ecore_x_window_shadow_tree_flush();
@@ -2142,6 +2358,30 @@ e_border_hide(E_Border *bd,
 
    bd->post_show = 0;
 
+#ifdef _F_USE_BORDER_TRANSFORM_
+   //remove transform childs if exits
+   if (bd->transform.parent)
+     {
+        E_Border *bd_parent = e_border_find_by_client_window(bd->transform.parent);
+        if (bd_parent)
+           e_border_transform_child_remove(bd, bd_parent);
+     }
+
+   if (bd->transform.child_wins)
+     {
+        Eina_List *l = NULL;
+        E_Border *temp_bd = NULL;
+
+        EINA_LIST_FOREACH(bd->transform.child_wins, l, temp_bd)
+          {
+             e_border_transform_child_remove(temp_bd, bd);
+          }
+        eina_list_free(bd->transform.child_wins);
+        bd->transform.child_wins = NULL;
+     }
+#endif /* end of _F_USE_BORDER_TRANSFORM_ */
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
+
 send_event:
    if (!stopping)
      {
@@ -2156,6 +2396,7 @@ send_event:
              ecore_event_add(E_EVENT_BORDER_HIDE, ev, _e_border_event_border_hide_free, NULL);
           }
      }
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 static void
@@ -2213,6 +2454,8 @@ _pri_adj(int pid, int set, int adj, Eina_Bool use_adj, Eina_Bool adj_children, E
 static void
 _e_border_pri_raise(E_Border *bd)
 {
+   if (!e_config->priority_raise_on_focus) return;
+
    if (bd->client.netwm.pid <= 0) return;
    if (bd->client.netwm.pid == getpid()) return;
    _pri_adj(bd->client.netwm.pid,
@@ -2226,6 +2469,8 @@ _e_border_pri_raise(E_Border *bd)
 static void
 _e_border_pri_norm(E_Border *bd)
 {
+   if (!e_config->priority_raise_on_focus) return;
+
    if (bd->client.netwm.pid <= 0) return;
    if (bd->client.netwm.pid == getpid()) return;
    _pri_adj(bd->client.netwm.pid,
@@ -2638,6 +2883,24 @@ _e_border_move_resize_internal(E_Border *bd,
    bd->client.w = bd->w - (bd->client_inset.l + bd->client_inset.r);
    bd->client.h = bd->h - (bd->client_inset.t + bd->client_inset.b);
 
+#ifdef _F_USE_ICONIFY_RESIZE_
+   if (e_config->use_iconify_resize)
+     {
+        if (bd->iconify_resize.support)
+          {
+             if (bd->iconify_resize.set || bd->iconify_resize.need_draw)
+               {
+                  ELBF(ELBT_BD, 0, bd->client.win,"Iconify Resize update: Geo (%d,%d,%d,%d) -> (%d,%d,%d,%d)",
+                       bd->iconify_resize.x, bd->iconify_resize.y, bd->iconify_resize.w, bd->iconify_resize.h, bd->x, bd->y, bd->w, bd->h);
+                  bd->iconify_resize.x = bd->x;
+                  bd->iconify_resize.y = bd->y;
+                  bd->iconify_resize.w = bd->w;
+                  bd->iconify_resize.h = bd->h;
+               }
+          }
+     }
+#endif
+
    if ((bd->shaped) || (bd->client.shaped))
      {
         bd->need_shape_merge = 1;
@@ -2873,8 +3136,13 @@ e_border_rotation_available_list_get(E_Border *bd)
    if (bd->client.e.state.rot.preferred_rot != -1)
      {
         element = (int *)malloc(1 * sizeof(int));
-        *element = bd->client.e.state.rot.preferred_rot;
-        list = eina_list_append(list, element);
+        if (element)
+          {
+             *element = bd->client.e.state.rot.preferred_rot;
+             list = eina_list_append(list, element);
+          }
+        else
+          ELB(ELBT_BD, "Out of Memory: malloc(sizeof(int))", 0);
      }
    else if (bd->client.e.state.rot.count > 0)
      {
@@ -3030,6 +3298,7 @@ e_border_rotation_set(E_Border *bd, int rotation)
    ELB(ELBT_ROT, "TRY ROT_SET", bd->client.win);
    if (rotation < 0) return EINA_FALSE;
    if (!e_border_rotation_is_available(bd, rotation)) return EINA_FALSE;
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:ROTATION SET");
 
    // in case same with current angle.
    curr_rot = e_border_rotation_curr_angle_get(bd);
@@ -3053,13 +3322,17 @@ e_border_rotation_set(E_Border *bd, int rotation)
                   if (bd->client.e.state.deiconify_approve.pending)
                     _e_border_deiconify_approve_send_pending_end(bd);
 
+                  traceEnd(TTRACE_TAG_WINDOW_MANAGER);
                   return EINA_FALSE;
                }
              else
                ELB(ELBT_ROT, "\tALREADY REQ - CONTINUE... It will be reserved.", bd->client.win);
           }
         else
-          return EINA_FALSE;
+          {
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
+             return EINA_FALSE;
+          }
      }
 
    // in case same with next angle.
@@ -3143,6 +3416,7 @@ finish:
         rot.cancel.state = EINA_FALSE;
         rot.cancel.zone = NULL;
      }
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
    return EINA_TRUE;
 }
 #endif
@@ -3164,11 +3438,12 @@ e_border_desk_layout_set(E_Border      *bd,
    int id, x, y, w, h;
    Eina_Bool move, resize;
 
+   Eina_List *l;
+   E_Border *child;
+   Eina_List *list;
+
    E_OBJECT_CHECK(bd);
    E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
-
-   E_OBJECT_CHECK(desk_ly);
-   E_OBJECT_TYPE_CHECK(desk_ly, E_DESK_LAYOUT_TYPE);
 
    if ((!bd->client.e.state.ly.support) && (desk_ly))
       return;
@@ -3176,6 +3451,10 @@ e_border_desk_layout_set(E_Border      *bd,
    if (bd->client.illume.win_state.state != ECORE_X_ILLUME_WINDOW_STATE_NORMAL)
       return;
 
+   if (desk_ly == NULL)
+     {
+        bd->client.e.state.ly.prev_ly = bd->client.e.state.ly.curr_ly;
+     }
    bd->client.e.state.ly.curr_ly = desk_ly;
    bd->client.e.state.ly.changing = 1;
 
@@ -3185,7 +3464,7 @@ e_border_desk_layout_set(E_Border      *bd,
         if (show)
           {
              int launched_by = bd->launch_info.launch_by;
-             if (launched_by == 2)
+             if (launched_by == 2 && !bd->iconic)
                 e_border_focus_latest_set(bd);
 
              _e_border_hook_call(E_BORDER_HOOK_DESKTOP_LAYOUT_PRE_SHOW_SET, bd);
@@ -3203,41 +3482,21 @@ e_border_desk_layout_set(E_Border      *bd,
 
    bd->client.e.state.ly.changing = 0;
    bd->changed = 1;
-
+   bd->changes.pos = 1;
    move = EINA_FALSE;
    resize = EINA_FALSE;
 
-   /* resize border fit in desktop layout */
-   if (curr)
-     {
-        id = curr->id;
-        x = curr->x;
-        y = curr->y;
-        w = curr->w;
-        h = curr->h;
-     }
-   else
-     {
-        id = -1;
-        x = bd->zone->x;
-        y = bd->zone->y;
-        w = bd->zone->w;
-        h = bd->zone->h;
-     }
+   id = curr ? curr->id : -1;
+
+   if (show)
+     e_border_desk_layout_border_update(bd);
+
+   e_border_geometry_get(bd, &x, &y, &w, &h);
 
    /* reset info for launch info */
    bd->launch_info.launch_by = 1;
    bd->launch_info.launch_to = id;
 
-   if ((bd->x != x) || (bd->y != y)) move = EINA_TRUE;
-   if ((bd->w != w) || (bd->h != h)) resize = EINA_TRUE;
-
-   if (move && resize)
-      e_border_move_resize(bd, x, y, w, h);
-   else if (move)
-      e_border_move(bd, x, y);
-   else if (resize)
-      e_border_resize(bd, w, h);
 
    if (prev != curr)
      {
@@ -3300,7 +3559,34 @@ e_border_desk_layout_set(E_Border      *bd,
                         _e_border_event_border_desk_layout_set_end_free,
                         NULL);
      }
+
+   //get the transient child and set their layouts as well
+   list = _e_border_sub_borders_new(bd);
+
+   EINA_LIST_FOREACH(list, l, child)
+     {
+        // check if virtual keyboard then don't set
+        if (child->client.vkbd.vkbd) continue;
+        // check if curr_ly is already there and same as bd, then don't set
+        if (!child->client.e.state.ly.curr_ly && !desk_ly) continue;
+        if (child->client.e.state.ly.curr_ly && desk_ly)
+          {
+             if (child->client.e.state.ly.curr_ly->id == desk_ly->id)
+                continue;
+          }
+        if (_e_border_desk_layout_launcher_get(child) != 0)
+           e_border_desk_layout_set(child, desk_ly, show, hook);
+     }
+   eina_list_free(list);
 }
+
+
+EAPI void
+e_border_desk_layout_border_update(E_Border *bd)
+{
+   _e_border_hook_call(E_BORDER_HOOK_DESKTOP_LAYOUT_UPDATE, bd);
+}
+
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
 
 #ifdef _F_E_WIN_AUX_HINT_
@@ -3440,7 +3726,11 @@ e_border_raise(E_Border *bd)
 
    E_OBJECT_CHECK(bd);
    E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:RAISE");
 
+#ifdef _F_USE_VIRT_RESOLUTION_
+   _e_mod_check_change_resolution(bd->client.win);
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
    ecore_x_window_shadow_tree_flush();
 
    if (e_config->transient.raise)
@@ -3545,6 +3835,7 @@ e_border_raise(E_Border *bd)
      }
 
    e_remember_update(bd);
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 EAPI void
@@ -3557,6 +3848,7 @@ e_border_lower(E_Border *bd)
 
    E_OBJECT_CHECK(bd);
    E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:LOWER");
 
    ecore_x_window_shadow_tree_flush();
 
@@ -3662,6 +3954,7 @@ e_border_lower(E_Border *bd)
      }
 
    e_remember_update(bd);
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 EAPI void
@@ -3676,6 +3969,7 @@ e_border_stack_above(E_Border *bd,
 
     E_OBJECT_CHECK(bd);
     E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+    traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:STACK ABOVE");
 
     ecore_x_window_shadow_tree_flush();
 
@@ -3725,6 +4019,7 @@ e_border_stack_above(E_Border *bd,
          ecore_event_add(E_EVENT_BORDER_STACK, ev, _e_border_event_border_stack_free, NULL);
       }
     e_remember_update(bd);
+    traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 EAPI void
@@ -3739,6 +4034,7 @@ e_border_stack_below(E_Border *bd,
 
     E_OBJECT_CHECK(bd);
     E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+    traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:STACK BELOW");
 
     ecore_x_window_shadow_tree_flush();
 
@@ -3789,6 +4085,7 @@ e_border_stack_below(E_Border *bd,
       }
 
     e_remember_update(bd);
+    traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 EAPI void
@@ -3872,6 +4169,7 @@ e_border_focus_set(E_Border *bd,
 
    E_OBJECT_CHECK(bd);
    E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
    /* note: this is here as it seems there are enough apps that do not even
     * expect us to emulate a look of focus but not actually set x input
     * focus as we do - so simply abort any focuse set on such windows */
@@ -3880,6 +4178,8 @@ e_border_focus_set(E_Border *bd,
        (!bd->client.icccm.take_focus))
      return;
    if ((set) && (focus) && (bd->lock_focus_out)) return;
+
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:FOCUS SET");
 
    /* dont focus an iconified window. that's silly! */
    if (focus)
@@ -3891,10 +4191,12 @@ e_border_focus_set(E_Border *bd,
              if (!focus_track_frozen)
                e_border_focus_latest_set(bd);
 #endif
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
              return;
           }
         else if (!bd->visible)
           {
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
              return;
           }
         /* FIXME: hack for deskflip animation:
@@ -3902,6 +4204,7 @@ e_border_focus_set(E_Border *bd,
         else if ((!bd->sticky) &&
                  (bd->desk != e_desk_current_get(bd->desk->zone)))
           {
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
              return;
           }
      }
@@ -3909,11 +4212,13 @@ e_border_focus_set(E_Border *bd,
    if ((bd->modal) && (bd->modal != bd) && (bd->modal->visible))
      {
         e_border_focus_set(bd->modal, focus, set);
+        traceEnd(TTRACE_TAG_WINDOW_MANAGER);
         return;
      }
    else if ((bd->leader) && (bd->leader->modal) && (bd->leader->modal != bd))
      {
         e_border_focus_set(bd->leader->modal, focus, set);
+        traceEnd(TTRACE_TAG_WINDOW_MANAGER);
         return;
      }
 
@@ -3951,6 +4256,7 @@ e_border_focus_set(E_Border *bd,
                   e_grabinput_focus(bd->client.win, E_FOCUS_METHOD_PASSIVE);
                   /* e_border_focus_set(bd, 1, 0); */
                }
+            traceEnd(TTRACE_TAG_WINDOW_MANAGER);
             return;
           }
 
@@ -4126,6 +4432,7 @@ e_border_focus_set(E_Border *bd,
                              _e_border_event_border_focus_in_free, NULL);
           }
      }
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 EAPI void
@@ -4505,8 +4812,9 @@ _e_border_maximize(E_Border *bd, E_Maximize max)
          y2 = bd->zone->y + bd->zone->h;
 
          /* walk through all shelves */
+#ifndef _F_DISABLE_E_SHELF
          e_maximize_border_shelf_fill(bd, &x1, &yy1, &x2, &y2, max);
-
+#endif
          /* walk through all windows */
          e_maximize_border_border_fill(bd, &x1, &yy1, &x2, &y2, max);
 
@@ -4610,7 +4918,7 @@ e_border_unmaximize(E_Border  *bd,
    E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
    if (!(max & E_MAXIMIZE_DIRECTION))
      {
-        CRI("BUG: Unmaximize call without direction!");
+        ERR("BUG: Unmaximize call without direction!");
         return;
      }
 
@@ -4869,23 +5177,34 @@ e_border_iconify(E_Border *bd)
 
    E_OBJECT_CHECK(bd);
    E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:ICONIFY");
    if (bd->shading) return;
    ecore_x_window_shadow_tree_flush();
-
-#ifdef _F_USE_ICONIFY_RESIZE_
-   if (e_config->use_iconify_resize)
+#ifdef _F_BORDER_HOOK_PATCH_
+   _e_border_hook_call(E_BORDER_HOOK_ICONIFY_BORDER, bd);
+#endif
+#ifdef _F_DEICONIFY_APPROVE_
+   if (e_config->deiconify_approve)
      {
-        if (bd->iconify_resize.support)
+#ifdef _F_USE_ICONIFY_RESIZE_
+        if (e_config->use_iconify_resize)
           {
-             if (!bd->iconify_resize.set)
+             if (bd->iconify_resize.support)
                {
-                  bd->iconify_resize.set = 1;
-                  bd->iconify_resize.w = bd->w;
-                  bd->iconify_resize.h = bd->h;
-                  e_border_resize(bd, 1, 2);
-                  ELBF(ELBT_BD, 0, bd->client.win,"Iconify Resize: Geo (%d, %d, %d, %d)", bd->x, bd->y, bd->w, bd->h);
-                  e_border_force_render_request(bd,EINA_FALSE);
+                  if (!bd->iconify_resize.set)
+                    {
+                       bd->iconify_resize.x = bd->x;
+                       bd->iconify_resize.y = bd->y;
+                       bd->iconify_resize.w = bd->w;
+                       bd->iconify_resize.h = bd->h;
+                       e_border_move_resize(bd, bd->x, bd->y, e_config->iconify_resize_w, e_config->iconify_resize_h);
+
+                       bd->iconify_resize.set = 1;
+                       bd->iconify_resize.need_draw = 0;
+                       ELBF(ELBT_BD, 0, bd->client.win,"Iconify Resize: Geo (%d, %d, %d, %d)", bd->x, bd->y, bd->w, bd->h);
+                    }
                }
+#endif
           }
      }
 #endif
@@ -4923,6 +5242,10 @@ e_border_iconify(E_Border *bd)
         eina_list_free(list);
      }
    e_remember_update(bd);
+#ifdef _F_USE_VIRT_RESOLUTION_
+   _e_mod_revert_resolution( bd->client.win);
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 #ifdef _F_DEICONIFY_APPROVE_
@@ -5098,32 +5421,30 @@ _e_border_deiconify_approve_send(E_Border *bd, E_Border *bd_ancestor, Eina_Bool 
                   if ((pending_ancestor) || (pending)) p = EINA_TRUE;
 
                   _e_border_deiconify_approve_send(child, bd_ancestor, p);
-                  if (child->client.e.state.deiconify_approve.support)
+
+                  if (!p)
                     {
-                       if (!p)
-                         {
-                            ELBF(ELBT_BD, 0, child->client.win,
-                                 "NEED to send DEICONIFY_APPROVE. ancestor:%x pending(%d,%d)",
-                                 bd_ancestor->client.win,
-                                 pending_ancestor, pending);
+                       ELBF(ELBT_BD, 0, child->client.win,
+                            "NEED to send DEICONIFY_APPROVE. ancestor:%x pending(%d,%d)",
+                            bd_ancestor->client.win,
+                            pending_ancestor, pending);
 
-                            child->client.e.state.deiconify_approve.need_send = 1;
-                            child->changed = 1;
+                       child->client.e.state.deiconify_approve.need_send = 1;
+                       child->changed = 1;
 
-                            child->client.e.state.deiconify_approve.ancestor = bd_ancestor;
-                            bd_ancestor->client.e.state.deiconify_approve.req_list = eina_list_append(bd_ancestor->client.e.state.deiconify_approve.req_list, child);
-                         }
-                       else
-                         {
-                            child->client.e.state.deiconify_approve.need_send = 0;
+                       child->client.e.state.deiconify_approve.ancestor = bd_ancestor;
+                       bd_ancestor->client.e.state.deiconify_approve.req_list = eina_list_append(bd_ancestor->client.e.state.deiconify_approve.req_list, child);
+                    }
+                  else
+                    {
+                       child->client.e.state.deiconify_approve.need_send = 0;
 
-                            /* queue a deiconify send job to give the chance to other jobs */
-                            ELBF(ELBT_BD, 0, child->client.win,
-                                 "SEND DEICONIFY_APPROVE. (PENDING) ancestor:%x",
-                                 bd_ancestor->client.win);
-                            child->client.e.state.deiconify_approve.ancestor = bd_ancestor;
-                            child->client.e.state.deiconify_approve.pending = 1;
-                         }
+                       /* queue a deiconify send job to give the chance to other jobs */
+                       ELBF(ELBT_BD, 0, child->client.win,
+                            "SEND DEICONIFY_APPROVE. (PENDING) ancestor:%x",
+                            bd_ancestor->client.win);
+                       child->client.e.state.deiconify_approve.ancestor = bd_ancestor;
+                       child->client.e.state.deiconify_approve.pending = 1;
                     }
                }
              eina_list_free(list);
@@ -5165,22 +5486,19 @@ _e_border_deiconify_approve_send_all_transient(E_Border *bd)
              _e_border_deiconify_approve_send(bd, bd, pending);
           }
 
-        if (bd->client.e.state.deiconify_approve.support)
+        if (!pending)
           {
-             if (!pending)
-               {
-                  ELBF(ELBT_BD, 0, bd->client.win, "NEED to send DEICONIFY_APPROVE.");
-                  bd->client.e.state.deiconify_approve.need_send = 1;
-                  bd->changed = 1;
-               }
-             else
-               {
-                  bd->client.e.state.deiconify_approve.need_send = 0;
+             ELBF(ELBT_BD, 0, bd->client.win, "NEED to send DEICONIFY_APPROVE.");
+             bd->client.e.state.deiconify_approve.need_send = 1;
+             bd->changed = 1;
+          }
+        else
+          {
+             bd->client.e.state.deiconify_approve.need_send = 0;
 
-                  /* queue a deiconify send job to give the chance to other jobs */
-                  ELBF(ELBT_BD, 0, bd->client.win, "SEND DEICONIFY_APPROVE. (PENDING)");
-                  bd->client.e.state.deiconify_approve.pending = 1;
-               }
+             /* queue a deiconify send job to give the chance to other jobs */
+             ELBF(ELBT_BD, 0, bd->client.win, "SEND DEICONIFY_APPROVE. (PENDING)");
+             bd->client.e.state.deiconify_approve.pending = 1;
           }
      }
 }
@@ -5253,81 +5571,143 @@ e_border_uniconify(E_Border *bd)
    E_OBJECT_CHECK(bd);
    E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
 
+#ifdef _F_BORDER_HOOK_PATCH_
+   _e_border_hook_call(E_BORDER_HOOK_UNICONIFY_BORDER, bd);
+#endif
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+   if(EINA_FALSE == _e_mod_check_change_resolution(bd->client.win))
+     {
+        return ECORE_CALLBACK_CANCEL;
+     }
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
+   if (bd->iconify_by_client == 1)
+     {
+        ELBF(ELBT_BD, 0, bd->client.win, "Iconified by client. Not to uniconify...");
+        return;
+     }
+
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:UNICONIFY");
+
 #ifdef _F_DEICONIFY_APPROVE_
    if (e_config->deiconify_approve)
      {
-        if (bd->client.e.state.deiconify_approve.support)
+        if (bd->client.e.state.deiconify_approve.render_only)
           {
-             if (bd->client.e.state.deiconify_approve.render_only)
-               {
-                  bd->client.e.state.deiconify_approve.defer_deiconify = 1;
-                  ELB(ELBT_BD, "DEICONIFY_APPROVE FORCE_RENDER is already running", bd->client.win);
-                  return;
-               }
-             if (bd->client.e.state.deiconify_approve.wait_timer)
-               {
-                  ELB(ELBT_BD, "DEICONIFY_APPROVE WAIT_TIMER is already running", bd->client.win);
-                  return;
-               }
+             bd->client.e.state.deiconify_approve.defer_deiconify = 1;
+             ELB(ELBT_BD, "DEICONIFY_APPROVE FORCE_RENDER is already running", bd->client.win);
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
+             return;
+          }
+        if (bd->client.e.state.deiconify_approve.wait_timer)
+          {
+             ELB(ELBT_BD, "DEICONIFY_APPROVE WAIT_TIMER is already running", bd->client.win);
+             _e_border_uniconify_pending_list_add(bd);
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
+             return;
+          }
 
-             if (bd->client.e.state.deiconify_approve.pending)
-               {
-                  ELB(ELBT_BD, "DEICONIFY_APPROVE PENDING_JOB is already running", bd->client.win);
-                  return;
-               }
+        if (bd->client.e.state.deiconify_approve.pending)
+          {
+             ELB(ELBT_BD, "DEICONIFY_APPROVE PENDING_JOB is already running", bd->client.win);
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
+             return;
+          }
 
-             if (bd->client.e.state.deiconify_approve.render_done == 0)
+        if (bd->client.e.state.deiconify_approve.render_done == 0)
+          {
+             if (!bd->client.e.state.deiconify_approve.need_send)
                {
-                  if (!bd->client.e.state.deiconify_approve.need_send)
-                    {
-                       bd->client.e.state.deiconify_approve.need_send = 1;
+                  bd->client.e.state.deiconify_approve.need_send = 1;
 
 #ifdef _F_USE_TILED_DESK_LAYOUT_
-                       if (e_config->use_tiled_desk_layout)
-                         {
-                            if (!bd->client.e.state.ly.changing)
-                              _e_border_desk_layout_set(bd);
-                         }
+                  if (e_config->use_tiled_desk_layout)
+                    {
+                       if (!bd->client.e.state.ly.changing)
+                         _e_border_desk_layout_set(bd);
+                    }
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
 
 #ifdef _F_USE_ICONIFY_RESIZE_
-                       if (e_config->use_iconify_resize)
+                  if (e_config->use_iconify_resize)
+                    {
+                       if (bd->iconify_resize.support)
                          {
-                            if (bd->iconify_resize.support)
+                            if (bd->iconify_resize.set)
                               {
-                                 if (bd->iconify_resize.set)
-                                   {
-                                      bd->iconify_resize.set = 0;
-                                      e_border_resize(bd, bd->iconify_resize.w, bd->iconify_resize.h);
-                                      ELBF(ELBT_BD, 0, bd->client.win,"UnIconify Resize: Geo (%d, %d, %d, %d)", bd->x, bd->y, bd->w, bd->h);
-                                      e_border_force_render_request(bd,EINA_FALSE);
-                                   }
+                                 bd->iconify_resize.need_draw = 1;
+                                 bd->iconify_resize.set = 0;
+                                 e_border_move_resize(bd, bd->iconify_resize.x, bd->iconify_resize.y, bd->iconify_resize.w, bd->iconify_resize.h);
+
+                                 ELBF(ELBT_BD, 0, bd->client.win,"UnIconify Resize: Geo (%d, %d, %d, %d)", bd->x, bd->y, bd->w, bd->h);
+#ifdef _F_USE_BORDER_TRANSFORM_
+                                 e_border_transform_update(bd);
+#endif
                               }
                          }
+                    }
 #endif
 
-                       _e_border_uniconify_pending_list_add(bd);
+                  _e_border_uniconify_pending_list_add(bd);
 
-                       ELB(ELBT_BD, "DEICONIFY_APPROVE to all transient", bd->client.win);
-                       _e_border_deiconify_approve_send_all_transient(bd);
-                    }
-
-                  return;
+                  ELB(ELBT_BD, "DEICONIFY_APPROVE to all transient", bd->client.win);
+                  _e_border_deiconify_approve_send_all_transient(bd);
                }
+
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
+             return;
           }
         bd->client.e.state.deiconify_approve.render_done = 0;
      }
+   else
 #endif
+     {
+#ifdef _F_USE_TILED_DESK_LAYOUT_
+        if (e_config->use_tiled_desk_layout)
+          {
+             if (!bd->client.e.state.ly.changing)
+               {
+                  _e_border_desk_layout_set(bd);
+               }
+          }
+#endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+     }
 
 #if _F_ZONE_WINDOW_ROTATION_
    if (!bd->client.win)
      {
         ELB(ELBT_DFT, "ERR! obj is already deleted", bd->client.win);
+        traceEnd(TTRACE_TAG_WINDOW_MANAGER);
         return;
      }
 #endif
 
-   if (bd->shading) return;
+   if (bd->shading)
+     {
+        traceEnd(TTRACE_TAG_WINDOW_MANAGER);
+        return;
+     }
+
+#ifdef _F_USE_ICONIFY_RESIZE_
+   if (e_config->use_iconify_resize)
+     {
+        if (bd->iconify_resize.support)
+          {
+             if (bd->iconify_resize.set)
+               {
+                  bd->iconify_resize.need_draw = 1;
+                  bd->iconify_resize.set = 0;
+                  e_border_move_resize(bd, bd->iconify_resize.x, bd->iconify_resize.y, bd->iconify_resize.w, bd->iconify_resize.h);
+
+                  ELBF(ELBT_BD, 0, bd->client.win,"UnIconify Resize: Geo (%d, %d, %d, %d)", bd->x, bd->y, bd->w, bd->h);
+#ifdef _F_USE_BORDER_TRANSFORM_
+                  e_border_transform_update(bd);
+#endif
+               }
+          }
+     }
+#endif
+
    ecore_x_window_shadow_tree_flush();
    e_border_show(bd);
 
@@ -5393,6 +5773,7 @@ e_border_uniconify(E_Border *bd)
         eina_list_free(list);
      }
    e_remember_update(bd);
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 EAPI void
@@ -5742,6 +6123,7 @@ e_border_idler_before(void)
 
    if (!borders)
      return;
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:IDLE BEFORE");
 
 #ifdef _F_ZONE_WINDOW_ROTATION_
    if (rot.cancel.state)
@@ -5979,6 +6361,7 @@ e_border_idler_before(void)
         rot.fetch = EINA_FALSE;
      }
 #endif
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 EAPI Eina_List *
@@ -6474,6 +6857,7 @@ e_border_act_resize_end(E_Border                    *bd,
      }
 }
 
+#ifndef _F_DISABLE_E_MENU
 EAPI void
 e_border_act_menu_begin(E_Border                 *bd,
                         Ecore_Event_Mouse_Button *ev,
@@ -6496,6 +6880,8 @@ e_border_act_menu_begin(E_Border                 *bd,
         e_int_border_menu_show(bd, x, y, key, 0);
      }
 }
+
+#endif
 
 EAPI void
 e_border_act_close_begin(E_Border *bd)
@@ -7074,7 +7460,34 @@ static void
 _e_border_free(E_Border *bd)
 {
 #ifdef _F_USE_DESK_WINDOW_PROFILE_
-   const char *str;
+   if (bd->client.e.state.profile.use)
+     {
+        if (bd->client.e.state.profile.available_list)
+          {
+             int i;
+             for (i = 0; i < bd->client.e.state.profile.num; i++)
+               {
+                  if (bd->client.e.state.profile.available_list[i])
+                    {
+                       eina_stringshare_del(bd->client.e.state.profile.available_list[i]);
+                       bd->client.e.state.profile.available_list[i] = NULL;
+                    }
+               }
+             E_FREE(bd->client.e.state.profile.available_list);
+             bd->client.e.state.profile.available_list = NULL;
+          }
+
+        bd->client.e.state.profile.num = 0;
+
+        if (bd->client.e.state.profile.name)
+          {
+             eina_stringshare_del(bd->client.e.state.profile.name);
+             bd->client.e.state.profile.name = NULL;
+          }
+
+        bd->client.e.state.profile.wait_for_done = 0;
+        bd->client.e.state.profile.use = 0;
+     }
 #endif
    if (bd->client.e.state.video_parent && bd->client.e.state.video_parent_border)
      {
@@ -7092,11 +7505,13 @@ _e_border_free(E_Border *bd)
              tmp->client.e.state.video_parent_border = NULL;
           }
      }
+#ifndef _F_DISABLE_E_EFREET_
    if (bd->desktop)
      {
         efreet_desktop_free(bd->desktop);
         bd->desktop = NULL;
      }
+#endif
    if (bd->post_job)
      {
         ecore_idle_enterer_del(bd->post_job);
@@ -7164,7 +7579,9 @@ _e_border_free(E_Border *bd)
         bd->border_prop_dialog = NULL;
      }
 
+#ifndef _F_DISABLE_E_MENU
    e_int_border_menu_del(bd);
+#endif
 
    if (focusing == bd)
      focusing = NULL;
@@ -7248,16 +7665,6 @@ _e_border_free(E_Border *bd)
    if (bd->internal_icon) eina_stringshare_del(bd->internal_icon);
    if (bd->internal_icon_key) eina_stringshare_del(bd->internal_icon_key);
    if (bd->icon_object) evas_object_del(bd->icon_object);
-#ifdef _F_USE_DESK_WINDOW_PROFILE_
-   EINA_LIST_FREE(bd->client.e.state.profiles, str)
-     {
-        if (str) eina_stringshare_del(str);
-     }
-   bd->client.e.state.profiles = NULL;
-   if (bd->client.e.state.profile)
-     eina_stringshare_del(bd->client.e.state.profile);
-   bd->client.e.state.profile = NULL;
-#endif
 #ifdef _F_ZONE_WINDOW_ROTATION_
    if (e_config->wm_win_rotation)
      {
@@ -7347,6 +7754,7 @@ _e_border_free(E_Border *bd)
 
    e_container_border_remove(bd);
    free(bd);
+   bd = NULL;
 }
 
 /*
@@ -7447,8 +7855,9 @@ _e_border_del(E_Border *bd)
         bd->border_prop_dialog = NULL;
      }
 
-   e_int_border_menu_del(bd);
-
+#ifndef _F_DISABLE_E_MENU
+  e_int_border_menu_del(bd);
+#endif
    if (bd->raise_timer)
      {
         ecore_timer_del(bd->raise_timer);
@@ -7494,6 +7903,7 @@ _e_border_del(E_Border *bd)
      }
    EINA_LIST_FREE(bd->transients, child)
      {
+        child->changes.stack = 1;
         child->parent = NULL;
      }
 
@@ -7592,6 +8002,213 @@ _e_border_window_show_request_event_free(void *data __UNUSED__,
 }
 #endif
 
+#ifdef _F_USE_VIRT_RESOLUTION_
+static Eina_Bool _e_timer_unmute_plane()
+{
+   unsigned int prop;
+   prop = 1;
+   ecore_x_window_prop_card32_set(ecore_x_window_root_first_get(),
+                                  E_ATOM_WM_PLANE_MUTE_REQUEST,&prop, 1);
+   ecore_timer_del( mute_timer);
+   mute_timer = NULL;
+   ecore_x_sync();
+   return ECORE_CALLBACK_CANCEL;
+}
+
+static Eina_Bool
+_e_mod_comp_resolution_change(int width, int height)
+{
+   int index = -1;
+   int num_sizes = 0;
+   int i = 0;
+
+   int temp_w, temp_h;
+
+   if (e_virtual_res_type_get() == E_VIRTUAL_RES_SINGLE_SOURCE)
+   {
+      E_Virtual_Res_Data* vir_res_data = e_virtual_res_data_get();
+      if (vir_res_data && vir_res_data->preferred_resolution_get)
+        vir_res_data->preferred_resolution_get(&temp_w, &temp_h);
+      else
+        ecore_x_screen_size_get(ecore_x_default_screen_get(), &temp_w, &temp_h);
+   }
+   else
+     ecore_x_screen_size_get(ecore_x_default_screen_get(), &temp_w, &temp_h);
+
+   if( (temp_w == width) && (temp_h == height))
+     {
+        return EINA_TRUE;
+     }
+
+   Ecore_X_Window root = ecore_x_window_root_first_get();
+   Ecore_X_Randr_Screen_Size_MM *xrrs =
+      ecore_x_randr_screen_primary_output_sizes_get(root,&num_sizes);
+
+   if (xrrs)
+     {
+        for(i = 0; i < num_sizes; i++)
+          if ( xrrs[i].width == width &&  xrrs[i].height == height)
+            index = i;
+        E_FREE(xrrs);
+        if (index >= 0)
+          {
+             unsigned int prop;
+             prop = 0;
+             ecore_x_sync();
+             ecore_x_window_prop_card32_set(ecore_x_window_root_first_get(),
+                                            E_ATOM_WM_PLANE_MUTE_REQUEST,&prop, 1);
+             ecore_x_sync();
+
+             if(mute_timer)
+               {
+                  ecore_timer_delay(mute_timer,PLANE_MUTE_DELAY_TIMER);
+               }
+             else
+               {
+                  mute_timer = ecore_timer_add(PLANE_MUTE_TIMER, _e_timer_unmute_plane, NULL);
+               }
+             if (ecore_x_randr_screen_primary_output_size_set(root, index) == EINA_TRUE)
+               {
+                  ecore_x_sync();
+                  return EINA_TRUE;
+               }
+          }
+     }
+   return EINA_FALSE;
+}
+
+static Eina_Bool
+_e_mod_revert_resolution( Ecore_X_Window win)
+{
+   const Eina_List *l;
+   void *list_data;
+   unsigned int *del_data = NULL ;
+
+   if (res_windows_list)
+     {
+        EINA_LIST_FOREACH(res_windows_list, l, list_data)
+          {
+             if ( win == *((unsigned int *)list_data))
+               {
+                  del_data  = ( unsigned int *)list_data ;
+               }
+          }
+        if( del_data )
+          {
+             _e_mod_comp_resolution_change(pref_w, pref_h);
+             res_windows_list = eina_list_remove(res_windows_list, del_data);
+             if (del_data)
+               {
+                  free(del_data);
+                  del_data = NULL;
+               }
+          }
+     }
+   return EINA_TRUE ;
+}
+
+static Eina_Bool
+_e_mod_check_change_resolution( Ecore_X_Window win)
+{
+   unsigned int prop_data[2];
+   int num, width, height;
+   Eina_Bool ret = EINA_FALSE ;
+   Ecore_X_Display *dpy;
+   dpy = ecore_x_display_get();
+
+   int temp_w = 0;
+   int temp_h = 0;
+
+   if (e_virtual_res_type_get() == E_VIRTUAL_RES_SINGLE_SOURCE)
+     {
+        E_Virtual_Res_Data* vir_res_data = e_virtual_res_data_get();
+        if (vir_res_data && vir_res_data->preferred_resolution_get)
+          vir_res_data->preferred_resolution_get(&temp_w, &temp_h);
+        else
+          ecore_x_screen_size_get(ecore_x_default_screen_get(), &temp_w, &temp_h);
+     }
+
+   else
+     ecore_x_screen_size_get(ecore_x_default_screen_get(), &temp_w, &temp_h);
+
+   if ( ecore_x_window_prop_card32_get(win, E_ATOM_WM_APP_RESOLUTION , prop_data, 2) > 0)
+     {
+        width = prop_data[0] ;
+        height = prop_data[1] ;
+        if( (temp_w == width) && (temp_h == height))
+          {
+             return EINA_TRUE ;
+          }
+        pref_w = temp_w;
+        pref_h = temp_h;
+
+        Ecore_X_Window highlight_win;
+        int revert_to_return;
+        unsigned int prop = 0;
+        XGetInputFocus(dpy, &highlight_win, &revert_to_return);
+
+        if (ecore_x_window_prop_card32_get(highlight_win, E_ATOM_WM_SUPPORT_EPOP , &prop, 1) > 0)
+          {
+             if(prop)
+               {
+                  ret = EINA_TRUE;
+               }
+          }
+        if(EINA_FALSE == ret)
+          {
+             return EINA_FALSE;
+          }
+
+        if( EINA_TRUE == _e_mod_comp_resolution_change(width, height))
+          {
+             const Eina_List *l;
+             void *list_data;
+             if (res_windows_list)
+               {
+                  EINA_LIST_FOREACH(res_windows_list, l, list_data)
+                    {
+                       if ( win == *((unsigned int *)list_data))
+                         {
+                            return EINA_TRUE;
+                         }
+                    }
+               }
+             unsigned int *win_data;
+             win_data  = (unsigned int *)malloc(sizeof(unsigned int));
+             if( win_data )
+               {
+                  *win_data = win;
+                  res_windows_list = eina_list_append(res_windows_list, win_data);
+               }
+          }
+     }
+   else
+     {
+        if( (temp_w != pref_w) || (temp_h != pref_h))
+          {
+             const Eina_List *l;
+             void *list_data;
+             if (res_windows_list)
+               {
+                  EINA_LIST_FOREACH(res_windows_list, l, list_data)
+                    {
+                       int win_temp = *((int*)list_data);
+                       E_Border *bd = e_border_find_by_client_window(win_temp);
+                       if(bd)
+                         {
+                            e_border_hide(bd,0);
+                         }
+                       ecore_x_window_hide(win_temp);
+                       _e_mod_revert_resolution(win_temp);
+                       ecore_x_sync();
+                    }
+               }
+          }
+     }
+   return EINA_TRUE ;
+}
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
+
 static Eina_Bool
 _e_border_cb_window_show_request(void *data  __UNUSED__,
                                  int ev_type __UNUSED__,
@@ -7602,6 +8219,12 @@ _e_border_cb_window_show_request(void *data  __UNUSED__,
    Ecore_X_Event_Window_Show_Request *e;
 
    e = ev;
+#ifdef _F_USE_VIRT_RESOLUTION_
+   if ( EINA_FALSE == _e_mod_check_change_resolution(e->win))
+     {
+        return ECORE_CALLBACK_CANCEL;
+     }
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
    bd = e_border_find_by_client_window(e->win);
    if (!bd) return ECORE_CALLBACK_PASS_ON;
 
@@ -7743,6 +8366,8 @@ _e_border_find_below_win_list(E_Border* bd)
    Eina_Bool skip;
    Eina_List *below_list = NULL;
 
+   int temp_bd_x, temp_bd_y, temp_bd_w, temp_bd_h;
+
 #ifdef _F_USE_TILED_DESK_LAYOUT_
    Eina_Bool splited;
    if (bd->client.e.state.ly.curr_ly)
@@ -7781,7 +8406,9 @@ _e_border_find_below_win_list(E_Border* bd)
              /* skip if it's not on this zone */
              if (temp_bd->zone != bd->zone) continue;
 
-             if (E_CONTAINS(temp_bd->x, temp_bd->y, temp_bd->w, temp_bd->h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
+             e_border_geometry_get(temp_bd, &temp_bd_x, &temp_bd_y, &temp_bd_w, &temp_bd_h);
+
+             if (E_CONTAINS(temp_bd_x, temp_bd_y, temp_bd_w, temp_bd_h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
                {
                   if (!temp_bd->client.argb && temp_bd->visible)
                     {
@@ -7789,10 +8416,10 @@ _e_border_find_below_win_list(E_Border* bd)
                     }
                }
 
-             win_rect.x = temp_bd->x;
-             win_rect.y = temp_bd->y;
-             win_rect.width = temp_bd->w;
-             win_rect.height = temp_bd->h;
+             win_rect.x = temp_bd_x;
+             win_rect.y = temp_bd_y;
+             win_rect.width = temp_bd_w;
+             win_rect.height = temp_bd_h;
 
              // if it stick out or is bigger than the entire visible region,
              // clip it by the entire visible's geometry.
@@ -7811,6 +8438,7 @@ _e_border_find_below_win_list(E_Border* bd)
                     }
 
                   if (temp_bd->internal) skip = EINA_TRUE;
+                  if (temp_bd->iconify_by_client) skip = EINA_TRUE;
 
                   if (!skip &&
                       !temp_bd->visible &&
@@ -7822,18 +8450,21 @@ _e_border_find_below_win_list(E_Border* bd)
                          {
                             if (temp_bd->client.e.state.ly.curr_ly)
                               {
-                                 temp_bd->client.e.state.deiconify_approve.not_raise = 1;
+                                 if (!temp_bd->client.e.state.deiconify_approve.wait_timer)
+                                   temp_bd->client.e.state.deiconify_approve.not_raise = 1;
                                  below_list = eina_list_append(below_list, temp_bd);
                               }
                          }
                        else
                          {
-                            temp_bd->client.e.state.deiconify_approve.not_raise = 1;
+                            if (!temp_bd->client.e.state.deiconify_approve.wait_timer)
+                              temp_bd->client.e.state.deiconify_approve.not_raise = 1;
                             below_list = eina_list_append(below_list, temp_bd);
                          }
 
 #else
-                       temp_bd->client.e.state.deiconify_approve.not_raise = 1;
+                       if (!temp_bd->client.e.state.deiconify_approve.wait_timer)
+                         temp_bd->client.e.state.deiconify_approve.not_raise = 1;
                        below_list = eina_list_append(below_list, temp_bd);
 #endif
                     }
@@ -7855,7 +8486,8 @@ _e_border_find_below_win_list(E_Border* bd)
                                       parent = temp_bd->parent;
                                       while (parent)
                                         {
-                                           parent->client.e.state.deiconify_approve.not_raise = 1;
+                                           if (!parent->client.e.state.deiconify_approve.wait_timer)
+                                             parent->client.e.state.deiconify_approve.not_raise = 1;
                                            below_list = eina_list_append(below_list, parent);
 
                                            parent = parent->parent;
@@ -7886,6 +8518,9 @@ _e_border_cb_window_hide(void *data  __UNUSED__,
    e = ev;
 //   printf("HIDE: %x, event %x send: %i\n", e->win, e->event_win, e->send_event);
 // not interested in hide events from windows other than the window in question
+#ifdef _F_USE_VIRT_RESOLUTION_
+   _e_mod_revert_resolution( e->win);
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
    if (e->win != e->event_win)
      {
         bd = e_border_find_by_client_window(e->win);
@@ -7913,6 +8548,8 @@ _e_border_cb_window_hide(void *data  __UNUSED__,
 #ifdef _F_DEICONIFY_APPROVE_
    if (e_config->deiconify_approve)
      {
+        int temp_bd_x, temp_bd_y, temp_bd_w, temp_bd_h;
+
         if (bd->client.e.state.pending_event.done)
            goto do_hide;
 
@@ -7932,33 +8569,37 @@ _e_border_cb_window_hide(void *data  __UNUSED__,
              return ECORE_CALLBACK_CANCEL;
           }
 
+        e_border_geometry_get(bd, &temp_bd_x, &temp_bd_y, &temp_bd_w, &temp_bd_h);
+
 #ifdef _F_USE_TILED_DESK_LAYOUT_
         if (e_config->use_tiled_desk_layout)
           {
              if (!bd->client.e.state.ly.curr_ly)
                {
-                  if (!E_CONTAINS(bd->x, bd->y, bd->w, bd->h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
-                     goto do_hide;
+                  if (!E_CONTAINS(temp_bd_x, temp_bd_y, temp_bd_w, temp_bd_h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
+                    goto do_hide;
                }
              else
                {
-                  if (!E_CONTAINS(bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h, bd->x, bd->y, bd->w, bd->h))
-                     goto do_hide;
+                  if (!E_CONTAINS(bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h, temp_bd_x, temp_bd_y, temp_bd_w, temp_bd_h))
+                    goto do_hide;
                }
           }
         else
           {
-             if (!E_CONTAINS(bd->x, bd->y, bd->w, bd->h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
-                goto do_hide;
+             if (!E_CONTAINS(temp_bd_x, temp_bd_y, temp_bd_w, temp_bd_h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
+               goto do_hide;
           }
 #else
-        if (!E_CONTAINS(bd->x, bd->y, bd->w, bd->h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
+        if (!E_CONTAINS(temp_bd_x, temp_bd_y, temp_bd_w, temp_bd_h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
            goto do_hide;
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
 
-        Eina_List *below_list;
+        Eina_List *below_list = NULL;
         // 1. find below non-alpha full size win
-        below_list = _e_border_find_below_win_list(bd);
+
+        if (bd->visible)
+           below_list = _e_border_find_below_win_list(bd);
 
         if (below_list)
           {
@@ -7981,8 +8622,12 @@ _e_border_cb_window_hide(void *data  __UNUSED__,
                   ELBF(ELBT_ROT, 0, bd->client.win, "below_win:%x, below_win's wait_bd:%x", below_bd->client.win, bd->client.win);
 
                   // 3. if not same then uniconify
-                  below_bd->client.e.state.deiconify_approve.not_raise = 1;
-                  e_border_uniconify(below_bd);
+                  if ((!below_bd->client.e.state.deiconify_approve.wait_timer) &&
+                      (!below_bd->client.e.state.deiconify_approve.pending))
+                    {
+                       below_bd->client.e.state.deiconify_approve.not_raise = 1;
+                       e_border_uniconify(below_bd);
+                    }
                }
              eina_list_free(below_list);
 
@@ -7994,8 +8639,27 @@ _e_border_cb_window_hide(void *data  __UNUSED__,
 do_hide:
    bd->client.e.state.pending_event.hide.pending = 0;
 
+#ifdef _F_USE_ICONIFY_RESIZE_
+   if (e_config->use_iconify_resize)
+     {
+        if (bd->iconify_resize.support)
+          {
+             if (bd->iconify_resize.set)
+               {
+                  bd->iconify_resize.set = 0;
+                  e_border_move_resize(bd, bd->iconify_resize.x, bd->iconify_resize.y, bd->iconify_resize.w, bd->iconify_resize.h);
+                  ELBF(ELBT_BD, 0, bd->client.win,"X Hide: Restore size");
+#ifdef _F_USE_BORDER_TRANSFORM_
+                  e_border_transform_update(bd);
+#endif
+               }
+          }
+     }
+#endif
+
    if ((!bd->client.e.state.pending_event.hide.pending) &&
-       (!bd->client.e.state.pending_event.lower.pending))
+       (!bd->client.e.state.pending_event.lower.pending) &&
+       (!bd->client.e.state.pending_event.iconify.pending))
      {
         bd->client.e.state.pending_event.done = 0;
         bd->client.e.state.pending_event.pending = 0;
@@ -8137,9 +8801,70 @@ _e_border_cb_window_configure_request(void *data  __UNUSED__,
                                    e->abovewin, e->detail);
         return ECORE_CALLBACK_PASS_ON;
      }
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:WIN CONFIGURE REQ");
 
    SLOGI("CONFIG_REQ win:0x%08x, value_mask:%lu, x,y,w,h:(%d,%d,%d,%d), above:0x%08x, detail:%d",
              e->win, e->value_mask, e->x, e->y, e->w, e->h, e->border, e->abovewin, e->detail);
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+   int temp_w = 0;
+   int temp_h = 0;
+   int prefer_w = 0;
+   int prefer_h = 0;
+
+   E_Virtual_Res_Data* vir_res_data = e_virtual_res_data_get();
+   if (vir_res_data && vir_res_data->preferred_resolution_get)
+     vir_res_data->preferred_resolution_get(&prefer_w, &prefer_h);
+
+   if ((e_virtual_res_type_get() == E_VIRTUAL_RES_SINGLE_SOURCE) && ((e->w > prefer_w) || (e->h > prefer_h)))
+     {
+        if ((e->w > prefer_w) && (e->h > prefer_h))
+          {
+             temp_w = prefer_w ;
+             temp_h = prefer_h ;
+          }
+        else if (e->w > prefer_w)
+          {
+             temp_w = prefer_w ;
+             temp_h = e->h ;
+          }
+        else if (e->h > prefer_h)
+          {
+             temp_w = e->w ;
+             temp_h = prefer_h ;
+          }
+     }
+   else if ((e_virtual_res_type_get() != E_VIRTUAL_RES_SINGLE_SOURCE) && prefer_w && prefer_h)
+     {
+        int zoneX,zoneY,zoneW,zoneH ;
+        e_zone_useful_geometry_get(bd->zone, &zoneX, &zoneY, &zoneW, &zoneH);
+        if ((e->w > zoneW) && (e->h > zoneH))
+          {
+             temp_w = prefer_w ;
+             temp_h = prefer_h ;
+          }
+        else if (e->w > zoneW)
+          {
+             temp_w = prefer_w ;
+             temp_h = e->h ;
+          }
+        else if (e->h > zoneH)
+          {
+             temp_w = e->w ;
+             temp_h = prefer_h ;
+          }
+        else
+          {
+             temp_w = e->w ;
+             temp_h = e->h ;
+          }
+     }
+   else
+     {
+        temp_w = e->w ;
+        temp_h = e->h ;
+     }
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
 
    if ((e->value_mask & ECORE_X_WINDOW_CONFIGURE_MASK_X) ||
        (e->value_mask & ECORE_X_WINDOW_CONFIGURE_MASK_Y))
@@ -8159,10 +8884,19 @@ _e_border_cb_window_configure_request(void *data  __UNUSED__,
 
              h = bd->h;
              w = bd->w;
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+             if (e->value_mask & ECORE_X_WINDOW_CONFIGURE_MASK_W)
+               w = temp_w + bd->client_inset.l + bd->client_inset.r;
+             if (e->value_mask & ECORE_X_WINDOW_CONFIGURE_MASK_H)
+               h = temp_h + bd->client_inset.t + bd->client_inset.b;
+#else
              if (e->value_mask & ECORE_X_WINDOW_CONFIGURE_MASK_W)
                w = e->w + bd->client_inset.l + bd->client_inset.r;
              if (e->value_mask & ECORE_X_WINDOW_CONFIGURE_MASK_H)
                h = e->h + bd->client_inset.t + bd->client_inset.b;
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
+
              if ((!bd->lock_client_location) && (!bd->lock_client_size))
                {
                   if ((bd->maximized & E_MAXIMIZE_TYPE) != E_MAXIMIZE_NONE)
@@ -8238,10 +8972,17 @@ _e_border_cb_window_configure_request(void *data  __UNUSED__,
 
         h = bd->h;
         w = bd->w;
+#ifdef _F_USE_TV_FEATURE_
+        if (e->value_mask & ECORE_X_WINDOW_CONFIGURE_MASK_W)
+          w = temp_w + bd->client_inset.l + bd->client_inset.r;
+        if (e->value_mask & ECORE_X_WINDOW_CONFIGURE_MASK_H)
+          h = temp_h + bd->client_inset.t + bd->client_inset.b;
+#else
         if (e->value_mask & ECORE_X_WINDOW_CONFIGURE_MASK_W)
           w = e->w + bd->client_inset.l + bd->client_inset.r;
         if (e->value_mask & ECORE_X_WINDOW_CONFIGURE_MASK_H)
           h = e->h + bd->client_inset.t + bd->client_inset.b;
+#endif /* end of _F_USE_TV_FEATURE_ */
         if (!bd->lock_client_size)
           {
              if ((bd->shaded) || (bd->shading))
@@ -8373,7 +9114,14 @@ _e_border_cb_window_configure_request(void *data  __UNUSED__,
           {
              if (e->detail == ECORE_X_WINDOW_STACK_ABOVE)
                {
-                  e_border_raise(bd);
+                  if (bd->new_client)
+                    {
+                       ELBF(ELBT_BD, 0, bd->client.win, "Set post_raise");
+                       bd->post_raise = 1;
+                       bd->post_lower = 0;
+                    }
+                  else
+                    e_border_raise(bd);
                }
              else if (e->detail == ECORE_X_WINDOW_STACK_BELOW)
                {
@@ -8382,12 +9130,16 @@ _e_border_cb_window_configure_request(void *data  __UNUSED__,
                     {
                        if (e_config->deiconify_approve)
                          {
+                            int bx, by, bw, bh;
+                            e_border_geometry_get(bd, &bx, &by, &bw, &bh);
+
                             if (bd->client.e.state.pending_event.done)
                                goto do_lower;
 
                             if (bd->client.e.state.pending_event.lower.pending)
                               {
                                  ELB(ELBT_BD, "Already lower PENDING.", bd->client.win);
+                                 traceEnd(TTRACE_TAG_WINDOW_MANAGER);
                                  return ECORE_CALLBACK_CANCEL;
                               }
 
@@ -8400,6 +9152,7 @@ _e_border_cb_window_configure_request(void *data  __UNUSED__,
                                  bd->client.e.state.pending_event.lower.detail = e->detail;
                                  bd->client.e.state.pending_event.lower.value_mask = ECORE_X_WINDOW_CONFIGURE_MASK_STACK_MODE;
                                  ELB(ELBT_BD, "PENDING lower event. Pending by another event", bd->client.win);
+                                 traceEnd(TTRACE_TAG_WINDOW_MANAGER);
                                  return ECORE_CALLBACK_CANCEL;
                               }
 
@@ -8408,23 +9161,23 @@ _e_border_cb_window_configure_request(void *data  __UNUSED__,
                               {
                                  if (!bd->client.e.state.ly.curr_ly)
                                    {
-                                      if (!E_CONTAINS(bd->x, bd->y, bd->w, bd->h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
+                                      if (!E_CONTAINS(bx, by, bw, bh, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
                                          goto do_lower;
                                    }
                                  else
                                    {
-                                      if (!E_CONTAINS(bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h, bd->x, bd->y, bd->w, bd->h))
+                                      if (!E_CONTAINS(bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h, bx, by, bw, bh))
                                          goto do_lower;
 
                                    }
                               }
                             else
                               {
-                                 if (!E_CONTAINS(bd->x, bd->y, bd->w, bd->h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
+                                 if (!E_CONTAINS(bx, by, bw, bh, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
                                     goto do_lower;
                               }
 #else
-                            if (!E_CONTAINS(bd->x, bd->y, bd->w, bd->h, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
+                            if (!E_CONTAINS(bx, by, bw, bh, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
                                goto do_lower;
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
 
@@ -8455,12 +9208,14 @@ _e_border_cb_window_configure_request(void *data  __UNUSED__,
                                       ELBF(ELBT_ROT, 0, bd->client.win, "below_win:%x, below_win's wait_bd:%x", below_bd->client.win, bd->client.win);
 
                                       // 3. if not same then uniconify
-                                      below_bd->client.e.state.deiconify_approve.not_raise = 1;
+                                      if (!below_bd->client.e.state.deiconify_approve.wait_timer)
+                                        below_bd->client.e.state.deiconify_approve.not_raise = 1;
                                       e_border_uniconify(below_bd);
                                    }
                                  eina_list_free(below_list);
 
                                  ELB(ELBT_BD, "PENDING lower event", bd->client.win);
+                                 traceEnd(TTRACE_TAG_WINDOW_MANAGER);
                                  return ECORE_CALLBACK_CANCEL;
                               }
                          }
@@ -8469,13 +9224,13 @@ do_lower:
                        bd->client.e.state.pending_event.lower.pending = 0;
 
                        if ((!bd->client.e.state.pending_event.hide.pending) &&
-                           (!bd->client.e.state.pending_event.lower.pending))
+                           (!bd->client.e.state.pending_event.lower.pending) &&
+                           (!bd->client.e.state.pending_event.iconify.pending))
                          {
                             bd->client.e.state.pending_event.done = 0;
                             bd->client.e.state.pending_event.pending = 0;
                          }
                     }
-                  ELB(ELBT_BD, "Real lower", bd->client.win);
 #endif
 
 #ifdef _F_USE_TILED_DESK_LAYOUT_
@@ -8489,7 +9244,18 @@ do_lower:
                     }
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
 
-                  e_border_lower(bd);
+                  if (bd->new_client || bd->client.icccm.fetch.transient_for)
+                    {
+                       ELBF(ELBT_BD, 0, bd->client.win, "Set post_lower, new_client:%d, fetch transient_for:%d",
+                            bd->new_client, bd->client.icccm.fetch.transient_for);
+                       bd->post_lower = 1;
+                       bd->post_raise = 0;
+                    }
+                  else
+                    {
+                       ELB(ELBT_BD, "Real lower", bd->client.win);
+                       e_border_lower(bd);
+                    }
                }
              else if (e->detail == ECORE_X_WINDOW_STACK_TOP_IF)
                {
@@ -8508,6 +9274,7 @@ do_lower:
 
    /* FIXME: need to send synthetic stacking event too as well as move/resize */
    _e_border_client_move_resize_send(bd);
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
    return ECORE_CALLBACK_PASS_ON;
 }
 
@@ -8800,9 +9567,14 @@ _e_border_cb_window_property(void *data  __UNUSED__,
         bd->changed = 1;
      }
 #ifdef _F_USE_DESK_WINDOW_PROFILE_
-   else if (e->atom == ECORE_X_ATOM_E_PROFILE_LIST)
+   else if (e->atom == ECORE_X_ATOM_E_WINDOW_PROFILE_SUPPORTED)
      {
-        bd->client.e.fetch.profile_list = 1;
+        bd->client.e.fetch.profile = 1;
+        bd->changed = 1;
+     }
+   else if (e->atom == ECORE_X_ATOM_E_WINDOW_PROFILE_AVAILABLE_LIST)
+     {
+        bd->client.e.fetch.profile = 1;
         bd->changed = 1;
      }
 #endif
@@ -8879,6 +9651,21 @@ _e_border_cb_window_property(void *data  __UNUSED__,
           }
      }
 #endif /* end of _F_E_WIN_AUX_HINT_ */
+#ifdef _F_DEICONIFY_APPROVE_
+   else if (e->atom == ECORE_X_ATOM_E_DEICONIFY_APPROVE)
+     {
+        int ret;
+        unsigned int val = 0;
+
+        ret = ecore_x_window_prop_card32_get(bd->client.win,
+                                             ECORE_X_ATOM_E_DEICONIFY_APPROVE,
+                                             &val, 1);
+        if (ret == 1)
+          bd->client.e.state.deiconify_approve.support = val;
+        else
+          bd->client.e.state.deiconify_approve.support = 0;
+     }
+#endif
 
    return ECORE_CALLBACK_PASS_ON;
 }
@@ -8992,8 +9779,7 @@ _e_border_cb_window_focus_in(void *data  __UNUSED__,
              bd->client.icccm.take_focus);
    }
 #endif
-   /* As enlightenment is running as App mode in Tizen, we don't need to change priority of process */
-   /* _e_border_pri_raise(bd); */
+   _e_border_pri_raise(bd);
    if (e->mode == ECORE_X_EVENT_MODE_GRAB)
      {
         if (e->detail == ECORE_X_EVENT_DETAIL_POINTER) return ECORE_CALLBACK_PASS_ON;
@@ -9061,8 +9847,7 @@ _e_border_cb_window_focus_out(void *data  __UNUSED__,
              bd->client.icccm.take_focus);
    }
 #endif
-   /* As enlightenment is running as App mode in Tizen, we don't need to change priority of process */
-   /* _e_border_pri_norm(bd); */
+   _e_border_pri_norm(bd);
    if (e->mode == ECORE_X_EVENT_MODE_NORMAL)
      {
         if (e->detail == ECORE_X_EVENT_DETAIL_INFERIOR) return ECORE_CALLBACK_PASS_ON;
@@ -9131,6 +9916,81 @@ _e_border_shape_input_clip_to_zone(E_Border *bd)
 }
 #endif /* _F_BORDER_CLIP_TO_ZONE_ */
 
+#ifdef _F_DEICONIFY_APPROVE_
+static void
+_e_border_deiconify_approve_done(Ecore_X_Window win, int done)
+{
+   E_Border *bd = NULL;
+   E_Border *ancestor_bd = NULL;
+
+   if (!e_config->deiconify_approve) return;
+   if (done != 1) return;
+
+   bd = e_border_find_by_client_window(win);
+   if (!bd) return;
+
+   bd->client.e.state.deiconify_approve.render_done = 1;
+
+   ancestor_bd = bd->client.e.state.deiconify_approve.ancestor;
+   if ((ancestor_bd) &&
+       (!e_object_is_del(E_OBJECT(ancestor_bd))))
+     {
+        ancestor_bd->client.e.state.deiconify_approve.req_list =
+           eina_list_remove(ancestor_bd->client.e.state.deiconify_approve.req_list, bd);
+        bd->client.e.state.deiconify_approve.ancestor = NULL;
+     }
+   else
+     {
+        ancestor_bd = bd;
+     }
+
+   ELBF(ELBT_BD, 0, bd->client.win,
+        "RECEIVE DEICONIFY_APPROVE.. ancestor:%x", ancestor_bd->client.win);
+
+   if ((ancestor_bd->client.e.state.deiconify_approve.req_list == NULL) &&
+       (ancestor_bd->client.e.state.deiconify_approve.render_done))
+     {
+        if (ancestor_bd->client.e.state.deiconify_approve.wait_timer)
+          {
+             ecore_timer_del(ancestor_bd->client.e.state.deiconify_approve.wait_timer);
+             ancestor_bd->client.e.state.deiconify_approve.wait_timer = NULL;
+
+             if (bd->client.e.state.deiconify_approve.wait_timer)
+               {
+                  ecore_timer_del(bd->client.e.state.deiconify_approve.wait_timer);
+                  bd->client.e.state.deiconify_approve.wait_timer = NULL;
+               }
+
+             if (bd->client.e.state.deiconify_approve.render_only)
+               {
+                  ELBF(ELBT_BD, 0, bd->client.win, "Render only.. win:%x", bd->client.win);
+                  bd->client.e.state.deiconify_approve.render_only = 0;
+                  e_border_force_render_request(bd,EINA_FALSE);
+                  return;
+               }
+             _e_border_uniconify_pending_list_remove(ancestor_bd);
+             _e_border_window_pending_event_flush(ancestor_bd);
+          }
+        else
+          {
+             ELB(ELBT_BD, "Unset DEICONIFY_APPROVE render_done", ancestor_bd->client.win);
+             ancestor_bd->client.e.state.deiconify_approve.render_done = 0;
+          }
+     }
+
+   if (bd != ancestor_bd)
+     {
+        if (bd->client.e.state.deiconify_approve.wait_timer)
+          {
+             ecore_timer_del(bd->client.e.state.deiconify_approve.wait_timer);
+             bd->client.e.state.deiconify_approve.wait_timer = NULL;
+          }
+        _e_border_uniconify_pending_list_remove(bd);
+        _e_border_window_pending_event_flush(bd);
+     }
+}
+#endif
+
 static Eina_Bool
 _e_border_cb_client_message(void *data  __UNUSED__,
                             int ev_type __UNUSED__,
@@ -9138,79 +9998,69 @@ _e_border_cb_client_message(void *data  __UNUSED__,
 {
    Ecore_X_Event_Client_Message *e;
    E_Border *bd;
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+   char *profile = NULL;
+#endif
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:CLIENT MSG");
 
    e = ev;
-#ifdef _F_DEICONIFY_APPROVE_
-   if (e->message_type == ECORE_X_ATOM_E_DEICONIFY_APPROVE)
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+   if (e->message_type == ECORE_X_ATOM_E_WINDOW_PROFILE_CHANGE)
      {
-        if (!e_config->deiconify_approve) return ECORE_CALLBACK_PASS_ON;
-
         bd = e_border_find_by_client_window(e->win);
         if (bd)
           {
-             if (bd->client.e.state.deiconify_approve.support)
+             if (bd->client.e.state.profile.use)
                {
-                  if (e->data.l[1] != 1) return ECORE_CALLBACK_PASS_ON;
-                  bd->client.e.state.deiconify_approve.render_done = 1;
+                  profile = ecore_x_atom_name_get(e->data.l[1]);
+                  ecore_x_e_window_profile_change_request_send(bd->client.win,
+                                                               profile);
+                  bd->client.e.state.profile.wait_for_done = 1;
+               }
+          }
+     }
+   else if (e->message_type == ECORE_X_ATOM_E_WINDOW_PROFILE_CHANGE_DONE)
+     {
+        bd = e_border_find_by_client_window(e->win);
+        if (bd)
+          {
+             if ((bd->client.e.state.profile.use) &&
+                 (bd->client.e.state.profile.wait_for_done))
+               {
+                  E_Container *con = bd->zone->container;
+                  E_Desk *desk = NULL;
 
-                  E_Border *ancestor_bd;
-                  ancestor_bd = bd->client.e.state.deiconify_approve.ancestor;
-                  if ((ancestor_bd) &&
-                      (!e_object_is_del(E_OBJECT(ancestor_bd))))
+                  profile = ecore_x_atom_name_get(e->data.l[1]);
+                  if (profile)
                     {
-                       ancestor_bd->client.e.state.deiconify_approve.req_list = eina_list_remove(ancestor_bd->client.e.state.deiconify_approve.req_list, bd);
-                       bd->client.e.state.deiconify_approve.ancestor = NULL;
-                    }
-                  else
-                    {
-                       ancestor_bd = bd;
-                    }
-
-                  ELBF(ELBT_BD, 0, bd->client.win,
-                       "RECEIVE DEICONIFY_APPROVE.. ancestor:%x", ancestor_bd->client.win);
-
-                  if ((ancestor_bd->client.e.state.deiconify_approve.req_list == NULL) &&
-                      (ancestor_bd->client.e.state.deiconify_approve.render_done))
-                    {
-                       if (ancestor_bd->client.e.state.deiconify_approve.wait_timer)
-                         {
-                            ecore_timer_del(ancestor_bd->client.e.state.deiconify_approve.wait_timer);
-                            ancestor_bd->client.e.state.deiconify_approve.wait_timer = NULL;
-
-                            if (bd->client.e.state.deiconify_approve.wait_timer)
-                              {
-                                 ecore_timer_del(bd->client.e.state.deiconify_approve.wait_timer);
-                                 bd->client.e.state.deiconify_approve.wait_timer = NULL;
-                              }
-
-                            if (bd->client.e.state.deiconify_approve.render_only)
-                              {
-                                 bd->client.e.state.deiconify_approve.render_only = 0;
-                                 e_border_force_render_request(bd,EINA_FALSE);
-                                 return ECORE_CALLBACK_PASS_ON;
-                              }
-                            _e_border_uniconify_pending_list_remove(ancestor_bd);
-                            _e_border_window_pending_event_flush(ancestor_bd);
-                         }
-                       else
-                         {
-                            ELB(ELBT_BD, "Unset DEICONIFY_APPROVE render_done", ancestor_bd->client.win);
-                            ancestor_bd->client.e.state.deiconify_approve.render_done = 0;
-                         }
+                       if (bd->client.e.state.profile.name)
+                         eina_stringshare_del(bd->client.e.state.profile.name);
+                       bd->client.e.state.profile.name = eina_stringshare_add(profile);
                     }
 
-                  if (bd != ancestor_bd)
+                  bd->client.e.state.profile.wait_for_done = 0;
+
+                  desk = e_container_desk_window_profile_get(con, profile);
+                  if ((desk) && (bd->desk != desk))
                     {
-                       if (bd->client.e.state.deiconify_approve.wait_timer)
-                         {
-                            ecore_timer_del(bd->client.e.state.deiconify_approve.wait_timer);
-                            bd->client.e.state.deiconify_approve.wait_timer = NULL;
-                         }
-                       _e_border_uniconify_pending_list_remove(bd);
-                       _e_border_window_pending_event_flush(bd);
+                       e_border_desk_set(bd, desk);
+                       bd->changes.pos = 1;
+                       bd->changes.size = 1;
+                       bd->changed = 1;
                     }
                }
           }
+     }
+
+   if (profile)
+     free(profile);
+#endif
+
+#ifdef _F_DEICONIFY_APPROVE_
+   if (e->message_type == ECORE_X_ATOM_E_DEICONIFY_APPROVE)
+     {
+        _e_border_deiconify_approve_done(e->win, e->data.l[1]);
+        traceEnd(TTRACE_TAG_WINDOW_MANAGER);
         return ECORE_CALLBACK_PASS_ON;
      }
 #endif
@@ -9245,6 +10095,7 @@ _e_border_cb_client_message(void *data  __UNUSED__,
                   rot.fetch = EINA_TRUE;
                }
           }
+        traceEnd(TTRACE_TAG_WINDOW_MANAGER);
         return ECORE_CALLBACK_PASS_ON;
      }
 
@@ -9290,6 +10141,7 @@ _e_border_cb_client_message(void *data  __UNUSED__,
           }
      }
 #endif
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
    return ECORE_CALLBACK_PASS_ON;
 }
 
@@ -9526,6 +10378,7 @@ _e_border_cb_sync_alarm(void *data  __UNUSED__,
    return ECORE_CALLBACK_PASS_ON;
 }
 
+#ifndef _F_DISABLE_E_EFREET_
 static Eina_Bool
 _e_border_cb_efreet_cache_update(void *data  __UNUSED__,
                                  int ev_type __UNUSED__,
@@ -9551,6 +10404,7 @@ _e_border_cb_efreet_cache_update(void *data  __UNUSED__,
     */
    return ECORE_CALLBACK_PASS_ON;
 }
+#endif
 
 static Eina_Bool
 _e_border_cb_config_icon_theme(void *data  __UNUSED__,
@@ -9924,8 +10778,8 @@ _e_border_stay_within_container(E_Border *bd, int x, int y, int *new_x, int *new
 
    if (!bd->internal)
      {
-        margin_x = bd->w - 150;
-        margin_y = bd->h - 84;
+        margin_x = bd->w - e_config->border_drag_margin_x;
+        margin_y = bd->h - e_config->border_drag_margin_y;
      }
 
    new_x_max = bd->zone->x + bd->zone->w - bd->w + margin_x;
@@ -10151,15 +11005,15 @@ _e_border_cb_desk_window_profile_change(void *data  __UNUSED__,
                                         void       *ev)
 {
    E_Event_Desk_Window_Profile_Change *e;
-   Eina_List *l;
+   Eina_List *l = NULL;
    E_Border *bd;
 
-   e = ev;
+   e = (E_Event_Desk_Window_Profile_Change *)ev;
    EINA_LIST_FOREACH(borders, l, bd)
      {
-        if ((bd) && (!e_object_is_del(E_OBJECT(bd))))
+        if (!e_object_is_del(E_OBJECT(bd)))
           {
-             bd->client.e.fetch.profile_list = 1;
+             bd->client.e.fetch.profile = 1;
              bd->changed = 1;
           }
      }
@@ -10632,11 +11486,34 @@ _e_border_rotation_geom_get(E_Border  *bd,
    int _w = bd->w;
    int _h = bd->h;
 
+#ifdef _F_USE_VIRT_RESOLUTION_
+   int prefer_w = 0;
+   int prefer_h = 0;
+   int temp_w = 0;
+   int temp_h = 0;
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
+
    if (x) *x = bd->x;
    if (y) *y = bd->y;
    if (w) *w = bd->w;
    if (h) *h = bd->h;
    if (move) *move = EINA_TRUE;
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+   if (e_virtual_res_type_get() == E_VIRTUAL_RES_SINGLE_SOURCE)
+     {
+        E_Virtual_Res_Data* vir_res_data = e_virtual_res_data_get();
+        if (vir_res_data && vir_res_data->preferred_resolution_get)
+          vir_res_data->preferred_resolution_get(&prefer_w, &prefer_h);
+        temp_w = prefer_w;
+        temp_h = prefer_h;
+     }
+   else
+     {
+        temp_w = zone->w;
+        temp_h = zone->h;
+     }
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
 
    if (bd->client.e.state.rot.geom_hint)
      {
@@ -10647,14 +11524,26 @@ _e_border_rotation_geom_get(E_Border  *bd,
               _h = bd->client.e.state.rot.geom[0].h;
               if (_w == 0) _w = bd->w;
               if (_h == 0) _h = bd->h;
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+              _x = 0; _y = temp_h - _h;
+#else
               _x = 0; _y = zone->h - _h;
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
+
               break;
            case  90:
               _w = bd->client.e.state.rot.geom[1].w;
               _h = bd->client.e.state.rot.geom[1].h;
               if (_w == 0) _w = bd->w;
               if (_h == 0) _h = bd->h;
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+              _x = temp_w - _w; _y = 0;
+#else
               _x = zone->w - _w; _y = 0;
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
+
               break;
            case 180:
               _w = bd->client.e.state.rot.geom[2].w;
@@ -10799,6 +11688,7 @@ _e_border_eval0(E_Border *bd)
 {
    int change_urgent = 0;
    int rem_change = 0;
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:EVAL 0");
 #ifdef _F_USE_DESK_WINDOW_PROFILE_
    Eina_Bool need_desk_set = EINA_FALSE;
 #endif
@@ -10831,8 +11721,9 @@ _e_border_eval0(E_Border *bd)
 
    if (e_object_is_del(E_OBJECT(bd)))
      {
-        CRI("_e_border_eval(%p) with deleted border!\n", bd);
+        ERR("_e_border_eval(%p) with deleted border!\n", bd);
         bd->changed = 0;
+        traceEnd(TTRACE_TAG_WINDOW_MANAGER);
         return;
      }
 
@@ -10991,55 +11882,73 @@ _e_border_eval0(E_Border *bd)
         rem_change = 1;
      }
 #ifdef _F_USE_DESK_WINDOW_PROFILE_
-   if (bd->client.e.fetch.profile_list)
+   if (bd->client.e.fetch.profile)
      {
-        const char **profiles = NULL;
-        const char *str;
-        int num = 0, i;
+        const char **list = NULL;
+        int n, i, res;
+        unsigned int use;
 
-        if (bd->client.e.state.profile)
-          eina_stringshare_del(bd->client.e.state.profile);
-        EINA_LIST_FREE(bd->client.e.state.profiles, str)
+        if (bd->client.e.state.profile.name)
           {
-             if (str) eina_stringshare_del(str);
+             eina_stringshare_del(bd->client.e.state.profile.name);
+             bd->client.e.state.profile.name = NULL;
           }
-        bd->client.e.state.profile = NULL;
-        bd->client.e.state.profiles = NULL;
-        bd->client.e.state.profile_list = 0;
 
-        if (ecore_x_e_window_profile_list_get(bd->client.win,
-                                              &profiles, &num))
+        if (bd->client.e.state.profile.available_list)
           {
-             bd->client.e.state.profile_list = 1;
-             for (i = 0; i < num; i++)
+             for (i = 0; i < bd->client.e.state.profile.num; i++)
                {
-                  str = eina_stringshare_add(profiles[i]);
-                  bd->client.e.state.profiles = eina_list_append(bd->client.e.state.profiles, str);
+                  if (bd->client.e.state.profile.available_list[i])
+                    {
+                       eina_stringshare_del(bd->client.e.state.profile.available_list[i]);
+                       bd->client.e.state.profile.available_list[i] = NULL;
+                    }
+               }
+             E_FREE(bd->client.e.state.profile.available_list);
+             bd->client.e.state.profile.available_list = NULL;
+          }
+        bd->client.e.state.profile.num = 0;
+
+        res = ecore_x_window_prop_card32_get(bd->client.win,
+                                             ECORE_X_ATOM_E_WINDOW_PROFILE_SUPPORTED,
+                                             &use,
+                                             1);
+        if ((res == 1) && (use == 1))
+          {
+             Ecore_X_Atom val;
+             res = ecore_x_window_prop_atom_get(bd->client.win,
+                                                ECORE_X_ATOM_E_WINDOW_PROFILE_CHANGE,
+                                                &val, 1);
+             if (res == 1)
+               {
+                  char *name = ecore_x_atom_name_get(val);
+                  if (name)
+                    {
+                       bd->client.e.state.profile.name = eina_stringshare_add(name);
+                       free(name);
+                    }
                }
 
-             /* We should set desk to contain given border after creating E_BORDER_ADD event.
-              * If not, e will have an E_BORDER_SHOW event before E_BORDER_ADD event.
-              */
+             if (ecore_x_e_window_available_profiles_get(bd->client.win, &list, &n))
+               {
+                  bd->client.e.state.profile.available_list = E_NEW(const char *, n);
+                  for (i = 0; i < n; i++)
+                    {
+                       bd->client.e.state.profile.available_list[i] = eina_stringshare_add(list[i]);
+
+                       if (list[i])
+                          free(list[i]);
+                    }
+                  bd->client.e.state.profile.num = n;
+               }
              need_desk_set = EINA_TRUE;
-          }
-        else
-          {
-             if (strcmp(bd->desk->window_profile,
-                        e_config->desktop_default_window_profile) != 0)
-               {
-                  ecore_x_e_window_profile_set(bd->client.win,
-                                               bd->desk->window_profile);
-               }
+             bd->client.e.state.profile.use = 1;
+
+             if (list)
+               free(list);
           }
 
-        if (profiles)
-          {
-             for (i = 0; i < num; i++)
-                if (profiles[i]) free(profiles[i]);
-             free(profiles);
-          }
-
-        bd->client.e.fetch.profile_list = 0;
+        bd->client.e.fetch.profile = 0;
      }
 #endif
 #ifdef _F_ZONE_WINDOW_ROTATION_
@@ -11262,7 +12171,6 @@ _e_border_eval0(E_Border *bd)
         if (bd->client.e.fetch.aux_hint.hints)
           {
              need_aux_hint_update = EINA_TRUE;
-             bd->client.e.fetch.aux_hint.hints = 0;
           }
      }
 #endif /* end of _F_E_WIN_AUX_HINT_ */
@@ -12060,43 +12968,77 @@ _e_border_eval0(E_Border *bd)
      }
 
 #ifdef _F_USE_DESK_WINDOW_PROFILE_
-   if (need_desk_set)
+   if ((e_config->use_desktop_window_profile) && (need_desk_set))
      {
-        E_Container *con = bd->zone->container;
-        E_Desk *desk = NULL;
-        Eina_List *l;
-        const char *str;
-        EINA_LIST_FOREACH(bd->client.e.state.profiles, l, str)
+        if (!(bd->client.e.state.profile.name) &&
+            (bd->client.e.state.profile.num >= 1))
           {
-             desk = e_container_desk_window_profile_get(con, str);
-             if (desk)
+             const char *p = NULL;
+             int i;
+             for (i = 0; i < bd->client.e.state.profile.num; i++)
                {
-                  if (bd->desk != desk)
+                  if (!bd->client.e.state.profile.available_list[i])
+                    continue;
+                  p = bd->client.e.state.profile.available_list[i];
+                  if (strcmp(bd->desk->window_profile, p) == 0)
                     {
-                       bd->client.e.state.profile = eina_stringshare_add(str);
-                       if (bd->zone != desk->zone)
-                         e_border_zone_set(bd, desk->zone);
-                       e_border_desk_set(bd, desk);
+                       bd->client.e.state.profile.name = eina_stringshare_add(bd->desk->window_profile);
+                       break;
                     }
-                  break;
                }
+
+             if (!bd->client.e.state.profile.name)
+               {
+                  E_Container *con = bd->zone->container;
+                  E_Desk *desk = NULL;
+
+                  for (i = 0; i < bd->client.e.state.profile.num; i++)
+                    {
+                       if (!bd->client.e.state.profile.available_list[i])
+                         continue;
+                       p = bd->client.e.state.profile.available_list[i];
+                       desk = e_container_desk_window_profile_get(con, p);
+                       if ((desk) && (bd->desk != desk))
+                         {
+                            bd->client.e.state.profile.name = eina_stringshare_add(p);
+                            break;
+                         }
+                    }
+               }
+          }
+
+        if (!bd->client.e.state.profile.name)
+          {
+             bd->client.e.state.profile.name = eina_stringshare_add(bd->desk->window_profile);
+          }
+
+        if (bd->new_client)
+          {
+             E_Desk *desk;
+             desk = e_container_desk_window_profile_get(bd->zone->container, bd->client.e.state.profile.name);
+             if ((desk) && (bd->desk != desk))
+               {
+                  LOGE("win:%x, Set NEW profile:%s", bd->client.win, bd->client.e.state.profile.name);
+                  e_border_desk_set(bd, desk);
+                  bd->changes.pos = 1;
+                  bd->changes.size = 1;
+                  bd->changed = 1;
+               }
+          }
+        else
+          {
+             ecore_x_e_window_profile_change_request_send(bd->client.win,
+                                                          bd->client.e.state.profile.name);
+             bd->client.e.state.profile.wait_for_done = 1;
           }
      }
 #endif
+
 #ifdef _F_E_WIN_AUX_HINT_
    if (need_aux_hint_update)
      {
-        if (bd->client.e.state.aux_hint.support)
-          {
-             _e_border_aux_hint_handle(bd);
-
-             if (bd->changes.aux_hint)
-               {
-                  if (aux_hint_job)
-                     ecore_job_del(aux_hint_job);
-                  aux_hint_job = ecore_job_add(_e_border_aux_hint_job, NULL);
-               }
-          }
+        e_border_aux_hint_info_update(bd);
+        bd->client.e.fetch.aux_hint.hints = 0;
      }
 #endif /* end of _F_E_WIN_AUX_HINT_ */
 
@@ -12138,24 +13080,21 @@ _e_border_eval0(E_Border *bd)
              Eina_Bool move;
 
              ang = e_border_rotation_recommend_angle_get(bd);
-             e_border_rotation_set(bd, ang);
-
-             if (bd->client.e.state.rot.ang.next == -1)
-               {
-                  ang = bd->client.e.state.rot.ang.curr;
-
-                  hint = _e_border_rotation_geom_get(bd, bd->zone, ang, &x, &y, &w, &h, &move);
-                  if (hint)
-                    {
-                       _e_border_move_resize_internal(bd, x, y, w, h, EINA_TRUE, move);
-                       ELBF(ELBT_ROT, 0, bd->client.win, "RESIZE_BY_HINT name:%s (%d,%d) %dx%d",
-                            bd->client.icccm.name, x, y, w, h);
-                    }
-               }
-             else
+             if (e_border_rotation_set(bd, ang))
                {
                   ELB(ELBT_ROT, "NEED ROT", bd->client.win);
+                  ang = bd->client.e.state.rot.ang.next;
                   bd->changed = 1;
+               }
+             else
+               ang = bd->client.e.state.rot.ang.curr;
+
+             hint = _e_border_rotation_geom_get(bd, bd->zone, ang, &x, &y, &w, &h, &move);
+             if (hint)
+               {
+                  _e_border_move_resize_internal(bd, x, y, w, h, EINA_TRUE, move);
+                  ELBF(ELBT_ROT, 0, bd->client.win, "RESIZE_BY_HINT name:%s (%d,%d) %dx%d",
+                       bd->client.icccm.name, x, y, w, h);
                }
           }
         if (bd->client.e.fetch.rot.need_rotation)
@@ -12396,6 +13335,7 @@ _e_border_eval0(E_Border *bd)
      }
 
    _e_border_hook_call(E_BORDER_HOOK_EVAL_POST_BORDER_ASSIGN, bd);
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 #ifdef _F_FOCUS_WINDOW_IF_TOP_STACK_
@@ -12409,6 +13349,7 @@ _e_border_latest_stacked_focus_check_set(E_Border *bd)
    Ecore_X_XRegion *win_region = NULL;
    Ecore_X_Rectangle visible_rect, win_rect;
    E_Border_List *bl;
+   int temp_bd_x, temp_bd_y, temp_bd_w, temp_bd_h;
 
    // set the entire visible region as a root geometry
    visible_rect.x = bd->zone->x;
@@ -12427,10 +13368,12 @@ _e_border_latest_stacked_focus_check_set(E_Border *bd)
         while ((temp_bd = e_container_border_list_prev(bl)))
           {
              if (temp_bd == bd) break;
-
              if (temp_bd == focused) continue;
-             if ((temp_bd->x >= bd->zone->w) || (temp_bd->y >= bd->zone->h)) continue;
-             if (((temp_bd->x + temp_bd->w) <= 0) || ((temp_bd->y + temp_bd->h) <= 0)) continue;
+
+             e_border_geometry_get(temp_bd, &temp_bd_x, &temp_bd_y, &temp_bd_w, &temp_bd_h);
+
+             if ((temp_bd_x >= bd->zone->w) || (temp_bd_y >= bd->zone->h)) continue;
+             if (((temp_bd_x + temp_bd_w) <= 0) || ((temp_bd_y + temp_bd_h) <= 0)) continue;
              if ((!temp_bd->iconic) && (temp_bd->visible) && (temp_bd->desk == bd->desk) &&
                  (temp_bd->client.icccm.accepts_focus || temp_bd->client.icccm.take_focus) &&
                  (temp_bd->client.netwm.type != ECORE_X_WINDOW_TYPE_DOCK) &&
@@ -12444,10 +13387,10 @@ _e_border_latest_stacked_focus_check_set(E_Border *bd)
                        top_focusable_bd = temp_bd;
                     }
 
-                  win_rect.x = temp_bd->x;
-                  win_rect.y = temp_bd->y;
-                  win_rect.width = temp_bd->w;
-                  win_rect.height = temp_bd->h;
+                  win_rect.x = temp_bd_x;
+                  win_rect.y = temp_bd_y;
+                  win_rect.width = temp_bd_w;
+                  win_rect.height = temp_bd_h;
 
                   // if it stick out or is bigger than the entire visible region,
                   // clip it by the entire visible's geometry.
@@ -12495,6 +13438,7 @@ _e_border_latest_stacked_focus(E_Border *bd)
 {
    E_Border *temp_bd;
    int root_w, root_h;
+   int temp_bd_x, temp_bd_y, temp_bd_w, temp_bd_h;
 
    root_w = bd->zone->w;
    root_h = bd->zone->h;
@@ -12503,8 +13447,10 @@ _e_border_latest_stacked_focus(E_Border *bd)
    EINA_LIST_FOREACH(focus_stack, l, temp_bd)
      {
         if (bd == temp_bd) continue;
-        if ((temp_bd->x >= root_w) || (temp_bd->y >= root_h)) continue;
-        if (((temp_bd->x + temp_bd->w) <= 0) || ((temp_bd->y + temp_bd->h) <= 0)) continue;
+        e_border_geometry_get(temp_bd, &temp_bd_x, &temp_bd_y, &temp_bd_w, &temp_bd_h);
+
+        if ((temp_bd_x >= root_w) || (temp_bd_y >= root_h)) continue;
+        if (((temp_bd_x + temp_bd_w) <= 0) || ((temp_bd_y + temp_bd_h) <= 0)) continue;
 
         if ((!temp_bd->iconic) && (temp_bd->visible) && (temp_bd->desk == bd->desk) &&
             (temp_bd->client.icccm.accepts_focus || temp_bd->client.icccm.take_focus) &&
@@ -12529,6 +13475,7 @@ _e_border_check_stack (E_Border *bd)
    int passed = 0;
    int root_w = bd->zone->w;
    int root_h = bd->zone->h;
+   int temp_bd_x, temp_bd_y, temp_bd_w, temp_bd_h;
 
    E_Border_List *bl;
    bl = e_container_border_list_last(bd->zone->container);
@@ -12536,8 +13483,11 @@ _e_border_check_stack (E_Border *bd)
 
    while ((temp_bd = e_container_border_list_prev(bl)))
      {
-        if ((temp_bd->x >= root_w) || (temp_bd->y >= root_h)) continue;
-        if (((temp_bd->x + temp_bd->w) <= 0) || ((temp_bd->y + temp_bd->h) <= 0)) continue;
+        e_border_geometry_get(temp_bd, &temp_bd_x, &temp_bd_y, &temp_bd_w, &temp_bd_h);
+
+        if ((temp_bd_x >= root_w) || (temp_bd_y >= root_h)) continue;
+        if (((temp_bd_x + temp_bd_w) <= 0) || ((temp_bd_y + temp_bd_h) <= 0)) continue;
+
         if ((temp_bd != bd) &&
             (temp_bd->client.illume.win_state.state != ECORE_X_ILLUME_WINDOW_STATE_NORMAL)) continue;
 
@@ -12599,6 +13549,7 @@ _e_border_focus_top_stack_set(E_Border* bd)
 {
    E_Border *temp_bd;
    int root_w, root_h;
+   int temp_bd_x, temp_bd_y, temp_bd_w, temp_bd_h;
 
    root_w = bd->zone->w;
    root_h = bd->zone->h;
@@ -12609,17 +13560,19 @@ _e_border_focus_top_stack_set(E_Border* bd)
 
    while ((temp_bd = e_container_border_list_prev(bl)))
      {
-        if ((temp_bd->x >= root_w) || (temp_bd->y >= root_h)) continue;
-        if (((temp_bd->x + temp_bd->w) <= 0) || ((temp_bd->y + temp_bd->h) <= 0)) continue;
+        e_border_geometry_get(temp_bd, &temp_bd_x, &temp_bd_y, &temp_bd_w, &temp_bd_h);
+
+        if ((temp_bd_x >= root_w) || (temp_bd_y >= root_h)) continue;
+        if (((temp_bd_x + temp_bd_w) <= 0) || ((temp_bd_y + temp_bd_h) <= 0)) continue;
         if (temp_bd->client.illume.win_state.state != ECORE_X_ILLUME_WINDOW_STATE_NORMAL) continue;
 
         if ((!temp_bd->iconic) && (temp_bd->visible) && (temp_bd->desk == bd->desk) &&
-           (temp_bd->client.icccm.accepts_focus || temp_bd->client.icccm.take_focus) &&
-           (temp_bd->client.netwm.type != ECORE_X_WINDOW_TYPE_DOCK) &&
-           (temp_bd->client.netwm.type != ECORE_X_WINDOW_TYPE_TOOLBAR) &&
-           (temp_bd->client.netwm.type != ECORE_X_WINDOW_TYPE_MENU) &&
-           (temp_bd->client.netwm.type != ECORE_X_WINDOW_TYPE_SPLASH) &&
-           (temp_bd->client.netwm.type != ECORE_X_WINDOW_TYPE_DESKTOP))
+            (temp_bd->client.icccm.accepts_focus || temp_bd->client.icccm.take_focus) &&
+            (temp_bd->client.netwm.type != ECORE_X_WINDOW_TYPE_DOCK) &&
+            (temp_bd->client.netwm.type != ECORE_X_WINDOW_TYPE_TOOLBAR) &&
+            (temp_bd->client.netwm.type != ECORE_X_WINDOW_TYPE_MENU) &&
+            (temp_bd->client.netwm.type != ECORE_X_WINDOW_TYPE_SPLASH) &&
+            (temp_bd->client.netwm.type != ECORE_X_WINDOW_TYPE_DESKTOP))
           {
              if (!temp_bd->focused)
                {
@@ -12689,11 +13642,13 @@ _e_border_eval(E_Border *bd)
    E_Border_Pending_Move_Resize *pnd;
    int rem_change = 0;
    int send_event = 1;
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:EVAL");
 
    if (e_object_is_del(E_OBJECT(bd)))
      {
-        CRI("_e_border_eval(%p) with deleted border! - %d\n", bd, bd->new_client);
+        ERR("_e_border_eval(%p) with deleted border! - %d\n", bd, bd->new_client);
         bd->changed = 0;
+        traceEnd(TTRACE_TAG_WINDOW_MANAGER);
         return;
      }
 
@@ -12855,13 +13810,14 @@ _e_border_eval(E_Border *bd)
           {
              Eina_List *skiplist = NULL;
              int new_x, new_y;
+             unsigned int seedp1 = 1, seedp2 = 1;
 
              if (zw > bd->w)
-               new_x = zx + (rand() % (zw - bd->w));
+               new_x = zx + (rand_r(&seedp1) % (zw - bd->w)); // Prevent Fix : CID 30774
              else
                new_x = zx;
              if (zh > bd->h)
-               new_y = zy + (rand() % (zh - bd->h));
+               new_y = zy + (rand_r(&seedp2) % (zh - bd->h)); // Prevent Fix : CID 30774
              else
                new_y = zy;
 
@@ -12893,6 +13849,11 @@ _e_border_eval(E_Border *bd)
              bd->changes.pos = 1;
           }
 
+
+        /* Recreate state */
+        e_hints_window_init(bd);
+
+        /* remove pending_move_resize */
         EINA_LIST_FREE(bd->pending_move_resize, pnd)
           {
              if ((!bd->lock_client_location) && (pnd->move))
@@ -12919,8 +13880,6 @@ _e_border_eval(E_Border *bd)
              free(pnd);
           }
 
-        /* Recreate state */
-        e_hints_window_init(bd);
         if ((bd->client.e.state.centered) &&
             ((!bd->remember) ||
              ((bd->remember) && (!(bd->remember->apply & E_REMEMBER_APPLY_POS)))))
@@ -13315,16 +14274,19 @@ _e_border_eval(E_Border *bd)
 
    if (bd->changes.icon)
      {
+#ifndef _F_DISABLE_E_EFREET_
         if (bd->desktop)
           {
              efreet_desktop_free(bd->desktop);
              bd->desktop = NULL;
           }
+#endif
         if (bd->icon_object)
           {
              evas_object_del(bd->icon_object);
              bd->icon_object = NULL;
           }
+#ifndef _F_DISABLE_E_EFREET_
         if (bd->remember && bd->remember->prop.desktop_file)
           {
              const char *desktop = bd->remember->prop.desktop_file;
@@ -13376,6 +14338,7 @@ _e_border_eval(E_Border *bd)
              ecore_x_window_prop_string_set(bd->client.win, E_ATOM_DESKTOP_FILE,
                                             bd->desktop->orig_path);
           }
+#endif
 
         bd->icon_object = e_border_icon_add(bd, bd->bg_evas);
         if ((bd->focused) && (bd->icon_object))
@@ -13404,10 +14367,43 @@ _e_border_eval(E_Border *bd)
         bd->changes.icon = 0;
      }
 
+   /* If this is a new window, set the state as requested. */
+   Eina_Bool post_iconify = EINA_FALSE;
+
+   if (bd->new_client &&
+       bd->client.icccm.initial_state == ECORE_X_WINDOW_STATE_HINT_ICONIC)
+     {
+        post_iconify = EINA_TRUE;
+     }
+
    bd->new_client = 0;
    bd->changed = 0;
    bd->changes.stack = 0;
    bd->changes.prop = 0;
+
+   if (post_iconify)
+     {
+        // iconified window requested by client
+        LOGE("Set ICONIFY BY CLIENT [%x]", bd->client.win);
+        ELBF(ELBT_BD, 0, bd->client.win, "Set ICONIFY BY CLIENT");
+        bd->iconify_by_client = 1;
+        e_border_iconify(bd);
+        e_border_hide(bd, 1);
+     }
+
+   if (bd->post_lower)
+     {
+        ELBF(ELBT_BD, 0, bd->client.win, "Lower by post_lower");
+        bd->post_lower = 0;
+        e_border_lower(bd);
+     }
+
+   if (bd->post_raise)
+     {
+        ELBF(ELBT_BD, 0, bd->client.win, "Raise by post_raise");
+        bd->post_raise = 0;
+        e_border_raise(bd);
+     }
 
    if ((bd->take_focus) || (bd->want_focus))
      {
@@ -13479,9 +14475,14 @@ _e_border_eval(E_Border *bd)
    if (send_event) // FIXME: send only if a property changed - above need to
      { // check on that. for now - always send.
         event = E_NEW(E_Event_Border_Property, 1);
-        event->border = bd;
-        e_object_ref(E_OBJECT(bd));
-        ecore_event_add(E_EVENT_BORDER_PROPERTY, event, _e_border_event_border_property_free, NULL);
+        if (event)
+          {
+             event->border = bd;
+             e_object_ref(E_OBJECT(bd));
+             ecore_event_add(E_EVENT_BORDER_PROPERTY, event, _e_border_event_border_property_free, NULL);
+          }
+        else
+          ELB(ELBT_BD, "Out of Memory: E_NEW(E_Event_Border_Property)", 0);
      }
 
 #ifdef _F_MOVE_RESIZE_SEND_PATCH_
@@ -13507,7 +14508,7 @@ _e_border_eval(E_Border *bd)
      {
         E_Zone *zone = bd->zone;
 
-        if (bd->moving) e_border_act_move_end(bd, NULL);
+        if (bd->moving) e_border_move_cancel();
 
         if ((!zone->rot.block_count) &&
             (!bd->client.e.state.deiconify_approve.pending_list) &&
@@ -13534,17 +14535,29 @@ _e_border_eval(E_Border *bd)
 #ifdef _F_DEICONIFY_APPROVE_
    if (bd->client.e.state.deiconify_approve.need_send)
      {
-        ELBF(ELBT_BD, 0, bd->client.win, "SEND DEICONIFY_APPROVE.");
-        ecore_x_client_message32_send(bd->client.win,
-                                      ECORE_X_ATOM_E_DEICONIFY_APPROVE,
-                                      ECORE_X_EVENT_MASK_WINDOW_CONFIGURE,
-                                      bd->client.win, 0, 0, 0, 0);
-        bd->client.e.state.deiconify_approve.wait_timer = ecore_timer_add(e_config->deiconify_timeout, _e_border_uniconify_timeout, bd);
         bd->client.e.state.deiconify_approve.need_send = 0;
+        bd->client.e.state.deiconify_approve.wait_timer =
+           ecore_timer_add(e_config->deiconify_timeout, _e_border_uniconify_timeout, bd);
+
+        if (bd->client.e.state.deiconify_approve.support)
+          {
+             long render_only = bd->client.e.state.deiconify_approve.render_only;
+             ELBF(ELBT_BD, 0, bd->client.win, "SEND DEICONIFY_APPROVE.");
+             ecore_x_client_message32_send(bd->client.win,
+                                           ECORE_X_ATOM_E_DEICONIFY_APPROVE,
+                                           ECORE_X_EVENT_MASK_WINDOW_CONFIGURE,
+                                           bd->client.win, 0, render_only, 0, 0);
+          }
+        else
+          {
+             ELBF(ELBT_BD, 0, bd->client.win, "DO DEICONIFY_APPROVE.");
+             _e_border_deiconify_approve_done(bd->client.win, 1);
+          }
      }
 #endif
 
    _e_border_hook_call(E_BORDER_HOOK_EVAL_END, bd);
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 static void
@@ -14157,6 +15170,17 @@ _prop_card32_get(Ecore_X_Window win,
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
 
 static void
+_e_border_event_border_anr_free(void *data __UNUSED__,
+                                void      *ev)
+{
+   E_Event_Border_Anr *e;
+
+   e = ev;
+   e_object_unref(E_OBJECT(e->border));
+   E_FREE(e);
+}
+
+static void
 _e_border_zone_update(E_Border *bd)
 {
    E_Container *con;
@@ -14347,51 +15371,6 @@ _e_border_move_update(E_Border *bd)
    _e_border_hook_call(E_BORDER_HOOK_MOVE_UPDATE, bd);
 }
 
-#ifdef _F_KILL_HUNG_PROCESS_THROUGH_RD_
-static void
-_e_border_dbus_msg_send(E_Border *bd,
-                        int       command)
-{
-   DBusMessage* msg;
-   Eina_Bool sent;
-   dbus_bool_t ret;
-
-   if (!conn) return;
-
-   msg = dbus_message_new_method_call(e_config->rd_dbus_msg.dest,
-                                      e_config->rd_dbus_msg.path,
-                                      e_config->rd_dbus_msg.interface,
-                                      e_config->rd_dbus_msg.method);
-   if (!msg)
-     {
-        ELB(ELBT_BD, "ERR Could not create DBus Message",
-            bd->client.netwm.pid);
-        return;
-     }
-
-   ret = dbus_message_append_args(msg,
-                                  DBUS_TYPE_INT32, &bd->client.netwm.pid,
-                                  DBUS_TYPE_INT32, &command,
-                                  DBUS_TYPE_INVALID);
-   if (ret == FALSE)
-     {
-        ELB(ELBT_BD, "ERR Could not append fields to DBus Message",
-            bd->client.netwm.pid);
-        dbus_message_unref(msg);
-        return;
-     }
-
-   sent = !!e_dbus_message_send(conn, msg, NULL, 0, NULL);
-   if (!sent)
-     {
-        ELB(ELBT_BD, "ERR Could not send DBus Message",
-            bd->client.netwm.pid);
-     }
-
-   dbus_message_unref(msg);
-}
-#endif
-
 static Eina_Bool
 _e_border_cb_ping_poller(void *data)
 {
@@ -14410,47 +15389,75 @@ _e_border_cb_ping_poller(void *data)
                   bd->kill_timer = NULL;
                }
           }
+        bd->hung_count = 0;
      }
-#ifdef _F_KILL_HUNG_PROCESS_THROUGH_RD_
-   /* enable to kill hung processe through resourced
-    * the E is going to send ping only for visible windows.
-    * TODO: need to clarify it. consider using _elm_win_auto_throttled.
-    */
-   else if (bd->visible)
-#else
    else
-#endif
      {
-        /* if time between last ping and now is greater
-         * than half the ping interval... */
-        if ((ecore_loop_time_get() - bd->ping) >
-            ((e_config->ping_clients_interval *
-              ecore_poller_poll_interval_get(ECORE_POLLER_CORE)) / 2.0))
+        int ping_check = 1;
+        if (e_config->ping_only_visible)
           {
-             if (!bd->hung)
-               {
-                  bd->hung = 1;
-                  edje_object_signal_emit(bd->bg_object, "e,state,hung", "e");
+             if (!bd->visible)
+               ping_check = 0;
+          }
 
-#ifdef _F_KILL_HUNG_PROCESS_THROUGH_RD_
-                  /* send SIGKILL to other daemon */
-                  _e_border_dbus_msg_send(bd, SIGKILL);
-#endif
-                  /* FIXME: if below dialog is up - hide it now */
-               }
-             if (bd->delete_requested)
+        if (ping_check)
+          {
+             /* if time between last ping and now is greater
+              * than half the ping interval... */
+             if ((ecore_loop_time_get() - bd->ping) >
+                 ((e_config->ping_clients_interval *
+                   ecore_poller_poll_interval_get(ECORE_POLLER_CORE)) / 2.0))
                {
-                  /* FIXME: pop up dialog saying app is hung - kill client, or pid */
-                  e_border_act_kill_begin(bd);
+                  bd->hung_count++;
+
+                  LOGE("[ANR] - %d time no response, %s(%d,0x%x)",
+                       bd->hung_count, bd->client.netwm.name, bd->client.netwm.pid, bd->client.win);
+
+                  if (bd->hung_count >= e_config->max_hung_count)
+                    {
+                       if (!bd->hung)
+                         {
+                            bd->hung = 1;
+                            edje_object_signal_emit(bd->bg_object, "e,state,hung", "e");
+
+                            /* FIXME: if below dialog is up - hide it now */
+                         }
+
+                       if (e_config->kill_hung_process_by_module)
+                         {
+                            ELBF(ELBT_BD, 0, bd->client.win, "Not response %d times. PID:%d will be killed", e_config->max_hung_count, bd->client.netwm.pid);
+
+                            E_Event_Border_Anr *ev = NULL;
+                            ev = E_NEW(E_Event_Border_Anr, 1);
+                            if (ev)
+                              {
+                                 ev->border = bd;
+                                 e_object_ref(E_OBJECT(bd));
+                                 ecore_event_add(E_EVENT_BORDER_ANR, ev, _e_border_event_border_anr_free, NULL);
+                              }
+                         }
+                       else
+                         {
+                            if (bd->delete_requested)
+                              {
+                                 /* FIXME: pop up dialog saying app is hung - kill client, or pid */
+                                 e_border_act_kill_begin(bd);
+                              }
+                         }
+                    }
                }
           }
      }
    bd->ping_poller = NULL;
-#ifdef _F_KILL_HUNG_PROCESS_THROUGH_RD_
-   if (bd->visible) e_border_ping(bd);
-#else
-   e_border_ping(bd);
-#endif
+
+   if (e_config->ping_only_visible)
+     {
+        if (bd->visible)
+          e_border_ping(bd);
+     }
+   else
+     e_border_ping(bd);
+
    return ECORE_CALLBACK_CANCEL;
 }
 
@@ -14873,6 +15880,49 @@ e_border_activate(E_Border *bd, Eina_Bool just_do_it)
      }
 }
 
+EAPI void
+e_border_geometry_get(E_Border *bd, int *x, int *y, int *w, int *h)
+{
+   E_OBJECT_CHECK(bd);
+   int bx = 0, by = 0, bw = 0, bh = 0;
+
+#ifdef _F_USE_BORDER_TRANSFORM_
+   if (e_border_transform_enable_get(bd))
+     {
+        e_border_transform_border_get(bd, &bx, &by, &bw, &bh, NULL);
+     }
+   else
+#endif
+     {
+#ifdef _F_USE_ICONIFY_RESIZE_
+        if ((e_config->use_iconify_resize) &&
+            (bd->iconify_resize.support) &&
+            (bd->iconify_resize.set))
+          {
+
+             bx = bd->iconify_resize.x;
+             by = bd->iconify_resize.y;
+             bw = bd->iconify_resize.w;
+             bh = bd->iconify_resize.h;
+
+          }
+        else
+#endif
+          {
+             bx = bd->x;
+             by = bd->y;
+             bw = bd->w;
+             bh = bd->h;
+
+          }
+     }
+
+   if (x) *x = bx;
+   if (y) *y = by;
+   if (w) *w = bw;
+   if (h) *h = bh;
+}
+
 #ifdef _F_DEICONIFY_APPROVE_
 EAPI void
 e_border_force_render_request(E_Border *bd, Eina_Bool uniconify)
@@ -14880,40 +15930,42 @@ e_border_force_render_request(E_Border *bd, Eina_Bool uniconify)
    E_Event_Border_Force_Render_Done *ev;
    E_OBJECT_CHECK(bd);
    E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:FORCE RENDER REQ");
 
    if (e_config->deiconify_approve)
      {
-        if (bd->client.e.state.deiconify_approve.support)
+        if (bd->client.e.state.deiconify_approve.render_only)
           {
-             if (bd->client.e.state.deiconify_approve.render_only)
-               {
-                  ELB(ELBT_BD, "DEICONIFY_APPROVE FORCE_RENDER is already running", bd->client.win);
-                  return;
-               }
-             if (bd->client.e.state.deiconify_approve.wait_timer)
-               {
-                  ELB(ELBT_BD, "DEICONIFY_APPROVE WAIT_TIMER is already running", bd->client.win);
-                  return;
-               }
-             if (bd->client.e.state.deiconify_approve.pending)
-               {
-                  ELB(ELBT_BD, "DEICONIFY_APPROVE PENDING_JOB is already running", bd->client.win);
-                  return;
-               }
-
-             if (bd->client.e.state.deiconify_approve.render_done == 0)
-               {
-                  if (!bd->client.e.state.deiconify_approve.need_send)
-                    {
-                       bd->client.e.state.deiconify_approve.need_send = 1;
-                       bd->client.e.state.deiconify_approve.render_only = 1;
-                       bd->changed = 1;
-                    }
-                  return;
-               }
+             ELB(ELBT_BD, "DEICONIFY_APPROVE FORCE_RENDER is already running", bd->client.win);
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
+             return;
+          }
+        if (bd->client.e.state.deiconify_approve.wait_timer)
+          {
+             ELB(ELBT_BD, "DEICONIFY_APPROVE WAIT_TIMER is already running", bd->client.win);
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
+             return;
+          }
+        if (bd->client.e.state.deiconify_approve.pending)
+          {
+             ELB(ELBT_BD, "DEICONIFY_APPROVE PENDING_JOB is already running", bd->client.win);
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
+             return;
           }
 
-        bd->client.e.state.deiconify_approve.render_done = 0;
+        if (bd->client.e.state.deiconify_approve.render_done == 0)
+          {
+             if (!bd->client.e.state.deiconify_approve.need_send)
+               {
+                  ELB(ELBT_BD, "Set DEICONIFY_APPROVE need_send, render_only", bd->client.win);
+                  bd->client.e.state.deiconify_approve.need_send = 1;
+                  bd->client.e.state.deiconify_approve.render_only = 1;
+                  bd->changed = 1;
+               }
+             traceEnd(TTRACE_TAG_WINDOW_MANAGER);
+             return;
+          }
+
         bd->client.e.state.deiconify_approve.render_only = 0;
 
         ev = E_NEW(E_Event_Border_Force_Render_Done, 1);
@@ -14927,9 +15979,19 @@ e_border_force_render_request(E_Border *bd, Eina_Bool uniconify)
         if (bd->client.e.state.deiconify_approve.defer_deiconify)
           {
              bd->client.e.state.deiconify_approve.defer_deiconify = 0;
-             _e_border_uniconify_pending_list_remove(bd);
+
+             if (!eina_list_data_find(_uniconify_pending_list, bd))
+               {
+                  ELB(ELBT_BD, "Not in pending list. Do uniconify.", bd->client.win);
+                  e_border_uniconify(bd);
+               }
+             else
+               _e_border_uniconify_pending_list_remove(bd);
           }
+
+        bd->client.e.state.deiconify_approve.render_done = 0;
      }
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 EAPI Eina_List *
@@ -14942,6 +16004,100 @@ EAPI Eina_List *
 e_border_uniconify_waiting_list_get(void)
 {
    return _uniconify_waiting_list;
+}
+
+EAPI void
+e_border_pending_iconify(E_Border *bd)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   if (e_config->deiconify_approve)
+     {
+        int bx, by, bw, bh;
+        e_border_geometry_get(bd, &bx, &by, &bw, &bh);
+
+        if (bd->client.e.state.pending_event.iconify.pending)
+          {
+             ELB(ELBT_BD, "Already iconify PENDING.", bd->client.win);
+             return;
+          }
+
+        if (bd->client.e.state.pending_event.pending)
+          {
+             bd->client.e.state.pending_event.iconify.pending = 1;
+             bd->client.e.state.pending_event.iconify.win = bd->client.win;
+             ELB(ELBT_BD, "PENDING iconify. Pending by another event", bd->client.win);
+             return;
+          }
+
+#ifdef _F_USE_TILED_DESK_LAYOUT_
+        if (e_config->use_tiled_desk_layout)
+          {
+             if (!bd->client.e.state.ly.curr_ly)
+               {
+                  if (!E_CONTAINS(bx, by, bw, bh, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
+                     goto do_iconify;
+               }
+             else
+               {
+                  if (!E_CONTAINS(bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h, bx, by, bw, bh))
+                    goto do_iconify;
+               }
+          }
+        else
+          {
+             if (!E_CONTAINS(bx, by, bw, bh, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
+               goto do_iconify;
+          }
+#else
+        if (!E_CONTAINS(bx, by, bw, bh, bd->zone->x, bd->zone->y, bd->zone->w, bd->zone->h))
+           goto do_iconify;
+#endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+
+        Eina_List *below_list;
+        // 1. find below non-alpha full size win
+        below_list = _e_border_find_below_win_list(bd);
+
+        if (below_list)
+          {
+             bd->client.e.state.pending_event.pending = 1;
+
+             Eina_List *l;
+             E_Border *below_bd;
+
+             bd->client.e.state.pending_event.iconify.pending = 1;
+             bd->client.e.state.pending_event.iconify.win = bd->client.win;
+
+             EINA_LIST_REVERSE_FOREACH(below_list, l, below_bd)
+               {
+                  bd->client.e.state.pending_event.wait_for_list =
+                     eina_list_append(bd->client.e.state.pending_event.wait_for_list, below_bd);
+
+                  below_bd->client.e.state.deiconify_approve.pending_list = eina_list_append(below_bd->client.e.state.deiconify_approve.pending_list, bd);
+                  ELBF(ELBT_ROT, 0, bd->client.win, "below_win:%x, below_win's wait_bd:%x", below_bd->client.win, bd->client.win);
+
+                  // 3. if not same then uniconify
+                  if ((!below_bd->client.e.state.deiconify_approve.wait_timer) &&
+                      (!below_bd->client.e.state.deiconify_approve.pending))
+                    {
+                       below_bd->client.e.state.deiconify_approve.not_raise = 1;
+                       e_border_uniconify(below_bd);
+                    }
+               }
+             eina_list_free(below_list);
+
+             ELB(ELBT_BD, "PENDING iconify event", bd->client.win);
+             return;
+          }
+     }
+
+do_iconify:
+   // iconified window requested by client
+   LOGE("Set ICONIFY BY CLIENT [%x]", bd->client.win);
+   ELBF(ELBT_BD, 0, bd->client.win, "Set ICONIFY BY CLIENT");
+   bd->iconify_by_client = 1;
+   e_border_iconify(bd);
 }
 
 static void
@@ -15064,6 +16220,28 @@ _e_border_window_pending_event_send(E_Border *bd, E_Border *hold_bd)
 
    ELBF(ELBT_BD, 0, bd->client.win, "ref count:%d", e_object_ref_get(E_OBJECT(bd)));
 
+   if (bd->client.e.state.pending_event.iconify.pending)
+     {
+        bd->client.e.state.pending_event.iconify.pending = 0;
+
+        // iconified window requested by client
+        LOGE("Set ICONIFY BY CLIENT [%x]", bd->client.win);
+        ELBF(ELBT_BD, 0, bd->client.win, "Set ICONIFY BY CLIENT");
+        bd->iconify_by_client = 1;
+        e_border_iconify(bd);
+
+        // clear iconify event data
+        bd->client.e.state.pending_event.iconify.win = 0;
+
+        if ((!bd->client.e.state.pending_event.hide.pending) &&
+            (!bd->client.e.state.pending_event.lower.pending) &&
+            (!bd->client.e.state.pending_event.iconify.pending))
+          {
+             bd->client.e.state.pending_event.done = 0;
+             bd->client.e.state.pending_event.pending = 0;
+          }
+     }
+
    if (bd->client.e.state.pending_event.hide.pending)
      {
         _e_border_window_pending_hide_event_send(bd);
@@ -15103,6 +16281,7 @@ _e_border_window_pending_event_flush(E_Border *bd)
 
    if (!bd) return;
    if (!bd->client.e.state.deiconify_approve.pending_list) return;
+   traceBegin(TTRACE_TAG_WINDOW_MANAGER,"WM:BORDER:WIN PENDING EVENT FLUSH");
 
    EINA_LIST_FREE(bd->client.e.state.deiconify_approve.pending_list, pending_bd)
      {
@@ -15111,6 +16290,7 @@ _e_border_window_pending_event_flush(E_Border *bd)
      }
 
    bd->client.e.state.deiconify_approve.pending_list = NULL;
+   traceEnd(TTRACE_TAG_WINDOW_MANAGER);
 }
 
 static void
@@ -15147,4 +16327,610 @@ _e_border_msg_handler(void       *data,
      }
 }
 #endif
+
+
+#ifdef _F_USE_BORDER_TRANSFORM_
+EAPI void
+e_border_transform_enable_set(E_Border *bd, Eina_Bool enable)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   if (!e_config->use_border_transform) return;
+
+   ELBF(ELBT_BD, 0, bd->client.win, "Transform Enable:0x%07x %d -> %d", bd->client.win, bd->transform.enable, enable);
+
+   if (bd->transform.enable && !enable)
+     {
+        int i, j;
+        pixman_transform_t matrix;
+        pixman_transform_init_identity(&matrix);
+
+        _e_border_transform_change_event_send(bd);
+        _e_border_transform_matrix_set(bd, &matrix);
+        _e_border_transform_input_redirect_send(bd, &matrix);
+     }
+
+   bd->transform.enable = enable;
+}
+
+EAPI Eina_Bool
+e_border_transform_enable_get(E_Border *bd)
+{
+   E_OBJECT_CHECK_RETURN(bd, EINA_FALSE);
+   E_OBJECT_TYPE_CHECK_RETURN(bd, E_BORDER_TYPE, EINA_FALSE);
+
+   return bd->transform.enable;
+}
+
+EAPI void
+e_border_transform_set(E_Border *bd, int x, int y, int w, int h, int angle)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   E_Border_Transform_Rect source_rect;
+   E_Border_Transform_Rect dest_rect;
+   E_Border_Transform_Rect window_dest_rect;
+   pixman_transform_t dest_matrix;
+   pixman_transform_t window_dest_matrix;
+   E_Border_Transform_Vertex dest_vertex;
+   E_Border_Transform_Vertex window_dest_vertex;
+
+   if (!bd->transform.enable) return;
+
+   source_rect = _e_border_transform_rect_client_rect_get(bd);
+   dest_rect = _e_border_transform_rect_create(x, y, w, h, angle);
+   bd->transform.input_geometry = dest_rect;
+
+   dest_matrix = _e_border_transform_matrix_calculate(&dest_rect, &source_rect);
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+/*In this API only scaling should be allowed when Stereo mode is set. Input transformation will be taken by comp_tizen.*/
+   if (e_virtual_res_type_get() == E_VIRTUAL_RES_SINGLE_SOURCE)
+     {
+       _e_border_transform_change_event_send(bd);
+       return;
+     }
+#endif  /* end of _F_USE_VIRT_RESOLUTION_ */
+
+   if (bd->transform.parent)
+     {
+        pixman_transform_t parent_matrix;
+        pixman_transform_t relative_matrix;
+
+        E_Border *parent = NULL;
+        parent = e_border_find_by_client_window(bd->transform.parent);
+
+        if (parent)
+          {
+             parent_matrix = _e_border_transform_matrix_get(parent);
+             pixman_transform_multiply(&relative_matrix, &parent_matrix, &dest_matrix);
+          }
+
+        dest_matrix = relative_matrix;
+     }
+
+   if (bd->transform.ratio_fit)
+     {
+        window_dest_rect = _e_border_transform_rect_ratio_rect_get(&dest_rect, &source_rect);
+        window_dest_matrix = _e_border_transform_matrix_calculate(&window_dest_rect, &source_rect);
+     }
+   else
+     {
+        window_dest_rect = dest_rect;
+        window_dest_matrix = dest_matrix;
+     }
+
+   dest_vertex = _e_border_transform_matrix_apply(&source_rect, &dest_matrix);
+   window_dest_vertex = _e_border_transform_matrix_apply(&source_rect, &window_dest_matrix);
+   bd->transform.vertex = window_dest_vertex;
+
+   bd->transform.border_geometry = _e_border_transform_vertex_to_rect(&dest_vertex);
+   bd->transform.geometry = _e_border_transform_vertex_to_rect(&window_dest_vertex);
+
+   ELBF(ELBT_BD, 0, bd->client.win, "Transform Origin Size:0x%07x - [%dx%d  %dx%d]",
+        bd->client.win, source_rect.x, source_rect.y, source_rect.w, source_rect.h);
+   ELBF(ELBT_BD, 0, bd->client.win, "Transform Value:0x%07x -> [%d %d %d %d %d]", bd->client.win, bd->transform.geometry.x,
+        bd->transform.geometry.y, bd->transform.geometry.w, bd->transform.geometry.h, bd->transform.geometry.angle);
+   ELBF(ELBT_BD, 0, bd->client.win, "Transform Border Value:0x%07x -> [%d %d %d %d %d]", bd->client.win,  bd->transform.border_geometry.x,
+        bd->transform.border_geometry.y, bd->transform.border_geometry.w, bd->transform.border_geometry.h,
+        bd->transform.border_geometry.angle);
+
+   _e_border_transform_change_event_send(bd);
+   _e_border_transform_matrix_set(bd, &window_dest_matrix);
+#ifdef _F_USE_VIRT_RESOLUTION_
+   if (e_virtual_res_type_get() != E_VIRTUAL_RES_SINGLE_SOURCE)
+     _e_border_transform_input_redirect_send(bd, &window_dest_matrix);
+#else
+   _e_border_transform_input_redirect_send(bd, &window_dest_matrix);
+#endif
+
+   if (bd->transform.child_wins)
+     {
+        ELBF(ELBT_BD, 0, bd->client.win, "Transform CHILD Exist!!");
+
+        Eina_List *l = NULL;
+        E_Border *temp_bd = NULL;
+
+        EINA_LIST_FOREACH(bd->transform.child_wins, l, temp_bd)
+          {
+             ELBF(ELBT_BD, 0, bd->client.win, "Transform CHILD Exist!!  Update!! [%x]", temp_bd->client.win);
+             e_border_transform_update(temp_bd);
+          }
+     }
+}
+
+EAPI void
+e_border_transform_get(E_Border *bd, int *x, int *y, int *w, int *h, int *angle)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   if (bd->transform.enable)
+     {
+        if (x) *x = bd->transform.geometry.x;
+        if (y) *y = bd->transform.geometry.y;
+        if (w) *w = bd->transform.geometry.w;
+        if (h) *h = bd->transform.geometry.h;
+        if (angle) *angle = bd->transform.geometry.angle;
+     }
+}
+
+EAPI void
+e_border_transform_border_get(E_Border *bd, int *x, int *y, int *w, int *h, int *angle)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   if (bd->transform.enable)
+     {
+        if (x) *x = bd->transform.border_geometry.x;
+        if (y) *y = bd->transform.border_geometry.y;
+        if (w) *w = bd->transform.border_geometry.w;
+        if (h) *h = bd->transform.border_geometry.h;
+        if (angle) *angle = bd->transform.border_geometry.angle;
+     }
+}
+
+EAPI void
+e_border_transform_child_add(E_Border* bd, E_Border* parent)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+   E_OBJECT_CHECK(parent);
+   E_OBJECT_TYPE_CHECK(parent, E_BORDER_TYPE);
+
+   // ??
+   if (bd->client.w == 1 && bd->client.h == 1) return;
+
+   if (bd->transform.parent != parent->client.win)
+     {
+        E_Border *bd_parent = e_border_find_by_client_window(bd->transform.parent);
+        if (bd_parent)
+           e_border_transform_child_remove(bd, bd_parent);
+     }
+
+   if (!eina_list_data_find(parent->transform.child_wins, bd))
+     {
+        ELBF(ELBT_BD, 0, bd->client.win, "RELATIVE | CHILD ADD [%x] -> [%x]", bd->client.win, parent->client.win);
+        parent->transform.child_wins = eina_list_append(parent->transform.child_wins, bd);
+        bd->transform.parent = parent->client.win;
+     }
+}
+
+EAPI void
+e_border_transform_child_remove(E_Border* bd, E_Border* parent)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+   E_OBJECT_CHECK(parent);
+   E_OBJECT_TYPE_CHECK(parent, E_BORDER_TYPE);
+
+   if (eina_list_data_find(parent->transform.child_wins, bd))
+      parent->transform.child_wins = eina_list_remove(parent->transform.child_wins, bd);
+
+   bd->transform.parent = NULL;
+}
+
+
+EAPI void
+e_border_transform_update(E_Border* bd)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+   if (bd->transform.enable)
+     {
+        ELBF(ELBT_BD, 0, bd->client.win, "e_border_transform_update | [%d %d %d %d]",
+             bd->transform.input_geometry.x, bd->transform.input_geometry.y, bd->transform.input_geometry.w, bd->transform.input_geometry.h);
+
+        e_border_transform_set(bd, bd->transform.input_geometry.x,
+                               bd->transform.input_geometry.y,
+                               bd->transform.input_geometry.w,
+                               bd->transform.input_geometry.h,
+                               bd->transform.input_geometry.angle);
+
+        if (bd->transform.child_wins)
+          {
+             Eina_List *l = NULL;
+             E_Border *temp_bd = NULL;
+
+             EINA_LIST_FOREACH(bd->transform.child_wins, l, temp_bd)
+               {
+                  e_border_transform_update(temp_bd);
+               }
+          }
+     }
+}
+
+EAPI void
+e_border_transform_force_pending_set(E_Border *bd, Eina_Bool force_pending)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   if (bd->transform.force_pending != force_pending)
+     {
+        bd->transform.force_pending = force_pending;
+
+        ELBF(ELBT_BD, 0, bd->client.win, "FORCE_PENDING_POS | %s", force_pending ? "SET" : "UNSET");
+        if (!force_pending)
+          {
+             e_border_transform_enable_set(bd, bd->transform.enable);
+             e_border_transform_update(bd);
+          }
+     }
+}
+
+EAPI Eina_Bool
+e_border_transform_force_pending_get(E_Border *bd)
+{
+   E_OBJECT_CHECK_RETURN(bd, EINA_FALSE);
+   E_OBJECT_TYPE_CHECK_RETURN(bd, E_BORDER_TYPE, EINA_FALSE);
+
+   return bd->transform.force_pending;
+}
+
+EAPI void
+e_border_transform_ratio_fit_set(E_Border *bd, Eina_Bool ratio_fit)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   bd->transform.ratio_fit = ratio_fit;
+}
+
+EAPI Eina_Bool
+e_border_transform_ratio_fit_get(E_Border *bd)
+{
+   E_OBJECT_CHECK_RETURN(bd, EINA_FALSE);
+   E_OBJECT_TYPE_CHECK_RETURN(bd, E_BORDER_TYPE, EINA_FALSE);
+
+   return bd->transform.ratio_fit;
+}
+
+EAPI E_Border_Transform_Vertex e_border_transform_vertex_get(E_Border *bd)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   return bd->transform.vertex;
+}
+
+static E_Border_Transform_Rect
+_e_border_transform_rect_client_rect_get(E_Border *bd)
+{
+   E_Border_Transform_Rect result = _e_border_transform_rect_create(0, 0, 0, 0, 0);
+
+   if (bd)
+     {
+        result.x = bd->x;
+        result.y = bd->y;
+        result.w = bd->client.w;
+        result.h = bd->client.h;
+        result.angle = 0;
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+        if ((e_virtual_res_type_get() == E_VIRTUAL_RES_SINGLE_SOURCE) || (e_virtual_res_type_get() == E_VIRTUAL_RES_DOUBLE_SOURCE))
+          {
+             if ((result.w == 0) || (result.h == 0))
+               {
+                  E_Manager* man = e_manager_current_get();
+                  if (!man) return result;
+                  result.w = (double)man->w;
+                  result.h = (double)man->h;
+               }
+          }
+        else
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
+          {
+             if (result.w == 0) result.w = 1;
+             if (result.h == 0) result.h = 1;
+          }
+     }
+   return result;
+}
+
+static E_Border_Transform_Rect
+_e_border_transform_rect_create(int x, int y, int w, int h, int angle)
+{
+   E_Border_Transform_Rect result;
+
+   result.x = x;
+   result.y = y;
+   result.w = w;
+   result.h = h;
+   result.angle = angle;
+
+   return result;
+
+}
+
+static E_Border_Transform_Rect
+_e_border_transform_vertex_to_rect(E_Border_Transform_Vertex* vertex)
+{
+   E_Border_Transform_Rect rect = _e_border_transform_rect_create(0, 0, 0, 0, 0);
+
+   if (vertex)
+     {
+        rect.x = vertex->vertexPosition[0][0] + 0.5;
+        rect.y = vertex->vertexPosition[0][1] + 0.5;
+        rect.w = vertex->vertexPosition[2][0] - vertex->vertexPosition[0][0] + 0.5;
+        rect.h = vertex->vertexPosition[2][1] - vertex->vertexPosition[0][1] + 0.5;
+     }
+
+   return rect;
+
+}
+
+static E_Border_Transform_Rect
+_e_border_transform_rect_ratio_rect_get(E_Border_Transform_Rect *dest,
+                                        E_Border_Transform_Rect *source)
+{
+   E_Border_Transform_Rect rect = _e_border_transform_rect_create(0, 0, 0, 0, 0);
+
+   if (dest && source)
+     {
+        float sw = ( source->w == 0 ? 1 :  source->w);
+        float sh = ( source->h == 0 ? 1 :  source->h);
+        float xRatio = (float)dest->w / sw;
+        float new_w, new_h;
+
+        new_w = xRatio * source->w;
+        new_h = xRatio * source->h;
+
+        if (new_h > dest->h + 1)
+          {
+             float yRatio = (float)dest->h / sh;
+
+             new_w = yRatio * source->w;
+             new_h = yRatio * source->h;
+          }
+        rect.x = dest->x + (dest->w - new_w) / 2.0 + 0.5;
+        rect.y = dest->y + (dest->h - new_h) / 2.0 + 0.5;
+        rect.w = new_w + 0.5;
+        rect.h = new_h + 0.5;
+        rect.angle = 0;
+     }
+
+   return rect;
+}
+
+static pixman_transform_t
+_e_border_transform_matrix_calculate(E_Border_Transform_Rect *dest, E_Border_Transform_Rect *source)
+{
+   pixman_transform_t matrix;
+   pixman_transform_init_identity(&matrix);
+
+   if (dest && source)
+     {
+        float sw = ( source->w == 0 ? 1 :  source->w);
+        float sh = ( source->h == 0 ? 1 :  source->h);
+        double radian = (3.141592 * (dest->angle - source->angle)) / 180.0;
+
+        pixman_transform_translate(&matrix, NULL, pixman_double_to_fixed(-source->x), pixman_double_to_fixed(-source->y));
+        pixman_transform_scale( &matrix, NULL, pixman_double_to_fixed((float)dest->w / sw), pixman_double_to_fixed((float)dest->h / sh));
+        pixman_transform_translate(&matrix, NULL, pixman_double_to_fixed(-dest->w/2.0), pixman_double_to_fixed(-dest->h/2.0));
+        pixman_transform_rotate(&matrix, NULL, pixman_double_to_fixed(cos(radian)), pixman_double_to_fixed(sin(radian)));
+        pixman_transform_translate(&matrix, NULL, pixman_double_to_fixed((dest->w/2.0) + dest->x), pixman_double_to_fixed((dest->h/2.0) + dest->y));
+     }
+
+   return matrix;
+}
+
+static E_Border_Transform_Vertex
+_e_border_transform_matrix_apply(E_Border_Transform_Rect *source,
+                                 pixman_transform_t *matrix)
+{
+   int i;
+   double z = 1.0;
+   E_Border_Transform_Vertex result;
+   pixman_vector_t pos[4];
+
+   if (source && matrix)
+     {
+        pos[0].vector[0] = pixman_double_to_fixed(source->x);
+        pos[0].vector[1] = pixman_double_to_fixed(source->y);
+        pos[0].vector[2] = pixman_double_to_fixed(z);
+
+        pos[1].vector[0] = pixman_double_to_fixed(source->x + source->w);
+        pos[1].vector[1] = pixman_double_to_fixed(source->y);
+        pos[1].vector[2] = pixman_double_to_fixed(z);
+
+        pos[2].vector[0] = pixman_double_to_fixed(source->x + source->w);
+        pos[2].vector[1] = pixman_double_to_fixed(source->y + source->h);
+        pos[2].vector[2] = pixman_double_to_fixed(z);
+
+        pos[3].vector[0] = pixman_double_to_fixed(source->x);
+        pos[3].vector[1] = pixman_double_to_fixed(source->y + source->h);
+        pos[3].vector[2] = pixman_double_to_fixed(z);
+
+        // transformation
+        for (i = 0 ; i < 4 ; ++i)
+          {
+             pixman_transform_point_3d(matrix, &pos[i]);
+
+             result.vertexPosition[i][0] = pixman_fixed_to_double(pos[i].vector[0]);
+             result.vertexPosition[i][1] = pixman_fixed_to_double(pos[i].vector[1]);
+             result.vertexPosition[i][2] = pixman_fixed_to_double(pos[i].vector[2]);
+          }
+     }
+   return result;
+}
+
+static void _e_border_transform_input_redirect_send(E_Border *bd, pixman_transform_t *matrix)
+{
+   XTransform transform;
+   Ecore_X_Display *disp = ecore_x_display_get();
+   Ecore_X_Window border_window = 0;
+   int i, j;
+
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+   if (!((e_virtual_res_type_get() == E_VIRTUAL_RES_SINGLE_SOURCE) || (e_virtual_res_type_get() == E_VIRTUAL_RES_DOUBLE_SOURCE)))
+#endif
+   if (bd->transform.force_pending) return;
+
+   if (!matrix) return;
+
+   border_window = bd->win;
+
+   for (i = 0 ; i < 3 ; ++i)
+     {
+        for (j = 0 ; j < 3 ; ++j)
+          {
+             transform.matrix[i][j] = matrix->matrix[i][j];
+          }
+     }
+
+   ELBF(ELBT_BD, 0, bd->client.win, "Transform Maxtix %.2f %.2f %.2f", pixman_fixed_to_double(matrix->matrix[0][0]),
+        pixman_fixed_to_double(matrix->matrix[0][1]), pixman_fixed_to_double(matrix->matrix[0][2]));
+   ELBF(ELBT_BD, 0, bd->client.win, "Transform Maxtix %.2f %.2f %.2f", pixman_fixed_to_double(matrix->matrix[1][0]),
+        pixman_fixed_to_double(matrix->matrix[1][1]), pixman_fixed_to_double(matrix->matrix[1][2]));
+   ELBF(ELBT_BD, 0, bd->client.win, "Transform Maxtix %.2f %.2f %.2f", pixman_fixed_to_double(matrix->matrix[2][0]),
+        pixman_fixed_to_double(matrix->matrix[2][1]), pixman_fixed_to_double(matrix->matrix[2][2]));
+
+   XCompositeSetCoordinateTransform(disp, border_window, &transform);
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+   if (!((e_virtual_res_type_get() == E_VIRTUAL_RES_SINGLE_SOURCE) || (e_virtual_res_type_get() == E_VIRTUAL_RES_DOUBLE_SOURCE)))
+#endif
+   _e_border_hook_call(E_BORDER_HOOK_TRANSFORM_UPDATE, bd);
+}
+
+static void _e_border_transform_change_event_send(E_Border *bd)
+{
+   E_Event_Border_Transform_Changed *ev = NULL;
+
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   if (bd->transform.force_pending) return;
+
+   ev = E_NEW(E_Event_Border_Transform_Changed, 1);
+   if (ev)
+     ev->border = bd;
+   e_object_ref(E_OBJECT(bd));
+   ecore_event_add(E_EVENT_BORDER_TRANSFORM_CHANGED, ev,
+                   _e_border_event_border_transform_changed_free, NULL);
+}
+
+static void _e_border_event_border_transform_changed_free(void *data,
+                                                          void *ev)
+{
+   E_Event_Border_Transform_Changed *e;
+   e = ev;
+   e_object_unref(E_OBJECT(e->border));
+   E_FREE(e);
+}
+
+
+static pixman_transform_t
+_e_border_transform_matrix_get(E_Border *bd)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   pixman_transform_t matrix;
+   pixman_transform_init_identity(&matrix);
+
+   int i = 0;
+   int j = 0;
+
+   for (i = 0; i < 3; i++)
+      for (j = 0; j < 3; j++)
+         matrix.matrix[i][j] = pixman_double_to_fixed(bd->transform.matrix[i][j]);
+
+   return matrix;
+}
+
+
+static void
+_e_border_transform_matrix_set(E_Border* bd, pixman_transform_t* matrix)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   if (matrix)
+     {
+        int i = 0;
+        int j = 0;
+
+        for (i = 0; i < 3; i++)
+           for (j = 0; j < 3; j++)
+              bd->transform.matrix[i][j] = pixman_fixed_to_double(matrix->matrix[i][j]);
+     }
+}
+#endif /* end of _F_USE_BORDER_TRANSFORM_ */
+
+#ifdef _F_USE_VIRT_RESOLUTION_
+EAPI void
+e_border_input_transform_enable_set(E_Border *bd, Eina_Bool enable)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   ELBF(ELBT_BD, 0, bd->client.win, "Transform Enable:0x%07x %d -> %d", bd->client.win, bd->transform.enable, enable);
+
+   if (bd->transform.enable && !enable)
+     {
+        pixman_transform_t matrix;
+        pixman_transform_init_identity(&matrix);
+
+        _e_border_transform_input_redirect_send(bd, &matrix);
+     }
+
+   bd->transform.enable = enable;
+}
+
+EAPI void
+e_border_input_transform_set(E_Border *bd, int x, int y, int w, int h, int angle)
+{
+   E_OBJECT_CHECK(bd);
+   E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
+
+   E_Border_Transform_Rect source_rect;
+   E_Border_Transform_Rect dest_rect;
+   pixman_transform_t dest_matrix;
+   E_Border_Transform_Vertex dest_vertex;
+   
+   if (!bd->transform.enable) return;
+
+
+   dest_rect = _e_border_transform_rect_create(x, y, w, h, angle);
+   bd->transform.input_geometry = dest_rect;
+
+   source_rect = _e_border_transform_rect_client_rect_get(bd);
+
+   dest_matrix = _e_border_transform_matrix_calculate(&dest_rect, &source_rect);
+
+
+   dest_vertex = _e_border_transform_matrix_apply(&source_rect, &dest_matrix);
+   
+   _e_border_transform_input_redirect_send(bd, &dest_matrix);
+}
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
+
 /*vim:ts=8 sw=3 sts=3 expandtab cino=>5n-3f0^-2{2(0W1st0*/

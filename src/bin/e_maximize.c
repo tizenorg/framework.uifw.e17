@@ -19,11 +19,13 @@ static void _e_maximize_border_rects_fill_both(E_Border *bd, Eina_List *rects, i
 static void _e_maximize_border_rects_fill_horiz(E_Border *bd, Eina_List *rects, int *x1, int *x2, int *bx, int *by, int *bw, int *bh);
 static void _e_maximize_border_rects_fill_vert(E_Border *bd, Eina_List *rects, int *yy1, int *y2, int *bx, int *by, int *bw, int *bh);
 
+#ifndef _F_DISABLE_E_SHELF
 EAPI void
 e_maximize_border_shelf_fit(E_Border *bd, int *x1, int *yy1, int *x2, int *y2, E_Maximize dir)
 {
    e_maximize_border_shelf_fill(bd, x1, yy1, x2, y2, dir);
 }
+#endif
 
 EAPI void
 e_maximize_border_dock_fit(E_Border *bd, int *x1, int *yy1, int *x2, int *y2)
@@ -121,6 +123,7 @@ e_maximize_border_dock_fit(E_Border *bd, int *x1, int *yy1, int *x2, int *y2)
    if (y2) *y2 = cy2;
 }
 
+#ifndef _F_DISABLE_E_SHELF
 EAPI void
 e_maximize_border_shelf_fill(E_Border *bd, int *x1, int *yy1, int *x2, int *y2, E_Maximize dir)
 {
@@ -161,6 +164,7 @@ e_maximize_border_shelf_fill(E_Border *bd, int *x1, int *yy1, int *x2, int *y2, 
      }
 }
 
+#endif
 EAPI void
 e_maximize_border_border_fill(E_Border *bd, int *x1, int *yy1, int *x2, int *y2, E_Maximize dir)
 {

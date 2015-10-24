@@ -24,9 +24,13 @@ e_alert_show(int sig)
 
 #define E_ALERT_EXE "/enlightenment/utils/enlightenment_alert"
 
-   args[0] = alloca(strlen(e_prefix_lib_get()) + strlen(E_ALERT_EXE) + 1);
-   strcpy(args[0], e_prefix_lib_get());
-   strcat(args[0], E_ALERT_EXE);
+   size_t len_prefix = strlen(e_prefix_lib_get());
+   size_t len_alert  = strlen(E_ALERT_EXE);
+
+   args[0] = alloca(len_prefix + len_alert + 1);
+   strncpy(args[0], e_prefix_lib_get(), len_prefix);
+   args[0][len_prefix] = '\0';
+   strncat(args[0], E_ALERT_EXE, len_alert);
 
    args[1] = alloca(10);
    snprintf(args[1], 10, "%d", sig);

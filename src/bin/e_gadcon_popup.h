@@ -22,6 +22,8 @@ struct _E_Gadcon_Popup
    Eina_Bool            gadcon_was_locked : 1;
 };
 
+#ifndef _F_DISABLE_E_GADGETS
+
 EAPI E_Gadcon_Popup *e_gadcon_popup_new(E_Gadcon_Client *gcc);
 EAPI void e_gadcon_popup_content_set(E_Gadcon_Popup *pop, Evas_Object *o);
 EAPI void e_gadcon_popup_show(E_Gadcon_Popup *pop);
@@ -29,5 +31,6 @@ EAPI void e_gadcon_popup_hide(E_Gadcon_Popup *pop);
 EAPI void e_gadcon_popup_toggle_pinned(E_Gadcon_Popup *pop);
 EAPI void e_gadcon_popup_lock_set(E_Gadcon_Popup *pop, Eina_Bool setting);
 
+#endif
 #endif
 #endif

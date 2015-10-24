@@ -107,6 +107,7 @@ e_pointers_size_set(int size)
      {
         Evas_Engine_Info_Buffer *einfo;
 
+        if (!p) continue;
         if (p->evas)
           {
              p->w = p->h = size;
@@ -184,6 +185,7 @@ e_pointer_type_pop(E_Pointer  *p,
    if (!p) return;
    EINA_LIST_FOREACH(p->stack, l, stack)
      {
+        if (!stack) continue;
         if ((stack->obj == obj) && ((!type) || (!strcmp(stack->type, type))))
           {
              _e_pointer_stack_free(stack);
@@ -223,6 +225,7 @@ e_pointer_idler_before(void)
      {
         Eina_List *updates;
 
+        if (!p) continue;
         if (!p->e_cursor) continue;
         if (!p->evas) continue;
 
@@ -495,6 +498,7 @@ _e_pointer_cb_mouse_down(void *data __UNUSED__,
 
    EINA_LIST_FOREACH(_e_pointers, l, p)
      {
+        if (!p) continue;
         _e_pointer_active_handle(p);
         if (e_powersave_mode_get() < E_POWERSAVE_MODE_EXTREME)
           {
@@ -516,6 +520,7 @@ _e_pointer_cb_mouse_up(void *data __UNUSED__,
 
    EINA_LIST_FOREACH(_e_pointers, l, p)
      {
+        if (!p) continue;
         _e_pointer_active_handle(p);
         if (e_powersave_mode_get() < E_POWERSAVE_MODE_EXTREME)
           {
@@ -537,6 +542,7 @@ _e_pointer_cb_mouse_move(void *data __UNUSED__,
 
    EINA_LIST_FOREACH(_e_pointers, l, p)
      {
+        if (!p) continue;
         _e_pointer_active_handle(p);
         if (e_powersave_mode_get() < E_POWERSAVE_MODE_HIGH)
           {
@@ -558,6 +564,7 @@ _e_pointer_cb_mouse_wheel(void *data __UNUSED__,
 
    EINA_LIST_FOREACH(_e_pointers, l, p)
      {
+        if (!p) continue;
         _e_pointer_active_handle(p);
         if (e_powersave_mode_get() < E_POWERSAVE_MODE_EXTREME)
           {
@@ -645,3 +652,91 @@ _e_pointer_cb_idle_poller(void *data)
      }
    return ECORE_CALLBACK_RENEW;
 }
+#ifdef _F_USE_PHOTON_CURSOR_
+static void
+e_root_pointers_size_set(E_Pointer *p, int size)
+{
+   Eina_List *l;
+
+   if (!e_config->show_cursor) return;
+
+   Evas_Engine_Info_Buffer *einfo;
+
+   if (p->evas)
+     {
+        p->w = p->h = size;
+        evas_output_size_set(p->evas, p->w, p->h);
+        evas_output_viewport_set(p->evas, 0, 0, p->w, p->h);
+
+        p->pixels = realloc(p->pixels, p->w * p->h * sizeof(int));
+
+        einfo = (Evas_Engine_Info_Buffer *)evas_engine_info_get(p->evas);
+        if (einfo)
+          {
+             einfo->info.dest_buffer = p->pixels;
+             einfo->info.dest_buffer_row_bytes = p->w * sizeof(int);
+             evas_engine_info_set(p->evas, (Evas_Engine_Info *)einfo);
+          }
+
+        evas_object_move(p->pointer_object, 0, 0);
+        evas_object_resize(p->pointer_object, p->w, p->h);
+     }
+   else
+     {
+        const char *type;
+        ecore_x_cursor_size_set(e_config->cursor_size * 3 / 4);
+        type = p->type;
+        if (type)
+          {
+             p->type = NULL;
+             _e_pointer_type_set(p, type);
+             eina_stringshare_del(type);
+          }
+     }
+}
+
+EAPI void e_root_pointer_type_set(pointer_types_t type)
+{
+   Eina_List *l;
+   E_Pointer *p;
+   int item_count = 0;
+
+   EINA_LIST_FOREACH(_e_pointers, l, p)
+     {
+        if (!p) continue;
+        if(p->type)
+          {
+             if(p->stack)
+               item_count = eina_list_count(p->stack);
+
+             switch(type)
+               {
+                case POINTER_DEFAULT:
+                   if (!strcmp(p->type, "photon"))
+                     {
+                        if(item_count > 1)
+                          e_pointer_type_pop(p, p, "photon");
+                        e_root_pointers_size_set(p, e_config->cursor_size);
+                        e_pointer_type_push(p, p, "default");
+                     }
+                   break;
+
+                case POINTER_PHOTON:
+                   if (!strcmp(p->type, "default"))
+                     {
+                        if(item_count > 1)
+                          e_pointer_type_pop(p, p, "default");
+                        e_root_pointers_size_set(p, 90);
+                        e_pointer_type_push(p, p, "photon");
+                     }
+                   break;
+
+                default:
+                   e_pointer_type_push(p, p, "default");
+                   break;
+               }
+          }
+
+     }
+}
+#endif /* end of _F_USE_PHOTON_CURSOR_ */

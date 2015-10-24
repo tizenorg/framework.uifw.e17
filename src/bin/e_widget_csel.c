@@ -106,9 +106,13 @@ _e_wid_cb_color_changed(void *data, Evas_Object *o)
    if (changed != -1)
      {
         if (changed >= E_COLOR_COMPONENT_H)
+#ifndef _F_DISABLE_E_COLOR_CLASS
           e_color_update_hsv(wd->cv);
+#endif
         else if (changed >= E_COLOR_COMPONENT_R)
+#ifndef _F_DISABLE_E_COLOR_CLASS
           e_color_update_rgb(wd->cv);
+#endif
      }
 
    if (o == wd->vert)

@@ -134,6 +134,7 @@ e_resist_container_border_position(E_Container *con, Eina_List *skiplist,
    return 1;
 }
 
+#ifndef _F_DISABLE_E_GADGETS
 EAPI int
 e_resist_container_gadman_position(E_Container *con, Eina_List *skiplist __UNUSED__,
 				   int px, int py, int pw, int ph,
@@ -171,6 +172,7 @@ e_resist_container_gadman_position(E_Container *con, Eina_List *skiplist __UNUSE
      }
    return 1;
 }
+#endif
 
 static void
 _e_resist_rects(Eina_List *rects,

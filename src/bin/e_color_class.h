@@ -14,6 +14,8 @@ struct _E_Color_Class
    int		  r3, g3, b3, a3;
 };
 
+#ifndef _F_DISABLE_E_COLOR_CLASS
+
 EINTERN int e_color_class_init(void);
 EINTERN int e_color_class_shutdown(void);
 
@@ -39,5 +41,6 @@ EAPI void e_color_class_del(const char *name);
 
 EAPI Eina_List *e_color_class_list(void);
 
+#endif
 #endif
 #endif

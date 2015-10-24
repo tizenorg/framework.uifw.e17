@@ -631,14 +631,18 @@ _e_fm2_icon_mime_size_normalize(const E_Fm2_Icon *ic)
 static Eina_Bool
 _e_fm2_mime_flush_cb(void *data __UNUSED__)
 {
+#ifndef _F_DISABLE_E_EFREET_
    efreet_mime_type_cache_flush();
+ #endif
    return ECORE_CALLBACK_RENEW;
 }
 
 static Eina_Bool
 _e_fm2_mime_clear_cb(void *data __UNUSED__)
 {
-   efreet_mime_type_cache_clear();
+#ifndef _F_DISABLE_E_EFREET_
+    efreet_mime_type_cache_clear();
+ #endif
    return ECORE_CALLBACK_RENEW;
 }
 
@@ -786,7 +790,9 @@ e_fm2_init(void)
 //   _e_fm2_client_spawn();
    e_fm2_custom_file_init();
    e_fm2_op_registry_init();
+#ifndef _F_DISABLE_E_EFREET_
    efreet_mime_init();
+ #endif
 
    /* XXX: move this to a central/global place? */
    _e_fm2_mime_flush = ecore_timer_add(60.0, _e_fm2_mime_flush_cb, NULL);
@@ -865,7 +871,9 @@ e_fm2_shutdown(void)
    e_fm2_custom_file_shutdown();
    _e_storage_volume_edd_shutdown();
    e_fm2_op_registry_shutdown();
+#ifndef _F_DISABLE_E_EFREET_
    efreet_mime_shutdown();
+#endif
    ecore_shutdown();
    eina_shutdown();
    return 1;
@@ -1227,8 +1235,7 @@ _e_fm2_dir_load_props_from_parent(const char *path)
 
    parent = ecore_file_dir_get(path);
    cf = e_fm2_custom_file_get(parent);
-   if (((cf) && (cf->dir) && (cf->dir->prop.in_use)) || 
-       ((parent) && (!strcmp(parent, path))))
+   if (((cf) && (cf->dir) && (cf->dir->prop.in_use)) || (parent && !strcmp(parent, path)))
      {
         free(parent);
         return cf;
@@ -1407,7 +1414,7 @@ e_fm2_parent_go(Evas_Object *obj)
    else if (sd->realpath)
      {
         path = ecore_file_dir_get(sd->realpath);
-        if (path)
+        if(path)
           {
              e_fm2_path_set(obj, "/", path);
              free(path);
@@ -1986,7 +1993,7 @@ _e_fm2_icon_desktop_get_internal(Evas *evas, const E_Fm2_Icon *ic, Efreet_Deskto
 static Evas_Object *
 _e_fm2_icon_desktop_get(Evas *evas, const E_Fm2_Icon *ic, const char **type_ret)
 {
-   Efreet_Desktop *ef;
+   Efreet_Desktop *ef = NULL;
    Evas_Object *o;
    char buf[PATH_MAX];
 
@@ -1995,12 +2002,16 @@ _e_fm2_icon_desktop_get(Evas *evas, const E_Fm2_Icon *ic, const char **type_ret)
    if (!_e_fm2_icon_realpath(ic, buf, sizeof(buf)))
      return NULL;
 
+#ifndef _F_DISABLE_E_EFREET_
    ef = efreet_desktop_new(buf);
    if (!ef) return NULL;
 
    o = _e_fm2_icon_desktop_get_internal(evas, ic, ef, type_ret);
    efreet_desktop_free(ef);
    return o;
+#else
+   return NULL;
+#endif
 }
 
 static inline const char *
@@ -2020,13 +2031,15 @@ _e_fm2_icon_mime_type_special_match(const E_Fm2_Icon *ic)
 static Evas_Object *
 _e_fm2_icon_mime_fdo_get(Evas *evas, const E_Fm2_Icon *ic, const char **type_ret)
 {
-   const char *icon;
+#ifndef _F_DISABLE_E_EFREET_
+   const char *icon = NULL;
    unsigned int size;
 
    size = _e_fm2_icon_mime_size_normalize(ic);
    icon = efreet_mime_type_icon_get(ic->info.mime, e_config->icon_theme, size);
    if (icon)
      return _e_fm2_icon_explicit_get(evas, ic, icon, type_ret);
+#endif
    return NULL;
 }
 
@@ -2086,10 +2099,12 @@ static Evas_Object *
 _e_fm2_icon_imc_get(Evas *evas, const E_Fm2_Icon *ic, const char **type_ret)
 {
    E_Input_Method_Config *imc;
-   Efreet_Desktop *desktop;
    Eet_File *imc_ef;
-   Evas_Object *o = NULL;
    char buf[PATH_MAX];
+#ifndef _F_DISABLE_E_EFREET_
+   Efreet_Desktop *desktop = NULL;
+   Evas_Object *o = NULL;
+#endif
 
    if (!ic->info.file)
      return NULL;
@@ -2110,16 +2125,22 @@ _e_fm2_icon_imc_get(Evas *evas, const E_Fm2_Icon *ic, const char **type_ret)
         return NULL;
      }
 
+#ifndef _F_DISABLE_E_EFREET_
    desktop = efreet_util_desktop_exec_find(imc->e_im_setup_exec);
    if (desktop)
      {
         o = _e_fm2_icon_desktop_get_internal(evas, ic, desktop, type_ret);
         efreet_desktop_free(desktop);
      }
+#endif
    e_intl_input_method_config_free(imc);
 
+#ifndef _F_DISABLE_E_EFREET_
    if ((o) && (type_ret)) *type_ret = "IMC";
    return o;
+#else
+   return NULL;
+#endif
 }
 
 /**
@@ -2453,8 +2474,8 @@ _e_fm2_client_file_mkdir(const char *path, const char *rel, int rel_to, int x, i
    l2 = strlen(rel);
    l = l1 + 1 + l2 + 1 + (sizeof(int) * 3);
    d = alloca(l);
-   strcpy(d, path);
-   strcpy(d + l1 + 1, rel);
+   strncpy(d, path, l - 1);
+   strncpy(d + l1 + 1, rel, l - l1 - 1 - 1);
    memcpy(d + l1 + 1 + l2 + 1, &rel_to, sizeof(int));
    memcpy(d + l1 + 1 + l2 + 1 + sizeof(int), &x, sizeof(int));
    memcpy(d + l1 + 1 + l2 + 1 + (2 * sizeof(int)), &y, sizeof(int));
@@ -2530,9 +2551,9 @@ _e_fm2_client_mount(const char *udi, const char *mountpoint)
    else
      l = l1 + 1;
    d = alloca(l);
-   strcpy(d, udi);
+   strncpy(d, udi, l - 1);
    if (mountpoint)
-     strcpy(d + l1 + 1, mountpoint);
+     strncpy(d + l1 + 1, mountpoint, l - l1 - 1 - 1);
 
    return _e_fm_client_send_new(E_FM_OP_MOUNT, (void *)d, l);
 }
@@ -2549,7 +2570,7 @@ _e_fm2_client_unmount(const char *udi)
    l1 = strlen(udi);
    l = l1 + 1;
    d = alloca(l);
-   strcpy(d, udi);
+   strncpy(d, udi, l - 1);
 
    _e_fm2_client_get();
 
@@ -2567,7 +2588,7 @@ _e_fm2_client_eject(const char *udi)
 
    size = strlen(udi) + 1;
    data = alloca(size);
-   strcpy(data, udi);
+   strncpy(data, udi, size - 1);
 
    return _e_fm_client_send_new(E_FM_OP_EJECT, data, size);
 }
@@ -2578,39 +2599,35 @@ _e_fm2_client_monitor_list_end(Evas_Object *obj)
    E_Fm2_Smart_Data *sd;
 
    sd = evas_object_smart_data_get(obj);
-   if (sd)
+   sd->busy_count--;
+   if (sd->busy_count == 0)
      {
-        sd->busy_count--;
-        if (sd->busy_count == 0)
-          {
-             edje_object_signal_emit(sd->overlay, "e,state,busy,stop", "e");
-             e_fm2_custom_file_flush();
-          }
-        if (sd->tmp.obj)
-          {
-             evas_object_del(sd->tmp.obj);
-             sd->tmp.obj = NULL;
-          }
-        if (sd->tmp.obj2)
-          {
-             evas_object_del(sd->tmp.obj2);
-             sd->tmp.obj2 = NULL;
-          }
-        if (sd->scan_timer)
-          {
-             ecore_timer_del(sd->scan_timer);
-             sd->scan_timer = NULL;
-          }
-        if (sd->sort_idler)
-          {
-             ecore_idler_del(sd->sort_idler);
-             sd->sort_idler = NULL;
-          }
-        E_FREE(sd->tmp.list_index);
+        edje_object_signal_emit(sd->overlay, "e,state,busy,stop", "e");
+        e_fm2_custom_file_flush();
      }
+   if (sd->tmp.obj)
+     {
+        evas_object_del(sd->tmp.obj);
+        sd->tmp.obj = NULL;
+     }
+   if (sd->tmp.obj2)
+     {
+        evas_object_del(sd->tmp.obj2);
+        sd->tmp.obj2 = NULL;
+     }
+   if (sd->scan_timer)
+     {
+        ecore_timer_del(sd->scan_timer);
+        sd->scan_timer = NULL;
+     }
+   if (sd->sort_idler)
+     {
+        ecore_idler_del(sd->sort_idler);
+        sd->sort_idler = NULL;
+     }
+   E_FREE(sd->tmp.list_index);
    _e_fm2_queue_free(obj);
-   if (sd)
-     _e_fm2_obj_icons_place(sd);
+   _e_fm2_obj_icons_place(sd);
    _e_fm2_live_process_begin(obj);
 }
 
@@ -2733,7 +2750,7 @@ e_fm2_client_data(Ecore_Ipc_Event_Client_Data *e)
               finf.rlnk = rlnk;
 
               evdir = ecore_file_dir_get(path);
-              if ((evdir) && (sd) && (sd->id == e->ref_to) &&
+              if ((evdir) && (sd->id == e->ref_to) &&
                   ((!strcmp(evdir, "") || ((dir) && (!strcmp(dir, evdir))))))
                 {
 //                       printf(" ch/add response = %i\n", e->response);
@@ -2802,7 +2819,7 @@ e_fm2_client_data(Ecore_Ipc_Event_Client_Data *e)
               else
                 {
 //                       printf(" ...\n");
-                   if ((sd) && (sd->id == e->ref_to) && (path[0] == 0))
+                   if ((sd->id == e->ref_to) && (path[0] == 0))
                      {
 //                            printf(" end response = %i\n", e->response);
                         if (e->response == 2)     /* end of scan */
@@ -2831,7 +2848,7 @@ e_fm2_client_data(Ecore_Ipc_Event_Client_Data *e)
 //             printf("E_FM_OP_FILE_DEL\n");
              path = e->data;
              evdir = ecore_file_dir_get(path);
-             if ((dir) && (evdir) && (sd) && (sd->id == e->ref_to) && (!strcmp(dir, evdir)))
+             if ((dir) && (evdir) && (sd->id == e->ref_to) && (!strcmp(dir, evdir)))
                {
                   _e_fm2_live_file_del
                     (obj, ecore_file_file_get(path));
@@ -2847,7 +2864,7 @@ e_fm2_client_data(Ecore_Ipc_Event_Client_Data *e)
                 btw monitor end seems to be a strange event for
                 mounting disks.
               */
-             if ((dir) && (path) && (sd) && (sd->id == e->ref_to) && (!strcmp(dir, path)))
+             if ((dir) && (path) && (sd->id == e->ref_to) && (!strcmp(dir, path)))
                {
                   dels = eina_list_append(dels, obj);
                }
@@ -3189,15 +3206,23 @@ _e_fm2_dev_path_map(E_Fm2_Smart_Data *sd, const char *dev, const char *path)
               */
              if ((!path) || (!path[0]) || (!strcmp(path, "/")))
                {
+#ifndef _F_DISABLE_E_EFREET_
                   snprintf(buf, sizeof(buf), "%s", efreet_desktop_dir_get());
                   ecore_file_mkpath(buf);
+#endif
                }
              else if (path[0] == '/')
-               snprintf(buf, sizeof(buf), "%s/%s", efreet_desktop_dir_get(), path);
+               {
+#ifndef _F_DISABLE_E_EFREET_
+                  snprintf(buf, sizeof(buf), "%s/%s", efreet_desktop_dir_get(), path);
+#endif
+               }
              else
                {
+#ifndef _F_DISABLE_E_EFREET_
                   snprintf(buf, sizeof(buf), "%s-%s", efreet_desktop_dir_get(), path);
                   ecore_file_mkpath(buf);
+#endif
                }
           }
         else if (strcmp(dev, "temp") == 0)
@@ -4442,7 +4467,7 @@ _e_fm2_icon_fill(E_Fm2_Icon *ic, E_Fm2_Finfo *finf)
    Evas_Coord mw = 0, mh = 0;
    Evas_Object *obj, *obj2;
    char buf[PATH_MAX];
-   const char *mime;
+   const char *mime = NULL;
    E_Fm2_Custom_File *cf;
 
    if (!finf) return 0;
@@ -4466,7 +4491,9 @@ _e_fm2_icon_fill(E_Fm2_Icon *ic, E_Fm2_Finfo *finf)
      }
    else if (ic->info.real_link)
      {
+#ifndef _F_DISABLE_E_EFREET_
         mime = efreet_mime_type_get(ic->info.real_link);
+#endif
         if (!mime)
           /* XXX REMOVE/DEPRECATE ME LATER */
           mime = e_fm_mime_filename_get(ic->info.file);
@@ -4475,7 +4502,9 @@ _e_fm2_icon_fill(E_Fm2_Icon *ic, E_Fm2_Finfo *finf)
 
    if (!ic->info.mime)
      {
+#ifndef _F_DISABLE_E_EFREET_
         mime = efreet_mime_type_get(buf);
+#endif
         if (!mime)
           /* XXX REMOVE/DEPRECATE ME LATER */
           mime = e_fm_mime_filename_get(ic->info.file);
@@ -4999,11 +5028,12 @@ static int
 _e_fm2_icon_desktop_load(E_Fm2_Icon *ic)
 {
    char buf[PATH_MAX];
-   Efreet_Desktop *desktop;
+   Efreet_Desktop *desktop = NULL;
 
    if (!_e_fm2_icon_realpath(ic, buf, sizeof(buf)))
      return 0;
 
+#ifndef _F_DISABLE_E_EFREET_
    desktop = efreet_desktop_new(buf);
 //   printf("efreet_desktop_new(%s) = %p\n", buf, desktop);
    if (!desktop) goto error;
@@ -5059,6 +5089,7 @@ _e_fm2_icon_desktop_load(E_Fm2_Icon *ic)
    efreet_desktop_free(desktop);
 
    return 1;
+#endif
 error:
    eina_stringshare_del(ic->info.label);
    eina_stringshare_del(ic->info.comment);
@@ -5831,8 +5862,8 @@ _e_fm2_typebuf_char_append(Evas_Object *obj, const char *ch)
    len = strlen(sd->typebuf.buf) + strlen(ch);
    ts = malloc(len + 1);
    if (!ts) return;
-   strcpy(ts, sd->typebuf.buf);
-   strcat(ts, ch);
+   strncpy(ts, sd->typebuf.buf, len);
+   strncat(ts, ch, len - strlen(sd->typebuf.buf));
    free(sd->typebuf.buf);
    sd->typebuf.buf = ts;
    if (ch[0] == '*')
@@ -9305,10 +9336,12 @@ _e_fm2_add_menu_pre(void *data, E_Menu *subm)
    sd = data;
    if (subm->items) return;
 
+#ifndef _F_DISABLE_E_ENTRY_DIALOG
    mi = e_menu_item_new(subm);
    e_menu_item_label_set(mi, _("Directory"));
    e_util_menu_item_theme_icon_set(mi, "folder-new");
    e_menu_item_callback_set(mi, _e_fm2_new_directory, sd);
+#endif
 
    mi = e_menu_item_new(subm);
    e_menu_item_label_set(mi, _("File"));
@@ -9555,6 +9588,7 @@ _e_fm2_view_image_sel_close(void *data, E_Dialog *dia)
 static void
 _custom_file_key_set(E_Fm2_Smart_Data *sd, const char *key, const char *value)
 {
+#ifndef _F_DISABLE_E_EFREET_
    Efreet_Desktop *ef;
    char buf[PATH_MAX];
    int len;
@@ -9577,11 +9611,13 @@ _custom_file_key_set(E_Fm2_Smart_Data *sd, const char *key, const char *value)
 
    efreet_desktop_save(ef);
    efreet_desktop_free(ef);
+#endif
 }
 
 static void
 _custom_file_key_del(E_Fm2_Smart_Data *sd, const char *key)
 {
+#ifndef _F_DISABLE_E_EFREET_
    Efreet_Desktop *ef;
    char buf[PATH_MAX];
 
@@ -9593,6 +9629,7 @@ _custom_file_key_del(E_Fm2_Smart_Data *sd, const char *key)
      efreet_desktop_save(ef);
 
    efreet_desktop_free(ef);
+#endif
 }
 
 static void
@@ -9818,6 +9855,7 @@ _e_fm2_file_rename(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUSED__)
      }
    if ((ic->entry_dialog) || (ic->entry_widget)) return;
    if (ic->sd->icon_menu.flags & E_FM2_MENU_NO_RENAME) return;
+#ifndef _F_DISABLE_E_ENTRY_DIALOG
 
    if (!_e_fm2_icon_entry_widget_add(ic))
      {
@@ -9832,6 +9870,7 @@ _e_fm2_file_rename(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUSED__)
         e_object_del_attach_func_set(E_OBJECT(ic->entry_dialog),
                                      _e_fm2_file_rename_delete_cb);
      }
+#endif
 }
 
 static Evas_Object *
@@ -10024,7 +10063,9 @@ _e_fm_overwrite_dialog(int pid, const char *str)
    E_OBJECT(dialog)->data = id;
    e_dialog_button_add(dialog, _("No"), NULL, _e_fm_overwrite_no_cb, NULL);
    e_dialog_button_add(dialog, _("No to all"), NULL, _e_fm_overwrite_no_all_cb, NULL);
+#ifndef _F_DISABLE_E_ENTRY_DIALOG
    e_dialog_button_add(dialog, _("Rename"), NULL, _e_fm_overwrite_rename, NULL);
+#endif
    e_dialog_button_add(dialog, _("Yes"), NULL, _e_fm_overwrite_yes_cb, NULL);
    e_dialog_button_add(dialog, _("Yes to all"), NULL, _e_fm_overwrite_yes_all_cb, NULL);
 
@@ -10067,8 +10108,7 @@ _e_fm_overwrite_rename_del(void *data)
    ere = e_object_data_get(data);
    if (!ere) return;
    sd = evas_object_smart_data_get(ere->e_fm);
-   if (sd)
-     sd->rename_dialogs = eina_list_remove(sd->rename_dialogs, data);
+   sd->rename_dialogs = eina_list_remove(sd->rename_dialogs, data);
    e_fm2_op_registry_entry_unref(ere);
 }
 
@@ -10091,7 +10131,7 @@ _e_fm_overwrite_rename_yes_cb(void *data, char *text)
 
    newpath[0] = 0;
    strncat(newpath, ere->dst, f - ere->dst);
-   strcat(newpath, text);
+   strncat(newpath, text, PATH_MAX - (f - ere->dst) - 1);
    if (e_filereg_file_protected(newpath)) return;
    length = 0;
    args = _e_fm_string_append_quoted(args, &size, &length, ere->src);
@@ -10125,8 +10165,7 @@ _e_fm_overwrite_rename(void *data __UNUSED__, E_Dialog *dialog)
                             text, file, NULL, NULL,
                             _e_fm_overwrite_rename_yes_cb,
                             NULL, ere);
-   if (sd)
-     sd->rename_dialogs = eina_list_append(sd->rename_dialogs, ed);
+   sd->rename_dialogs = eina_list_append(sd->rename_dialogs, ed);
    e_object_del_attach_func_set(E_OBJECT(ed), _e_fm_overwrite_rename_del);
    E_OBJECT(ed)->data = ere;
    e_fm2_op_registry_entry_ref(ere);
@@ -10167,26 +10206,23 @@ _e_fm_error_dialog(int pid, const char *str)
    ere = e_fm2_op_registry_entry_get(pid);
    if (!ere) return NULL;
    sd = evas_object_smart_data_get(ere->e_fm);
-   if (sd)
+   while (sd->realpath)
      {
-        while (sd->realpath)
+        /* trying to make or move a link onto a device will fail, create button for
+         * moving source at this point if this is what failed
+         */
+        struct stat st;
+        if (sd->config->view.link_drop) break;
+        m = e_fm2_device_mount_find(sd->realpath);
+        if (!m) break;
+        if (ere->op == E_FM_OP_SYMLINK)
           {
-             /* trying to make or move a link onto a device will fail, create button for
-              * moving source at this point if this is what failed
-              */
-             struct stat st;
-             if (sd->config->view.link_drop) break;
-             m = e_fm2_device_mount_find(sd->realpath);
-             if (!m) break;
-             if (ere->op == E_FM_OP_SYMLINK)
-               {
-                  devlink = EINA_TRUE;
-                  break;
-               }
-             if (stat(ere->src, &st)) break;
-             if (S_ISLNK(st.st_mode)) devlink = EINA_TRUE;
+             devlink = EINA_TRUE;
              break;
           }
+        if (stat(ere->src, &st)) break;
+        if (S_ISLNK(st.st_mode)) devlink = EINA_TRUE;
+        break;
      }
 
    dialog = e_dialog_new(NULL, "E", "_fm_error_dialog");
@@ -10250,7 +10286,14 @@ _e_fm_error_link_source(void *data, E_Dialog *dialog)
 
    newpath[0] = 0;
    strncat(newpath, ere->dst, f - ere->dst);
-   strcat(newpath, f);
+   if ((strlen(newpath)+strlen(f)) < PATH_MAX)
+     {
+        strncat(newpath, f, PATH_MAX - (f - ere->dst) - 1);
+     }
+   else 
+     {
+        goto err;
+     }
    if (e_filereg_file_protected(newpath)) goto err;
    length = 0;
    args = _e_fm_string_append_quoted(args, &size, &length, file);
@@ -10322,7 +10365,7 @@ _e_fm_device_error_dialog(const char *title, const char *msg, const char *pstr)
 static void
 _e_fm2_file_application_properties(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUSED__)
 {
-   Efreet_Desktop *desktop;
+   Efreet_Desktop *desktop = NULL;
    E_Fm2_Icon *ic;
    E_Manager *man;
    E_Container *con;
@@ -10331,7 +10374,9 @@ _e_fm2_file_application_properties(void *data, E_Menu *m __UNUSED__, E_Menu_Item
    ic = data;
    if (!_e_fm2_icon_realpath(ic, buf, sizeof(buf)))
      return;
+#ifndef _F_DISABLE_E_EFREET_
    desktop = efreet_desktop_get(buf);
+#endif
 
    man = e_manager_current_get();
    if (!man) return;
@@ -10663,7 +10708,7 @@ _e_fm2_live_process_begin(Evas_Object *obj)
    E_Fm2_Smart_Data *sd;
 
    sd = evas_object_smart_data_get(obj);
-   if (!sd || !sd->live.actions) return;
+   if (!sd->live.actions) return;
    if ((sd->live.idler) || (sd->live.timer) ||
        (sd->listing) || (sd->scan_timer)) return;
    sd->live.idler = ecore_idler_add(_e_fm2_cb_live_idler, obj);
@@ -10678,10 +10723,6 @@ _e_fm2_live_process_end(Evas_Object *obj)
    E_Fm2_Action *a;
 
    sd = evas_object_smart_data_get(obj);
-
-   if (!sd)
-     return;
-
    EINA_LIST_FREE(sd->live.actions, a)
      {
         eina_stringshare_del(a->file);
@@ -10712,7 +10753,7 @@ _e_fm2_live_process(Evas_Object *obj)
    E_Fm2_Icon *ic;
 
    sd = evas_object_smart_data_get(obj);
-   if (!sd || !sd->live.actions) return;
+   if (!sd->live.actions) return;
    a = eina_list_data_get(sd->live.actions);
    sd->live.actions = eina_list_remove_list(sd->live.actions, sd->live.actions);
    switch (a->type)
@@ -10967,14 +11008,16 @@ _e_fm2_volume_icon_update(E_Volume *v)
 {
    Evas_Object *o;
    char file[PATH_MAX], fav[PATH_MAX];
-   const char *desk;
+   const char *desk = NULL;
    Eina_List *l;
    E_Fm2_Icon *ic;
 
    if (!v || !v->storage) return;
 
    e_user_dir_snprintf(fav, sizeof(fav), "fileman/favorites");
+#ifndef _F_DISABLE_E_EFREET_
    desk = efreet_desktop_dir_get();
+#endif
    snprintf(file, sizeof(file), "|%s_%d.desktop",
             ecore_file_file_get(v->storage->udi), v->partition_number);
 
@@ -10985,8 +11028,13 @@ _e_fm2_volume_icon_update(E_Volume *v)
         if ((_e_fm2_list_walking > 0) &&
             (eina_list_data_find(_e_fm2_list_remove, o))) continue;
 
+#ifndef _F_DISABLE_E_EFREET_
         rp = e_fm2_real_path_get(o);
         if ((rp) && (strcmp(rp, fav)) && (strcmp(rp, desk))) continue;
+#else
+        rp = e_fm2_real_path_get(o);
+        if ((rp) && (strcmp(rp, fav))) continue;
+#endif
 
         ic = _e_fm2_icon_find(o, file);
         if (ic)

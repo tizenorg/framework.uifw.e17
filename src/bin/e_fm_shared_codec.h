@@ -3,6 +3,8 @@
 
 #include <Eet.h>
 
+#ifndef _F_DISABLE_E_FM
+
 void *_e_fm_shared_codec_storage_encode(E_Storage *s, int *size);
 E_Storage *_e_fm_shared_codec_storage_decode(void *s, int size);
 void *_e_fm_shared_codec_volume_encode(E_Volume *v, int *size);
@@ -14,4 +16,5 @@ void _e_storage_volume_edd_init(void);
 void _e_storage_volume_edd_shutdown(void);
 
 
+#endif
 #endif

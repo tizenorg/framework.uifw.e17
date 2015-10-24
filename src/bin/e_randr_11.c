@@ -18,6 +18,7 @@ _11_screen_info_new(void)
    EINA_SAFETY_ON_TRUE_RETURN_VAL(E_RANDR_11_NO, NULL);
 
    randr_info_11 = malloc(sizeof(E_Randr_Screen_Info_11));
+   if (!randr_info_11) return NULL;
 
    randr_info_11->sizes = NULL;
    randr_info_11->csize_index = Ecore_X_Randr_Unset;
@@ -37,18 +38,32 @@ _11_screen_info_new(void)
    for (i = 0; i < nsizes; i++)
      {
         if (!(rates = ecore_x_randr_screen_primary_output_refresh_rates_get(e_randr_screen_info.root, i, &randr_info_11->nrates[i])))
-          {
-             free(randr_info_11->rates);
-             free(randr_info_11->nrates);
-             free(randr_info_11->sizes);
-             free(randr_info_11);
-             return EINA_FALSE;
-          }
+          goto _refresh_rate_get_fail;/*Prevent issue fix. Free all the allocated memory before returning NULL*/
         randr_info_11->rates[i] = rates;
      }
    randr_info_11->current_rate = ecore_x_randr_screen_primary_output_current_refresh_rate_get(e_randr_screen_info.root);
 
    return randr_info_11;
+
+/*
+   Prevent issue fix. In case ecore_x_randr_screen_primary_output_refresh_rates_get fails,
+   we need to free following:
+   randr_info_11->sizes
+   randr_info_11->rates[] received already from the same API.
+   randr_info_11->rates
+   randr_info_11->nrates
+   loop counter i would be equal to the number of rates received successfuly as we jump to here
+   from the loop in the iteration when the API fails.. we can safely use i to iterate over
+   the allocated rates and free them..
+*/
+_refresh_rate_get_fail:
+   free(randr_info_11->sizes);
+   while (i)
+      {
+         free(randr_info_11->rates[--i]);
+      }
+   free(randr_info_11->rates);
+   free(randr_info_11->nrates);
 
 _info_11_new_fail:
    free(randr_info_11);

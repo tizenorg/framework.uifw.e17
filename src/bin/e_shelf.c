@@ -201,6 +201,11 @@ e_shelf_zone_new(E_Zone *zone, const char *name, const char *style, int popup, i
    if (popup)
      {
         es->popup = e_popup_new(zone, es->x, es->y, es->w, es->h);
+        if (!es->popup)
+          {
+             e_object_del(E_OBJECT(es));
+             return NULL;
+          }
         e_popup_name_set(es->popup, "shelf");
         e_popup_layer_set(es->popup, layer);
         es->ee = es->popup->ecore_evas;
@@ -245,14 +250,17 @@ e_shelf_zone_new(E_Zone *zone, const char *name, const char *style, int popup, i
         evas_object_layer_set(es->o_base, layer);
      }
 
-   es->gadcon = 
+#ifndef _F_DISABLE_E_GADGETS
+   es->gadcon =
      e_gadcon_swallowed_new(es->name, es->id, es->o_base, "e.swallow.content");
+#endif
    locname = es->name;
    if (!name) locname = _("Shelf #");
    snprintf(buf, sizeof(buf), "%s %i", locname, es->id);
-   es->gadcon->location = 
-     e_gadcon_location_new(buf, E_GADCON_SITE_SHELF, 
-                           _e_shelf_gadcon_client_add, es, 
+#ifndef _F_DISABLE_E_GADGETS
+   es->gadcon->location =
+     e_gadcon_location_new(buf, E_GADCON_SITE_SHELF,
+                           _e_shelf_gadcon_client_add, es,
                            _e_shelf_gadcon_client_remove, es);
    e_gadcon_location_register(es->gadcon->location);
 // hmm dnd in ibar and ibox kill this. ok. need to look into this more
@@ -265,13 +273,16 @@ e_shelf_zone_new(E_Zone *zone, const char *name, const char *style, int popup, i
    e_gadcon_frame_request_callback_set(es->gadcon,
                                        _e_shelf_gadcon_frame_request, es);
    e_gadcon_orient(es->gadcon, E_GADCON_ORIENT_TOP);
+#endif
    snprintf(buf, sizeof(buf), "e,state,orientation,%s",
             e_shelf_orient_string_get(es));
    edje_object_signal_emit(es->o_base, buf, "e");
    edje_object_message_signal_process(es->o_base);
+#ifndef _F_DISABLE_E_GADGETS
    e_gadcon_zone_set(es->gadcon, zone);
    e_gadcon_ecore_evas_set(es->gadcon, es->ee);
    e_gadcon_shelf_set(es->gadcon, es);
+#endif
    if (popup)
      {
         if (!winid_shelves)
@@ -279,16 +290,21 @@ e_shelf_zone_new(E_Zone *zone, const char *name, const char *style, int popup, i
         eina_hash_add(winid_shelves,
                       e_util_winid_str_get(es->popup->evas_win), es);
         e_drop_xdnd_register_set(es->popup->evas_win, 1);
+#ifndef _F_DISABLE_E_GADGETS
         e_gadcon_xdnd_window_set(es->gadcon, es->popup->evas_win);
         e_gadcon_dnd_window_set(es->gadcon, es->popup->evas_win);
+#endif
      }
    else
      {
         e_drop_xdnd_register_set(es->zone->container->bg_win, 1);
+#ifndef _F_DISABLE_E_GADGETS
         e_gadcon_xdnd_window_set(es->gadcon, es->zone->container->bg_win);
         e_gadcon_dnd_window_set(es->gadcon, es->zone->container->event_win);
+#endif
         evas_object_clip_set(es->o_base, es->zone->bg_clip_object);
      }
+#ifndef _F_DISABLE_E_GADGETS
    e_gadcon_util_menu_attach_func_set(es->gadcon,
                                       _e_shelf_cb_menu_items_append, es);
 
@@ -296,7 +312,7 @@ e_shelf_zone_new(E_Zone *zone, const char *name, const char *style, int popup, i
                                _e_shelf_cb_locked_set, es);
    e_gadcon_util_urgent_show_func_set(es->gadcon,
                                       _e_shelf_cb_urgent_show, es);
-
+#endif
    shelves = eina_list_append(shelves, es);
 
    es->hidden = 0;
@@ -321,7 +337,9 @@ e_shelf_rename_dialog(E_Shelf *es)
 {
    if (!es) return;
    if (es->rename_dialog) return;
+ #ifndef _F_DISABLE_E_ENTRY_DIALOG
    _e_shelf_cb_menu_rename(es, NULL, NULL);
+ #endif
 }
 
 EAPI void
@@ -360,7 +378,9 @@ e_shelf_populate(E_Shelf *es)
 {
    E_OBJECT_CHECK(es);
    E_OBJECT_TYPE_CHECK(es, E_SHELF_TYPE);
+#ifndef _F_DISABLE_E_GADGETS
    e_gadcon_populate(es->gadcon);
+#endif
 }
 
 EAPI void
@@ -417,7 +437,9 @@ e_shelf_name_set(E_Shelf *es, const char *name)
    eina_stringshare_replace(&es->name, name);
    eina_stringshare_replace(&es->cfg->name, name);
    if (es->dummy) return;
+#ifndef _F_DISABLE_E_GADGETS
    e_gadcon_name_set(es->gadcon, name);
+#endif
 }
 
 EAPI void
@@ -614,6 +636,7 @@ e_shelf_orient(E_Shelf *es, E_Gadcon_Orient orient)
 
    if (!es->dummy)
      {
+#ifndef _F_DISABLE_E_GADGETS
         e_gadcon_orient(es->gadcon, orient);
         snprintf(buf, sizeof(buf), "e,state,orientation,%s",
                  e_shelf_orient_string_get(es));
@@ -621,6 +644,7 @@ e_shelf_orient(E_Shelf *es, E_Gadcon_Orient orient)
         edje_object_message_signal_process(es->o_base);
         e_gadcon_location_set_icon_name(es->gadcon->location, 
                                         _e_shelf_orient_icon_name_get(es));
+#endif
      }
    e_zone_useful_geometry_dirty(es->zone);
 }
@@ -905,10 +929,12 @@ e_shelf_style_set(E_Shelf *es, const char *style)
      es->instant_delay = -1.0;
 
    if (es->popup) e_popup_edje_bg_object_set(es->popup, es->o_base);
-   
+
+#ifndef _F_DISABLE_E_GADGETS
    if (!es->gadcon) return;
    e_gadcon_unpopulate(es->gadcon);
    e_gadcon_populate(es->gadcon);
+#endif
 }
 
 EAPI void
@@ -937,8 +963,10 @@ e_shelf_popup_set(E_Shelf *es, int popup)
                                       ECORE_X_WINDOW_TYPE_DOCK);
 
         e_drop_xdnd_register_set(es->popup->evas_win, 1);
+#ifndef _F_DISABLE_E_GADGETS
         e_gadcon_xdnd_window_set(es->gadcon, es->popup->evas_win);
         e_gadcon_dnd_window_set(es->gadcon, es->popup->evas_win);
+#endif
      }
    else
      {
@@ -955,8 +983,10 @@ e_shelf_popup_set(E_Shelf *es, int popup)
         evas_object_layer_set(es->o_base, es->cfg->layer);
 
         e_drop_xdnd_register_set(es->zone->container->bg_win, 1);
+#ifndef _F_DISABLE_E_GADGETS
         e_gadcon_xdnd_window_set(es->gadcon, es->zone->container->bg_win);
         e_gadcon_dnd_window_set(es->gadcon, es->zone->container->event_win);
+#endif
         evas_object_clip_set(es->o_base, es->zone->bg_clip_object);
      }
 }
@@ -1043,6 +1073,8 @@ e_shelf_config_new(E_Zone *zone, E_Config_Shelf *cf_es)
    return es;
 }
 
+#ifndef _F_DISABLE_E_ENTRY_DIALOG
+
 EAPI E_Entry_Dialog *
 e_shelf_new_dialog(E_Zone *zone)
 {
@@ -1053,6 +1085,7 @@ e_shelf_new_dialog(E_Zone *zone)
                                _("Name:"), buf, NULL, NULL,
                                _e_shelf_new_dialog_ok, NULL, zone);
 }
+#endif
 
 /* local subsystem functions */
 
@@ -1104,8 +1137,10 @@ _e_shelf_new_dialog_ok(void *data, char *text)
    es_cf = eina_list_data_get(eina_list_last(e_config->shelves));
    cfg->id = es_cf->id + 1;
    es = e_shelf_config_new(zone, cfg);
+#ifndef _F_DISABLE_E_GADGETS
    if (es && es->gadcon)
      e_int_gadcon_config_shelf(es->gadcon);
+#endif
 }
 
 static void
@@ -1197,9 +1232,11 @@ _e_shelf_free(E_Shelf *es)
      }
    else
      {
+#ifndef _F_DISABLE_E_GADGETS
         e_gadcon_location_unregister(es->gadcon->location);
         e_gadcon_location_free(es->gadcon->location);
         if (es->cfg_delete) e_gadcon_config_del(es->gadcon);
+#endif
         e_object_del(E_OBJECT(es->gadcon));
         es->gadcon = NULL;
      }
@@ -1274,7 +1311,9 @@ _e_shelf_gadcon_size_request(void *data, E_Gadcon *gc, Evas_Coord w, Evas_Coord 
       default:
         break;
      }
+#ifndef _F_DISABLE_E_GADGETS
    e_gadcon_swallowed_min_size_set(gc, w, h);
+#endif
    edje_object_size_min_calc(es->o_base, &nw, &nh);
    wantw = nw;
    wanth = nh;
@@ -1418,7 +1457,9 @@ _e_shelf_gadcon_size_request(void *data, E_Gadcon *gc, Evas_Coord w, Evas_Coord 
      }
    w -= (wantw - nw);
    h -= (wanth - nh);
+#ifndef _F_DISABLE_E_GADGETS
    e_gadcon_swallowed_min_size_set(gc, w, h);
+#endif
    e_shelf_move_resize(es, nx, ny, nw, nh);
    e_zone_useful_geometry_dirty(es->zone);
 }
@@ -1614,7 +1655,9 @@ _e_shelf_cb_menu_config(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUS
    E_Shelf *es;
 
    es = data;
+#ifndef _F_DISABLE_E_SHELF
    if (!es->config_dialog) e_int_shelf_config(es);
+#endif
 }
 
 static void
@@ -1623,6 +1666,7 @@ _e_shelf_cb_menu_edit(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUSED
    E_Shelf *es;
 
    es = data;
+#ifndef _F_DISABLE_E_GADGETS
    if (es->gadcon->editing)
      {
         e_gadcon_edit_end(es->gadcon);
@@ -1633,6 +1677,7 @@ _e_shelf_cb_menu_edit(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUSED
         e_shelf_toggle(es, 1);
         e_gadcon_edit_begin(es->gadcon);
      }
+#endif
 }
 
 static void
@@ -1641,7 +1686,9 @@ _e_shelf_cb_menu_contents(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UN
    E_Shelf *es;
 
    es = data;
+#ifndef _F_DISABLE_E_GADGETS
    if (!es->gadcon->config_dialog) e_int_gadcon_config_shelf(es->gadcon);
+#endif
 }
 
 static void
@@ -1681,7 +1728,8 @@ _e_shelf_cb_menu_delete(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUS
      }
 
    e_object_ref(E_OBJECT(es));
-   e_confirm_dialog_show(_("Are you sure you want to delete this shelf?"), 
+#ifndef _F_DISABLE_E_SHELF
+   e_confirm_dialog_show(_("Are you sure you want to delete this shelf?"),
                          "enlightenment",
                          _("You requested to delete this shelf.<br>"
                            "<br>"
@@ -1689,6 +1737,7 @@ _e_shelf_cb_menu_delete(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUS
                          _("Delete"), _("Keep"),
                          _e_shelf_cb_confirm_dialog_yes, NULL, data, NULL,
                          _e_shelf_cb_confirm_dialog_destroy, data);
+#endif
 }
 
 static void
@@ -1708,7 +1757,7 @@ _e_shelf_cb_mouse_down(void *data, Evas *evas __UNUSED__, Evas_Object *obj __UNU
    Evas_Event_Mouse_Down *ev;
    E_Shelf *es;
    E_Menu *mn;
-   int cx, cy;
+   int cx = 0, cy = 0;
 
    es = data;
    ev = event_info;
@@ -1728,8 +1777,10 @@ _e_shelf_cb_mouse_down(void *data, Evas *evas __UNUSED__, Evas_Object *obj __UNU
         es->menu = mn;
 
         _e_shelf_menu_pre_cb(es, mn);
+#ifndef _F_DISABLE_E_GADGETS
 
         e_gadcon_canvas_zone_geometry_get(es->gadcon, &cx, &cy, NULL, NULL);
+#endif
         e_menu_activate_mouse(mn,
                               e_util_zone_current_get(e_manager_current_get()),
                               cx + ev->output.x,
@@ -2167,6 +2218,7 @@ _e_shelf_cb_menu_rename_cb(void *data)
    es->rename_dialog = NULL;
 }
 
+#ifndef _F_DISABLE_E_ENTRY_DIALOG
 static void
 _e_shelf_cb_menu_rename(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUSED__)
 {
@@ -2176,10 +2228,12 @@ _e_shelf_cb_menu_rename(void *data, E_Menu *m __UNUSED__, E_Menu_Item *mi __UNUS
                                           _("Name:"), es->name, NULL, NULL,
                                           _e_shelf_cb_menu_rename_yes_cb,
                                           NULL, es);
+
    e_object_data_set(E_OBJECT(es->rename_dialog), es);
    e_object_del_attach_func_set(E_OBJECT(es->rename_dialog),
                                 _e_shelf_cb_menu_rename_cb);
 }
+#endif
 
 static void
 _e_shelf_cb_menu_orient(void *data, E_Menu *m, E_Menu_Item *mi)
@@ -2265,10 +2319,12 @@ _e_shelf_menu_pre_cb(void *data, E_Menu *m)
    mi = e_menu_item_new(m);
    e_menu_item_separator_set(mi, 1);
 
+#ifndef _F_DISABLE_E_ENTRY_DIALOG
    mi = e_menu_item_new(m);
    e_menu_item_label_set(mi, _("Rename"));
    e_util_menu_item_theme_icon_set(mi, "edit-rename");
    e_menu_item_callback_set(mi, _e_shelf_cb_menu_rename, es);
+#endif
 
    mi = e_menu_item_new(m);
    e_menu_item_label_set(mi, _("Delete"));
@@ -2289,6 +2345,7 @@ _e_shelf_menu_pre_cb(void *data, E_Menu *m)
    e_menu_item_callback_set(mi, _e_shelf_cb_menu_edit, es);
 }
 
+#ifndef _F_DISABLE_E_GADGETS
 static void
 _e_shelf_gadcon_client_remove(void *data, E_Gadcon_Client *gcc)
 {
@@ -2317,6 +2374,7 @@ _e_shelf_gadcon_client_add(void *data, const E_Gadcon_Client_Class *cc)
    e_config_save_queue();
    return 1;
 }
+#endif
 
 static const char *
 _e_shelf_orient_icon_name_get(E_Shelf *s)

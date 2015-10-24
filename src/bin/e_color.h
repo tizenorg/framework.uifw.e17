@@ -26,8 +26,12 @@ struct _E_Color
    int a;
 };
 
+#ifndef _F_DISABLE_E_COLOR_CLASS
+
 EAPI void e_color_update_rgb (E_Color *ec);
 EAPI void e_color_update_hsv (E_Color *ec);
 EAPI void e_color_copy       (const E_Color *from, E_Color *to);
+
+#endif
 #endif
 #endif

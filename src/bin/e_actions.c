@@ -229,6 +229,8 @@ ACT_FN_GO_KEY(window_resize, __UNUSED__, __UNUSED__)
 }
 
 /***************************************************************************/
+#ifndef _F_DISABLE_E_MENU
+
 ACT_FN_GO(window_menu, __UNUSED__)
 {
    if (!obj) obj = E_OBJECT(e_border_focused_get());
@@ -264,7 +266,7 @@ ACT_FN_GO_KEY(window_menu, __UNUSED__, __UNUSED__)
      }
    e_border_act_menu_begin((E_Border *)obj, NULL, 1);
 }
-
+#endif
 /***************************************************************************/
 ACT_FN_GO(window_raise, __UNUSED__)
 {
@@ -834,30 +836,28 @@ ACT_FN_GO(window_border_cycle, __UNUSED__)
              if (bd->bordername)
                {
                   const char *bdname = params;
-                  if (bdname)
+                  /* removed redudant null check for bdname to resolve prevent issue H4B0A-31117 */
+                  while (space = strchr(bdname, ' '))
                     {
-                       while (space = strchr(bdname, ' '))
+                       if (strncmp(bd->bordername, bdname, space - bdname) == 0)
                          {
-                            if (strncmp(bd->bordername, bdname, space - bdname) == 0)
-                              {
-                                 bdname = space + 1;
-                                 while (*bdname == ' ')
-                                   bdname++;
-                                 space = strchr(bdname, ' ');
-                                 if (space)
-                                   eina_stringshare_replace_length(
-                                     &bd->bordername,
-                                     bdname, space - bdname);
-                                 else
-                                   eina_stringshare_replace(&bd->bordername, bdname);
-                                 bd->client.border.changed = 1;
-                                 bd->changed = 1;
-                                 return;
-                              }
                             bdname = space + 1;
                             while (*bdname == ' ')
                               bdname++;
+                            space = strchr(bdname, ' ');
+                            if (space)
+                              eina_stringshare_replace_length(
+                                 &bd->bordername,
+                                 bdname, space - bdname);
+                            else
+                              eina_stringshare_replace(&bd->bordername, bdname);
+                            bd->client.border.changed = 1;
+                            bd->changed = 1;
+                            return;
                          }
+                       bdname = space + 1;
+                       while (*bdname == ' ')
+                         bdname++;
                     }
                }
 
@@ -1676,6 +1676,8 @@ ACT_FN_GO(screen_send_to, )
 {
    E_Zone *zone, *zone2;
    int scr;
+   int e_manager_count=0;
+   int zone_count=0;
 
    zone = _e_actions_zone_get(obj);
    if (!zone) zone = e_util_zone_current_get(e_manager_current_get());
@@ -1689,14 +1691,22 @@ ACT_FN_GO(screen_send_to, )
    if (eina_list_count(e_manager_list()) > 1)
      {
         if (scr != -1)
-          scr = scr % eina_list_count(e_manager_list());
+          {
+             e_manager_count = eina_list_count(e_manager_list());
+             if(e_manager_count)
+               scr = scr % e_manager_count;
+          }
         if (scr < 0) scr += eina_list_count(e_manager_list());
         zone2 = e_util_container_zone_number_get(scr, 0);
      }
    else
      {
         if (scr != -1)
-          scr = scr % eina_list_count(zone->container->zones);
+          {
+             zone_count = eina_list_count(zone->container->zones);
+             if(zone_count)
+               scr = scr % zone_count;
+          }
         if (scr < 0) scr += eina_list_count(zone->container->zones);
         zone2 = e_util_container_zone_number_get(0, scr);
      }
@@ -1722,13 +1732,20 @@ ACT_FN_GO(screen_send_by, )
    if (!params) return;
 
    errno = 0;
+   int e_manager_count=0;
+   int zone_count=0;
+
    scr = strtol(params, NULL, 10);
    if (errno) return;
    if (eina_list_count(e_manager_list()) > 1)
      {
         scr += zone->container->num;
         if (scr != -1)
-          scr = scr % eina_list_count(e_manager_list());
+          {
+             e_manager_count = eina_list_count(e_manager_list());
+             if(e_manager_count)
+               scr = scr % e_manager_count;
+          }
         if (scr < 0) scr += eina_list_count(e_manager_list());
         zone2 = e_util_container_zone_number_get(scr, 0);
      }
@@ -1736,7 +1753,11 @@ ACT_FN_GO(screen_send_by, )
      {
         scr += zone->num;
         if (scr != -1)
-          scr = scr % eina_list_count(zone->container->zones);
+          {
+             zone_count=eina_list_count(zone->container->zones);
+             if(zone_count)
+               scr = scr % zone_count;
+          }
         if (scr < 0) scr += eina_list_count(zone->container->zones);
         zone2 = e_util_container_zone_number_get(0, scr);
      }
@@ -1851,6 +1872,7 @@ _e_actions_cb_menu_end(void *data __UNUSED__, E_Menu *m)
    e_object_del(E_OBJECT(m));
 }
 
+#ifndef _F_DISABLE_E_MENU
 static E_Menu *
 _e_actions_menu_find(const char *name)
 {
@@ -1959,6 +1981,7 @@ ACT_FN_GO_KEY(menu_show, , __UNUSED__)
           }
      }
 }
+#endif
 
 /***************************************************************************/
 ACT_FN_GO(exec,)
@@ -1997,11 +2020,12 @@ ACT_FN_GO(app, )
      {
         if (params)
           {
+#ifndef _F_DISABLE_E_EFREET_
              Efreet_Desktop *desktop = NULL;
              char *p, *p2;
 
              p2 = alloca(strlen(params) + 1);
-             strcpy(p2, params);
+             strncpy(p2, params, strlen(params));
              p = strchr(p2, ' ');
              if (p)
                {
@@ -2020,6 +2044,7 @@ ACT_FN_GO(app, )
                        efreet_desktop_free(desktop);
                     }
                }
+#endif
           }
      }
 }
@@ -2031,7 +2056,7 @@ ACT_FN_GO(app_new_instance, __UNUSED__)
    E_Zone *zone;
 
    zone = _e_actions_zone_get(obj);
-   if (!zone) 
+   if (!zone)
      zone = e_util_zone_current_get(e_manager_current_get());
 
    if (!obj) obj = E_OBJECT(e_border_focused_get());
@@ -2130,6 +2155,7 @@ ACT_FN_GO(exit, )
 }
 
 /***************************************************************************/
+#ifndef _F_DISABLE_E_ACTION
 ACT_FN_GO(restart, __UNUSED__)
 {
    e_sys_action_do(E_SYS_RESTART, NULL);
@@ -2146,6 +2172,7 @@ ACT_FN_GO(halt_now, __UNUSED__)
 {
    e_sys_action_do(E_SYS_HALT_NOW, NULL);
 }
+#endif
 
 /***************************************************************************/
 ACT_FN_GO(mode_presentation_toggle, __UNUSED__)
@@ -2164,6 +2191,10 @@ ACT_FN_GO(mode_offline_toggle, __UNUSED__)
 }
 
 /***************************************************************************/
+
+#ifndef _F_DISABLE_E_ACTION
+
+
 static E_Dialog *logout_dialog = NULL;
 
 static void
@@ -2487,6 +2518,7 @@ ACT_FN_GO(hibernate, )
    e_win_centered_set(hibernate_dialog->win, 1);
    e_dialog_show(hibernate_dialog);
 }
+#endif
 
 /***************************************************************************/
 ACT_FN_GO(pointer_resize_push, )
@@ -2521,6 +2553,9 @@ ACT_FN_GO(pointer_resize_pop, )
 }
 
 /***************************************************************************/
+
+#ifndef _F_DISABLE_E_DESKLOCK
+
 ACT_FN_GO(desk_lock, __UNUSED__)
 {
 /*  E_Zone *zone;
@@ -2529,8 +2564,10 @@ ACT_FN_GO(desk_lock, __UNUSED__)
    if (zone)*/
    e_desklock_show(EINA_FALSE);
 }
-
+#endif
 /***************************************************************************/
+#ifndef _F_DISABLE_E_SHELF
+
 ACT_FN_GO(shelf_show, )
 {
    Eina_List *l;
@@ -2620,7 +2657,7 @@ ACT_FN_GO_EDGE(shelf_show, )
      }
 }
 #undef ACT_SHELF_SHOW
-
+#endif
 /***************************************************************************/
 typedef struct _Delayed_Action Delayed_Action;
 
@@ -2901,7 +2938,7 @@ ACT_FN_GO(kbd_layout_prev, __UNUSED__)
 ACT_FN_GO(module_enable, )
 {
    E_Module *m;
-   
+
    if (!params) return;
    m = e_module_find(params);
    if (!m)
@@ -2915,7 +2952,7 @@ ACT_FN_GO(module_enable, )
 ACT_FN_GO(module_disable, )
 {
    E_Module *m;
-   
+
    if (!params) return;
    m = e_module_find(params);
    if (!m) return;
@@ -2925,7 +2962,7 @@ ACT_FN_GO(module_disable, )
 ACT_FN_GO(module_toggle, )
 {
    E_Module *m;
-   
+
    fprintf(stderr, "toggle\n");
    if (!params) return;
    fprintf(stderr, "'%s'\n", params);
@@ -2976,6 +3013,8 @@ e_actions_init(void)
    ACT_END_MOUSE(window_resize);
    ACT_GO_KEY(window_resize);
 
+#ifndef _F_DISABLE_E_MENU
+
    /* window_menu */
    ACT_GO(window_menu);
    e_action_predef_name_set(N_("Menu"), N_("Window Menu"),
@@ -2983,6 +3022,8 @@ e_actions_init(void)
 
    ACT_GO_MOUSE(window_menu);
    ACT_GO_KEY(window_menu);
+
+#endif
 
    /* window_raise */
    ACT_GO(window_raise);
@@ -3116,12 +3157,14 @@ e_actions_init(void)
    ACT_GO(desk_deskshow_toggle);
    e_action_predef_name_set(N_("Desktop"), N_("Show The Desktop"),
                             "desk_deskshow_toggle", NULL, NULL, 0);
+#ifndef _F_DISABLE_E_SHELF
 
    /* shelf_show */
    ACT_GO(shelf_show);
    ACT_GO_EDGE(shelf_show);
    e_action_predef_name_set(N_("Desktop"), N_("Show The Shelf"), "shelf_show",
                             NULL, "shelf name glob: Shelf-* ", 1);
+#endif
 
    /* desk_linear_flip_to */
    ACT_GO(desk_flip_to);
@@ -3335,6 +3378,8 @@ e_actions_init(void)
    e_action_predef_name_set(N_("Window : Moving"), N_("To Previous Screen"),
                             "window_zone_move_by", "-1", NULL, 0);
 
+#ifndef _F_DISABLE_E_MENU
+
    /* menu_show */
    ACT_GO(menu_show);
    e_action_predef_name_set(N_("Menu"), N_("Show Main Menu"),
@@ -3349,7 +3394,7 @@ e_actions_init(void)
                             "syntax: MenuName, example: MyMenu", 1);
    ACT_GO_MOUSE(menu_show);
    ACT_GO_KEY(menu_show);
-
+#endif
    /* exec */
    ACT_GO(exec);
    e_action_predef_name_set(N_("Launch"), N_("Command"), "exec", NULL,
@@ -3365,6 +3410,8 @@ e_actions_init(void)
    e_action_predef_name_set(N_("Launch"), N_("New Instance of Focused App"), "app_new_instance", NULL,
                             NULL, 0);
 
+#ifndef _F_DISABLE_E_ACTION
+
    ACT_GO(restart);
    e_action_predef_name_set(N_("Enlightenment"), N_("Restart"), "restart",
                             NULL, NULL, 0);
@@ -3376,6 +3423,7 @@ e_actions_init(void)
    ACT_GO(exit_now);
    e_action_predef_name_set(N_("Enlightenment"), N_("Exit Now"),
                             "exit_now", NULL, NULL, 0);
+#endif
 
    ACT_GO(mode_presentation_toggle);
    e_action_predef_name_set(N_("Enlightenment : Mode"),
@@ -3399,7 +3447,9 @@ e_actions_init(void)
    e_action_predef_name_set(N_("Enlightenment : Module"),
                             N_("Toggle the named module"),
                             "module_toggle", NULL, NULL, 1);
-   
+
+#ifndef _F_DISABLE_E_ACTION
+
    ACT_GO(logout);
    e_action_predef_name_set(N_("System"), N_("Log Out"), "logout",
                             NULL, NULL, 0);
@@ -3432,13 +3482,13 @@ e_actions_init(void)
    e_action_predef_name_set(N_("System"), N_("Hibernate Now"), "hibernate_now",
                             NULL, NULL, 0);
 
-   ACT_GO(pointer_resize_push);
-   ACT_GO(pointer_resize_pop);
-
    /* desk_lock */
    ACT_GO(desk_lock);
    e_action_predef_name_set(N_("Desktop"), N_("Lock"), "desk_lock",
                             NULL, NULL, 0);
+#endif
+   ACT_GO(pointer_resize_push);
+   ACT_GO(pointer_resize_pop);
 
    /* cleanup_windows */
    ACT_GO(cleanup_windows);

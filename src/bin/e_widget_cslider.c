@@ -125,7 +125,7 @@ _e_wid_resize(void *data, Evas *e __UNUSED__, Evas_Object *obj __UNUSED__, void 
 {
    E_Widget_Data *wd;
    /* Evas_Coord w, h; */
-   
+
    wd = data;
    /* evas_object_geometry_get(obj, NULL, NULL, &w, &h); */
    /* evas_object_resize(wd->o_grad, w, h); */
@@ -138,38 +138,42 @@ _e_wid_value_set(Evas_Object *o, double vx)
    E_Widget_Data *wd;
 
    wd = e_widget_data_get(o);
+#ifndef _F_DISABLE_E_COLOR_CLASS
    switch (wd->mode)
      {
       case E_COLOR_COMPONENT_R:
 	 wd->color->r = 255 * vx;
-	 e_color_update_rgb(wd->color);
-	 break;
+         e_color_update_rgb(wd->color);
+         break;
       case E_COLOR_COMPONENT_G:
 	 wd->color->g = 255 * vx;
-	 e_color_update_rgb(wd->color);
-	 break;
+         e_color_update_rgb(wd->color);
+         break;
       case E_COLOR_COMPONENT_B:
 	 wd->color->b = 255 * vx;
-	 e_color_update_rgb(wd->color);
-	 break;
+         e_color_update_rgb(wd->color);
+         break;
       case E_COLOR_COMPONENT_H:
 	 wd->color->h = 360 * vx;
-	 e_color_update_hsv(wd->color);
-	 break;
+         e_color_update_hsv(wd->color);
+         break;
       case E_COLOR_COMPONENT_S:
 	 wd->color->s = vx;
-	 e_color_update_hsv(wd->color);
-	 break;
+         e_color_update_hsv(wd->color);
+         break;
       case E_COLOR_COMPONENT_V:
 	 wd->color->v = vx;
-	 e_color_update_hsv(wd->color);
-	 break;
+         e_color_update_hsv(wd->color);
+     break;
       case E_COLOR_COMPONENT_MAX:
 	 break;
      }
+#endif
 
+#ifndef _F_DISABLE_E_WIDGET
    _e_wid_update(wd);
    e_widget_change(o);
+#endif
 }
 
 void

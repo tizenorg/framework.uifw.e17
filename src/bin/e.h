@@ -236,6 +236,10 @@ typedef struct _E_Rect         E_Rect;
 # undef E_TYPEDEFS
 # include "e_includes.h"
 
+#ifdef ENABLE_TTRACE
+#include <ttrace.h>
+#endif //ENABLE_TTRACE
+
 EAPI E_Before_Idler *e_main_idler_before_add(int (*func)(void *data), void *data, int once);
 EAPI void            e_main_idler_before_del(E_Before_Idler *eb);
 EAPI double          e_main_ts(const char *str);

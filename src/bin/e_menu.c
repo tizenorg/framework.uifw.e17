@@ -635,13 +635,15 @@ EAPI E_Menu_Item *
 e_menu_item_new_relative(E_Menu *m, E_Menu_Item *rel)
 {
    E_Menu_Item *mi;
+   Eina_List *l;
    E_OBJECT_CHECK_RETURN(m, NULL);
    E_OBJECT_TYPE_CHECK_RETURN(m, E_MENU_TYPE, NULL);
    if (rel)
      {
         E_OBJECT_CHECK_RETURN(rel, NULL);
         E_OBJECT_TYPE_CHECK_RETURN(rel, E_MENU_ITEM_TYPE, NULL);
-        if (rel->menu != m) return NULL;
+        l = eina_list_data_find_list(m->items, rel);
+        if ((rel->menu != m) || (l == NULL)) return NULL;
      }
 
    mi = E_OBJECT_ALLOC(E_Menu_Item, E_MENU_ITEM_TYPE, _e_menu_item_free);
@@ -1684,8 +1686,7 @@ _e_menu_realize(E_Menu *m)
              ecore_evas_alpha_set(m->ecore_evas, m->shaped);
 
              eina_hash_del(_e_menu_hash, e_util_winid_str_get(m->evas_win), m);
-             if (m->ecore_evas)
-               m->evas_win = ecore_evas_software_x11_window_get(m->ecore_evas);
+             m->evas_win = ecore_evas_software_x11_window_get(m->ecore_evas);
              eina_hash_add(_e_menu_hash, e_util_winid_str_get(m->evas_win), m);
           }
         else

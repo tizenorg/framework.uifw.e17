@@ -223,7 +223,7 @@ _e_wid_mouse_handle(Evas_Object *obj, int mx, int my)
    if (vy < 0) vy = 0;
 
    edje_object_part_drag_value_set(wd->o_edje, "e.dragable.cursor", vx, vy);
-
+#ifndef _F_DISABLE_E_COLOR_CLASS
    switch (wd->mode)
      {
       case E_COLOR_COMPONENT_R:
@@ -260,6 +260,7 @@ _e_wid_mouse_handle(Evas_Object *obj, int mx, int my)
 	 break;
      }
    e_widget_change(obj);
+#endif
 }
 
 

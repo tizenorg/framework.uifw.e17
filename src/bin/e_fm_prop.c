@@ -124,7 +124,12 @@ _fill_data(E_Config_Dialog_Data *cfdata, E_Fm2_Icon *ic)
 {
    char loc[PATH_MAX];
    char blks[256];
-   struct passwd *pw;
+   struct passwd pwd;
+   struct passwd *result;
+   char *buf;
+   size_t bufsize;
+   int ret;
+   result =NULL;
 
    cfdata->ic = ic;
    cfdata->fi = e_fm2_icon_file_info_get(ic);
@@ -141,8 +146,12 @@ _fill_data(E_Config_Dialog_Data *cfdata, E_Fm2_Icon *ic)
    snprintf(loc, sizeof(loc), "%s", e_fm2_real_path_get(cfdata->fi->fm));
    cfdata->location = strdup(loc);
 
-   pw = getpwuid(cfdata->fi->statinfo.st_uid);
-   if (pw) cfdata->owner = strdup(pw->pw_name);
+   bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+   if (bufsize == -1) bufsize = 16384;
+   buf = malloc(bufsize);
+   if (buf == NULL) return;
+   ret = getpwuid_r(cfdata->fi->statinfo.st_uid, &pwd, buf, bufsize, &result);
+   if(result!=NULL) cfdata->owner = strdup(pwd.pw_name);
    if (cfdata->fi->link) cfdata->link = strdup(cfdata->fi->link);
    if (cfdata->fi->link) cfdata->plink = strdup(cfdata->fi->link);
    if (cfdata->fi->statinfo.st_mode & S_IRUSR) cfdata->owner_read = 1;
@@ -154,6 +163,7 @@ _fill_data(E_Config_Dialog_Data *cfdata, E_Fm2_Icon *ic)
    if (cfdata->fi->statinfo.st_mode & S_IRGRP) cfdata->group_read = 1;
    if (cfdata->fi->statinfo.st_mode & S_IWGRP) cfdata->group_write = 1;
    if (cfdata->fi->statinfo.st_mode & S_IXGRP) cfdata->group_exec = 1;
+   free(buf);
 }
 
 static void *
@@ -251,9 +261,11 @@ _basic_apply_data(E_Config_Dialog *cfd __UNUSED__, E_Config_Dialog_Data *cfdata)
         else cfdata->fi->statinfo.st_mode &= ~S_IXGRP;
         if (chmod(buf, cfdata->fi->statinfo.st_mode) == -1)
           {
+             char error_buf[256] = {0};
+             strerror_r(errno, error_buf, sizeof(char) * 256);
              e_util_dialog_show(_("Error"),
                                 _("Cannot change permissions: %s"),
-                                strerror(errno));
+                                error_buf);
 
              cfdata->fi->statinfo.st_mode = pmode;
           }
@@ -486,8 +498,10 @@ _basic_create_widgets(E_Config_Dialog *cfd, Evas *evas, E_Config_Dialog_Data *cf
    evas_object_smart_callback_add(ob, "preview_update",
                                   _cb_preview_update, cfdata);
    e_widget_table_object_append(ot, ob, 0, 0, 1, 1, 0, 0, 1, 1);
+#ifndef _F_DISABLE_E_THUMB
    e_widget_preview_thumb_set(ob, buf,
                               "e/desktop/background", 128, 128);
+#endif
    e_widget_frametable_object_append(of, ot, 0, 0, 1, 1, 1, 1, 1, 1);
 
    e_widget_table_object_append(o, of, 1, 0, 1, 1, 1, 1, 1, 1);

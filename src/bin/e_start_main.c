@@ -226,10 +226,10 @@ _env_path_prepend(const char *env, const char *path)
         s[0] = 0;
         if (p2)
           {
-             strcat(s, p2);
-             strcat(s, ":");
+             strncat(s, p2, strlen(p2));
+             strncat(s, ":", strlen(":"));
           }
-        if (p) strcat(s, p);
+        if (p) strncat(s, p, strlen(p));
         env_set(env, s);
         free(s);
      }
@@ -259,11 +259,11 @@ _env_path_append(const char *env, const char *path)
    if (s)
      {
         s[0] = 0;
-        if (p) strcat(s, p);
+        if (p) strncat(s, p, strlen(p));
         if (p2)
           {
-             strcat(s, ":");
-             strcat(s, p2);
+             strncat(s, ":", strlen(":"));
+             strncat(s, p2, strlen(p2));
           }
         env_set(env, s);
         free(s);
@@ -411,14 +411,13 @@ done:
    /* try dbus-launch */
    snprintf(buf, sizeof(buf), "%s/enlightenment", eina_prefix_bin_get(pfx));
 
-   args = alloca((argc + 2 + VALGRIND_MAX_ARGS) * sizeof(char *));
+   args = alloca((argc + 1 + VALGRIND_MAX_ARGS) * sizeof(char *));
    if ((!getenv("DBUS_SESSION_BUS_ADDRESS")) &&
        (!getenv("DBUS_LAUNCHD_SESSION_BUS_SOCKET")))
      {
 	args[0] = "dbus-launch";
-	args[1] = "--exit-with-session";
 
-	i = 2 + valgrind_append(args + 2, valgrind_gdbserver, valgrind_mode, valgrind_tool, valgrind_path, valgrind_log);
+	i = 1 + valgrind_append(args + 1, valgrind_gdbserver, valgrind_mode, valgrind_tool, valgrind_path, valgrind_log);
 	args[i++] = buf;
 	copy_args(args + i, argv + 1, argc - 1);
 	args[i + argc - 1] = NULL;

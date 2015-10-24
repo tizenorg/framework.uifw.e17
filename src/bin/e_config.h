@@ -78,6 +78,9 @@ struct _E_Config
    int         edje_collection_cache; // GUI
    int         zone_desks_x_count; // GUI
    int         zone_desks_y_count; // GUI
+#ifdef _F_USE_WM_ZONE_HOST_
+   int         tizen_zone_active; // vasum zone
+#endif
    int         show_desktop_icons; // GUI
    int         edge_flip_dragging; // GUI
    int         use_composite; // GUI
@@ -145,6 +148,7 @@ struct _E_Config
    int         allow_above_fullscreen; // GUI
    int         kill_if_close_not_possible; // GUI
    int         kill_process; // GUI
+   int         kill_hung_process_by_module;
    double      kill_timer_wait; // GUI
    int         ping_clients; // GUI
    const char *transition_start; // GUI
@@ -348,7 +352,7 @@ struct _E_Config
       double        dim; // GUI
       double        transition; // GUI
       double        timer; // GUI
-      const char   *sysdev; // GUI  
+      const char   *sysdev; // GUI
       unsigned char idle_dim; // GUI
       E_Backlight_Mode mode; /* not saved, display-only */
    } backlight;
@@ -401,8 +405,11 @@ struct _E_Config
       const char *default_model;
       int         cur_group;
    } xkb;
-   
+
    unsigned char exe_always_single_instance;
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+   int           use_desktop_window_profile; // GUI
+#endif
 #ifdef _F_ZONE_WINDOW_ROTATION_
    unsigned char wm_win_rotation;
 #endif
@@ -412,27 +419,32 @@ struct _E_Config
    double      deiconify_timeout;
 #endif
 
-#ifdef _F_KILL_HUNG_PROCESS_THROUGH_RD_
-   struct
-     {
-        const char *dest;
-        const char *path;
-        const char *interface;
-        const char *method;
-     } rd_dbus_msg;
-#endif
-
 #ifdef _F_USE_TILED_DESK_LAYOUT_
    unsigned char use_tiled_desk_layout;
+   unsigned char max_tiled_layout;
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
-
+#ifdef _F_USE_BORDER_TRANSFORM_
+   unsigned char use_border_transform;
+#endif /* end of _F_USE_BORDER_TRANSFORM_ */
 #ifdef _F_E_WIN_AUX_HINT_
    unsigned char win_aux_hint;
 #endif /* end of _F_E_WIN_AUX_HINT_ */
-
 #ifdef _F_USE_ICONIFY_RESIZE_
    unsigned char use_iconify_resize;
+   int iconify_resize_w;
+   int iconify_resize_h;
 #endif
+
+   unsigned char priority_raise_on_focus;
+
+   int max_hung_count;
+
+   int border_drag_margin_x;
+   int border_drag_margin_y;
+
+   unsigned char ping_only_visible;
+   int use_e_test_runner;
+   int stand_by_tv_viewer_ready;
 };
 
 struct _E_Config_Desklock_Background

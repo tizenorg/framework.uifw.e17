@@ -92,6 +92,7 @@ _e_wid_fprev_preview_update(void *data, Evas_Object *obj, void *event_info __UNU
                   _e_wid_fprev_img_update(wd, mime, edj ? group : NULL);
                   return;
                }
+#ifndef _F_DISABLE_E_EFREET_
              if (eina_str_has_extension(wd->path, "desktop"))
                {
                   ed = efreet_desktop_new(wd->path);
@@ -102,8 +103,11 @@ _e_wid_fprev_preview_update(void *data, Evas_Object *obj, void *event_info __UNU
                mime = efreet_icon_path_find(e_config->icon_theme, "unknown", size);
              if (!mime)
                mime = efreet_icon_path_find(e_config->icon_theme, "text/plain", size);
+#endif
              _e_wid_fprev_img_update(wd, mime, NULL);
+#ifndef _F_DISABLE_E_EFREET_
              if (ed) efreet_desktop_free(ed);
+#endif
           }
      }
    e_widget_table_object_repack(wd->o_preview_preview_table,
@@ -257,11 +261,13 @@ _e_wid_fprev_preview_file(E_Widget_Data *wd)
    Eina_Bool is_fs = EINA_FALSE;
 
    if (stat(wd->path, &st) < 0) return;
+
+#ifndef _F_DISABLE_E_EFREET_
    // if its a desktop file treat is spcially
    if (((wd->mime) &&(!strcasecmp(wd->mime, "application/x-desktop"))) ||
        (eina_str_has_extension(wd->path, "desktop")))
      {
-        Efreet_Desktop *desktop;
+        Efreet_Desktop *desktop = NULL;
         const char *type, *file;
         
         // load it and if its a specual removable or mount point
@@ -391,6 +397,8 @@ _e_wid_fprev_preview_file(E_Widget_Data *wd)
         if (desktop) efreet_desktop_free(desktop);
      }
    if (is_fs) return;
+#endif
+
    _e_wid_fprev_preview_file_widgets(wd);
    
    wd->mime_icon = EINA_FALSE;
@@ -429,18 +437,43 @@ static char *
 _e_wid_file_user_get(uid_t st_uid)
 {
    char name[4096];
-   struct passwd *pwd;
+   struct passwd pwd, *pwdp = NULL;
+   size_t len;
+   char *buffer = NULL, *newbuffer = NULL;
+   long int initlen = sysconf(_SC_GETPW_R_SIZE_MAX);
+   if (initlen <= 0) len = 1024;
+   else len = (size_t)initlen;
+
+   buffer = (char*)malloc(len);
+   if (!buffer)
+     {
+        snprintf(name, sizeof(name), "%-8d", (int)st_uid);
+        return strdup(name);
+     }
 
    if (getuid() == st_uid)
      snprintf(name, sizeof(name), _("You"));
    else
      {
-        pwd = getpwuid(st_uid);
-        if (pwd)
-          snprintf(name, sizeof(name), "%s", pwd->pw_name);
-        else
-          snprintf(name, sizeof(name), "%-8d", (int)st_uid);
+        while (ERANGE == getpwuid_r(st_uid, &pwd, buffer, len, &pwdp))
+          {
+             len *= 2;
+             newbuffer = realloc(buffer, len);
+             if (!newbuffer)
+               {
+                  free(buffer);
+                  snprintf(name, sizeof(name), "%-8d", (int)st_uid);
+                  return strdup(name);
+               }
+             buffer = newbuffer;
+          }
      }
+   
+   if (!pwdp)
+     snprintf(name, sizeof(name), "%-8d", (int)st_uid);
+   else
+     snprintf(name, sizeof(name), "%s", pwdp->pw_name);
+   free(buffer);
    return strdup(name);
 }
 

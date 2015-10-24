@@ -547,8 +547,8 @@ _e_thumb_file_id(char *file,
      }
    buf = alloca(len);
 
-   strcpy((char *)buf, file);
-   if (key) strcpy((char *)(buf + lenf + 1), key);
+   strncpy((char *)buf, file, lenf + 1);
+   if (key) strncpy((char *)(buf + lenf + 1), key, 1);
 
    e_sha1_sum(buf, len, id);
 

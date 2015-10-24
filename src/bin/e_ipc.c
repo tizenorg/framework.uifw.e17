@@ -18,6 +18,9 @@ e_ipc_init(void)
    char buf[1024], buf2[128], buf3[4096];
    char *tmp, *user, *disp, *base;
    int pid, trynum = 0;
+   unsigned int seed = 0;
+   time_t clock = 1;
+   int id1 = 0, id2 = 0;
 
    tmp = getenv("TMPDIR");
    if (!tmp) tmp = "/tmp";
@@ -27,12 +30,12 @@ e_ipc_init(void)
    if (tmp) base = tmp;
    tmp = getenv("SD_USER_SOCKETS_DIR");
    if (tmp) base = tmp;
-     
+
    user = getenv("USER");
    if (!user)
      {
         int uidint;
-        
+
         user = "__unknown__";
         uidint = getuid();
         if (uidint >= 0)
@@ -41,18 +44,18 @@ e_ipc_init(void)
              user = buf2;
           }
      }
-   
+
    disp = getenv("DISPLAY");
    if (!disp) disp = ":0";
-   
+
    e_util_env_set("E_IPC_SOCKET", "");
-   
+
    pid = (int)getpid();
    for (trynum = 0; trynum <= 4096; trynum++)
      {
         struct stat st;
-        int id1 = 0, id2 = 0;
-        
+
+
         snprintf(buf, sizeof(buf), "%s/enlightenment-%s@%08x%08x",
                  base, user, id1, id2);
         mkdir(buf, S_IRWXU);
@@ -69,8 +72,13 @@ e_ipc_init(void)
                   if (_e_ipc_server) break;
                }
           }
-        id1 = rand();
-        id2 = rand();
+
+        clock = time(NULL);
+        if(clock <= ((time_t)0))clock=(time_t)1;
+        seed = (unsigned int)clock;
+        id1 = rand_r(&seed);
+        seed++;
+        id2 = rand_r(&seed);
      }
    if (!_e_ipc_server) return 0;
 
@@ -123,8 +131,12 @@ _e_ipc_cb_client_del(void *data __UNUSED__, int type __UNUSED__, void *event)
    if (ecore_ipc_client_server_get(e->client) != _e_ipc_server)
      return ECORE_CALLBACK_PASS_ON;
    /* delete client sruct */
+#ifndef _F_DISABLE_E_THUMB
    e_thumb_client_del(e);
+#endif
+#ifndef _F_DISABLE_E_FM
    e_fm2_client_del(e);
+#endif
    e_init_client_del(e);
    ecore_ipc_client_del(e->client);
    return ECORE_CALLBACK_PASS_ON;
@@ -197,13 +209,17 @@ _e_ipc_cb_client_data(void *data __UNUSED__, int type __UNUSED__, void *event)
           }
         break;
 
+#ifndef _F_DISABLE_E_THUMB
       case E_IPC_DOMAIN_THUMB:
         e_thumb_client_data(e);
         break;
+#endif
 
+#ifndef _F_DISABLE_E_FM
       case E_IPC_DOMAIN_FM:
         e_fm2_client_data(e);
         break;
+#endif
 
       case E_IPC_DOMAIN_INIT:
         e_init_client_data(e);

@@ -104,7 +104,11 @@ EAPI void
 e_xkb_layout_next(void)
 {
    int nb_groups = eina_list_count(e_config->xkb.used_layouts);
-   
+   if(nb_groups == 0)
+     {
+        INF("XKB ERROR eina_list_count(e_config->xkb.used_layouts) is NULL");
+        return;
+     }
    e_config->xkb.cur_group = (e_config->xkb.cur_group + 1) % nb_groups;
    e_xkb_update(e_config->xkb.cur_group);
    _e_xkb_update_event(e_config->xkb.cur_group);

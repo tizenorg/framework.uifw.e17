@@ -406,8 +406,11 @@ _e_xsettings_error_cb(void *data, Eio_File *handler __UNUSED__, int error __UNUS
    if (reset || setting)
      {
         char buf[PATH_MAX];
+#ifndef _F_DISABLE_E_EFREET_
         if (reset || (!l)) l = efreet_data_dirs_get();
-        else if (l) l = l->next;
+        else
+#endif
+          if (l) l = l->next;
         reset = EINA_FALSE;
         if (l)
           {

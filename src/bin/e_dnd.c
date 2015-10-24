@@ -646,6 +646,7 @@ _e_drag_coords_update(const E_Drop_Handler *h, int *dx, int *dy)
      {
         switch (h->obj->type)
           {
+#ifndef _F_DISABLE_E_GADGETS
            case E_GADCON_TYPE:
              e_gadcon_canvas_zone_geometry_get((E_Gadcon *)(h->obj), &px, &py, NULL, NULL);
              break;
@@ -653,6 +654,7 @@ _e_drag_coords_update(const E_Drop_Handler *h, int *dx, int *dy)
            case E_GADCON_CLIENT_TYPE:
              e_gadcon_canvas_zone_geometry_get(((E_Gadcon_Client *)(h->obj))->gadcon, &px, &py, NULL, NULL);
              break;
+#endif
 
            case E_WIN_TYPE:
              px = ((E_Win *)(h->obj))->x;
@@ -694,6 +696,8 @@ _e_drag_win_get(const E_Drop_Handler *h, int xdnd)
      {
         switch (h->obj->type)
           {
+
+#ifndef _F_DISABLE_E_GADGETS
            case E_GADCON_TYPE:
              if (xdnd) hwin = e_gadcon_xdnd_window_get((E_Gadcon *)(h->obj));
              else hwin = e_gadcon_dnd_window_get((E_Gadcon *)(h->obj));
@@ -703,7 +707,7 @@ _e_drag_win_get(const E_Drop_Handler *h, int xdnd)
              if (xdnd) hwin = e_gadcon_xdnd_window_get(((E_Gadcon_Client *)(h->obj))->gadcon);
              else hwin = e_gadcon_dnd_window_get(((E_Gadcon_Client *)(h->obj))->gadcon);
              break;
-
+#endif
            case E_WIN_TYPE:
              hwin = ((E_Win *)(h->obj))->evas_win;
              break;
@@ -750,6 +754,7 @@ _e_drag_win_show(E_Drop_Handler *h)
      {
         switch (h->obj->type)
           {
+#ifndef _F_DISABLE_E_GADGETS
            case E_GADCON_TYPE:
              shelf = e_gadcon_shelf_get((E_Gadcon *)(h->obj));
              if (shelf) e_shelf_toggle(shelf, 1);
@@ -759,6 +764,7 @@ _e_drag_win_show(E_Drop_Handler *h)
              shelf = e_gadcon_shelf_get(((E_Gadcon_Client *)(h->obj))->gadcon);
              if (shelf) e_shelf_toggle(shelf, 1);
              break;
+#endif
 
            /* FIXME: add more types as needed */
            default:
@@ -776,6 +782,9 @@ _e_drag_win_hide(E_Drop_Handler *h)
      {
         switch (h->obj->type)
           {
+
+#ifndef _F_DISABLE_E_GADGETS
+
            case E_GADCON_TYPE:
              shelf = e_gadcon_shelf_get((E_Gadcon *)(h->obj));
              if (shelf) e_shelf_toggle(shelf, 0);
@@ -785,7 +794,7 @@ _e_drag_win_hide(E_Drop_Handler *h)
              shelf = e_gadcon_shelf_get(((E_Gadcon_Client *)(h->obj))->gadcon);
              if (shelf) e_shelf_toggle(shelf, 0);
              break;
-
+#endif
            /* FIXME: add more types as needed */
            default:
              break;

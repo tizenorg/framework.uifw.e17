@@ -542,7 +542,9 @@ e_zone_flip_coords_handle(E_Zone *zone,
      {
 noflip:
         if (zone->flip.es)
+#ifndef _F_DISABLE_E_SHELF
           e_shelf_toggle(zone->flip.es, 0);
+#endif
         zone->flip.es = NULL;
         return;
      }
@@ -1544,6 +1546,8 @@ e_zone_rotation_update_done(E_Zone *zone)
 {
    E_Event_Zone_Rotation_Change_End *ev;
 
+   if (!zone) return;
+
    E_OBJECT_CHECK(zone);
    E_OBJECT_TYPE_CHECK(zone, E_ZONE_TYPE);
    if (!e_config->wm_win_rotation) return;
@@ -1616,7 +1620,7 @@ _e_zone_rotation_set_internal(E_Zone *zone, int rot)
    E_OBJECT_CHECK(zone);
    E_OBJECT_TYPE_CHECK(zone, E_ZONE_TYPE);
 
-   SLOGI("[ROTATION] ZONE_ROT_SET, wm_win_rotation_set:%d, wait_for_done:%d, block_count:%d, "
+   SECURE_SLOGD("[ROTATION] ZONE_ROT_SET, wm_win_rotation_set:%d, wait_for_done:%d, block_count:%d, "
                 "curr_rot:%d, req_rot:%d",
                 e_config->wm_win_rotation, zone->rot.wait_for_done, zone->rot.block_count,
                 zone->rot.curr, rot);

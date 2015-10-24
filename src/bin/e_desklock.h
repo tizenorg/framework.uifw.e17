@@ -12,6 +12,8 @@ struct _E_Event_Desklock
    int suspend;
 };
 
+#ifndef _F_DISABLE_E_DESKLOCK
+
 EINTERN int e_desklock_init(void);
 EINTERN int e_desklock_shutdown(void);
 
@@ -22,5 +24,6 @@ EAPI Eina_Bool e_desklock_state_get(void);
 
 extern EAPI int E_EVENT_DESKLOCK;
 
+#endif
 #endif
 #endif

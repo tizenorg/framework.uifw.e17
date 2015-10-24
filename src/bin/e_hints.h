@@ -54,6 +54,8 @@ EAPI void e_hints_scale_update(void);
 
 #ifdef _F_E_WIN_AUX_HINT_
 EAPI void e_hints_aux_hint_supported_add(Ecore_X_Window root, const char *hint);
+EAPI void e_hints_aux_hint_reset_request(void);
+
 #endif /* end of _F_E_WIN_AUX_HINT_ */
 
 extern EAPI Ecore_X_Atom ATM__QTOPIA_SOFT_MENU;

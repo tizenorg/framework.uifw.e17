@@ -25,8 +25,10 @@ struct _E_Import_Config_Dialog
 
    E_Dialog             *dia;
 };
+#ifndef _F_DISABLE_E_IMPORT_CONFIG_DIALOG
 
 EAPI E_Import_Config_Dialog *e_import_config_dialog_show(E_Container *con, const char *path, Ecore_End_Cb ok, Ecore_Cb cancel);
 
+#endif
 #endif
 #endif

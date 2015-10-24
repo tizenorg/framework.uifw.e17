@@ -639,7 +639,7 @@ _e_theme_collection_items_find(const char *base, const char *collname)
    char *category, *p;
 
    category = alloca(strlen(base) + 1);
-   strcpy(category, base);
+   strncpy(category, base, strlen(base));
    do
      {
         res = eina_hash_find(mappings, category);

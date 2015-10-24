@@ -728,7 +728,22 @@ e_hints_window_state_update(E_Border                   *bd,
         if (action != ECORE_X_WINDOW_STATE_ACTION_ADD) return;
         if (bd->client.icccm.state == ECORE_X_WINDOW_STATE_HINT_ICONIC) return;
         if (bd->lock_client_iconify) return;
-        e_border_iconify(bd);
+        if (!bd->new_client)
+          {
+#ifdef _F_DEICONIFY_APPROVE_
+             e_border_pending_iconify(bd);
+#else
+             // iconified window requested by client
+             LOGE("Set ICONIFY BY CLIENT [%x]", bd->client.win);
+             ELBF(ELBT_BD, 0, bd->client.win, "Set ICONIFY BY CLIENT");
+             bd->iconify_by_client = 1;
+             e_border_iconify(bd);
+#endif
+          }
+        else
+          {
+             ELBF(ELBT_BD, 0, bd->client.win, "Set ICONIFY BY CLIENT.. This will handle in eval");
+          }
         break;
 
       case ECORE_X_WINDOW_STATE_MODAL:
@@ -1428,15 +1443,6 @@ e_hints_window_desktop_set(E_Border *bd)
      deskpos[1] = bd->desk->y;
      ecore_x_window_prop_card32_set(bd->client.win, E_ATOM_DESK, deskpos, 2);
 
-#ifdef _F_USE_DESK_WINDOW_PROFILE_
-     if (strcmp(bd->desk->window_profile,
-                e_config->desktop_default_window_profile) != 0)
-       {
-          ecore_x_e_window_profile_set(bd->client.win,
-                                       bd->desk->window_profile);
-       }
-#endif
-
 #if 0
      ecore_x_netwm_desktop_set(bd->client.win, current);
 #endif
@@ -1556,6 +1562,7 @@ e_hints_aux_hint_supported_add(Ecore_X_Window root,
 
    aux_hints_supported = eina_list_append(aux_hints_supported, hint);
    buf = eina_strbuf_new();
+   if (!buf) return;
 
    EINA_LIST_FOREACH(aux_hints_supported, l, str)
      {
@@ -1576,4 +1583,49 @@ e_hints_aux_hint_supported_add(Ecore_X_Window root,
 
    eina_strbuf_free(buf);
 }
+EAPI void
+e_hints_aux_hint_reset_request(void)
+{
+   E_Border *bd = NULL;
+   Ecore_X_Window *wins, *roots;
+   Ecore_X_Window target;
+   int i, j;
+   int rnum, wnum;
+   int ret = -1;
+   unsigned int support = -1;
+
+   if (!(roots = ecore_x_window_root_list(&rnum)))
+     return;
+
+   for (i = 0; i < rnum; i++)
+     {
+        if (!(wins = ecore_x_window_children_get(roots[i], &wnum)))
+          continue;
+
+        for (j = 0; j < wnum; j++)
+          {
+             target = wins[j];
+             if ((bd = e_border_find_by_window(target)) &&
+                 (bd->client.win))
+               target = bd->client.win;
+
+            ret = ecore_x_window_prop_card32_get(target,
+                                                  ECORE_X_ATOM_E_WINDOW_AUX_HINT_SUPPORT,
+                                                  &support, 1);
+
+             // skip if the window doesn't support aux hint
+             if ((ret == -1) || (support == 0)) continue;
+
+             // send reset request of aux hints
+             ecore_x_client_message32_send(target,
+                                           ECORE_X_ATOM_E_WINDOW_AUX_HINT_RESET_REQUEST,
+                                           ECORE_X_EVENT_MASK_WINDOW_CONFIGURE,
+                                           target, 0, 0, 0, 0);
+          }
+
+        free(wins);
+     }
+   free(roots);
+}
+
 #endif /* end of _F_E_WIN_AUX_HINT_ */

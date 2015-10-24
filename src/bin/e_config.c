@@ -1,5 +1,9 @@
 #include "e.h"
 
+#include "dlog.h"
+#undef LOG_TAG
+#define LOG_TAG "E17"
+
 #if ((E17_PROFILE >= LOWRES_PDA) && (E17_PROFILE <= HIRES_PDA))
 #define DEF_MENUCLICK             1.25
 #else
@@ -20,6 +24,9 @@ static void      _e_config_free(E_Config *cfg);
 static Eina_Bool _e_config_cb_timer(void *data);
 static int       _e_config_eet_close_handle(Eet_File *ef, char *file);
 static void      _e_config_acpi_bindings_add(void);
+#ifdef _F_COPY_FROM_DATA_DIR_
+static void      _e_config_domain_data_update(const char *domain);
+#endif
 
 /* local subsystem globals */
 static int _e_config_save_block = 0;
@@ -707,6 +714,9 @@ e_config_init(void)
    E_CONFIG_VAL(D, T, edje_collection_cache, INT); /**/
    E_CONFIG_VAL(D, T, zone_desks_x_count, INT); /**/
    E_CONFIG_VAL(D, T, zone_desks_y_count, INT); /**/
+#ifdef _F_USE_WM_ZONE_HOST_
+   E_CONFIG_VAL(D, T, tizen_zone_active, INT); /**/
+#endif
    E_CONFIG_VAL(D, T, show_desktop_icons, INT); /**/
    E_CONFIG_VAL(D, T, edge_flip_dragging, INT); /**/
    E_CONFIG_VAL(D, T, use_composite, INT); /**/
@@ -773,6 +783,7 @@ e_config_init(void)
    E_CONFIG_VAL(D, T, allow_above_fullscreen, INT); /**/
    E_CONFIG_VAL(D, T, kill_if_close_not_possible, INT); /**/
    E_CONFIG_VAL(D, T, kill_process, INT); /**/
+   E_CONFIG_VAL(D, T, kill_hung_process_by_module, INT); /**/
    E_CONFIG_VAL(D, T, kill_timer_wait, DOUBLE); /**/
    E_CONFIG_VAL(D, T, ping_clients, INT); /**/
    E_CONFIG_VAL(D, T, transition_start, STR); /**/
@@ -985,9 +996,12 @@ e_config_init(void)
    E_CONFIG_LIST(D, T, xkb.used_options, _e_config_xkb_option_edd);
    E_CONFIG_VAL(D, T, xkb.only_label, INT);
    E_CONFIG_VAL(D, T, xkb.default_model, STR);
-   //E_CONFIG_VAL(D, T, xkb.cur_group, INT);    
-   
+   //E_CONFIG_VAL(D, T, xkb.cur_group, INT);
+
    E_CONFIG_VAL(D, T, exe_always_single_instance, UCHAR);
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+   E_CONFIG_VAL(D, T, use_desktop_window_profile, INT);
+#endif
 #ifdef _F_ZONE_WINDOW_ROTATION_
    E_CONFIG_VAL(D, T, wm_win_rotation, UCHAR);
 #endif
@@ -997,16 +1011,13 @@ e_config_init(void)
    E_CONFIG_VAL(D, T, deiconify_timeout, DOUBLE);
 #endif
 
-#ifdef _F_KILL_HUNG_PROCESS_THROUGH_RD_
-   E_CONFIG_VAL(D, T, rd_dbus_msg.dest, STR);
-   E_CONFIG_VAL(D, T, rd_dbus_msg.path, STR);
-   E_CONFIG_VAL(D, T, rd_dbus_msg.interface, STR);
-   E_CONFIG_VAL(D, T, rd_dbus_msg.method, STR);
-#endif
-
 #ifdef _F_USE_TILED_DESK_LAYOUT_
    E_CONFIG_VAL(D, T, use_tiled_desk_layout, UCHAR);
+   E_CONFIG_VAL(D, T, max_tiled_layout, UCHAR);
 #endif /* end of _F_USE_TILED_DESK_LAYOUT_ */
+#ifdef _F_USE_BORDER_TRANSFORM_
+   E_CONFIG_VAL(D, T, use_border_transform, UCHAR);
+#endif /* end of _F_USE_BORDER_TRANSFORM_ */
 
 #ifdef _F_E_WIN_AUX_HINT_
    E_CONFIG_VAL(D, T, win_aux_hint, UCHAR);
@@ -1014,7 +1025,19 @@ e_config_init(void)
 
 #ifdef _F_USE_ICONIFY_RESIZE_
    E_CONFIG_VAL(D, T, use_iconify_resize, UCHAR);
+   E_CONFIG_VAL(D, T, iconify_resize_w, INT);
+   E_CONFIG_VAL(D, T, iconify_resize_h, INT);
 #endif
+
+   E_CONFIG_VAL(D, T, border_raise_on_focus, UCHAR);
+   E_CONFIG_VAL(D, T, max_hung_count, INT); /**/
+
+   E_CONFIG_VAL(D, T, border_drag_margin_x, INT);
+   E_CONFIG_VAL(D, T, border_drag_margin_y, INT);
+
+   E_CONFIG_VAL(D, T, ping_only_visible, UCHAR);
+   E_CONFIG_VAL(D, T, use_e_test_runner, INT);
+   E_CONFIG_VAL(D, T, stand_by_tv_viewer_ready, INT);
 
    e_config_load();
 
@@ -1066,7 +1089,62 @@ e_config_load(void)
 {
    E_Config *tcfg = NULL;
 
+#ifdef _F_COPY_FROM_DATA_DIR_
+   char buf[4096];
+   char buf1[4096], buf2[4096];
+   FILE *f;
+
+   e_user_dir_snprintf(buf, sizeof(buf), "config/version.txt");
+   LOGE("%s", buf);
+   if (!ecore_file_exists(buf))
+     {
+        LOGE("FILE %s : does not exist, copy files and load e_config...", buf);
+        e_prefix_data_snprintf(buf, sizeof(buf), "config/e/config/version.txt");
+        if (ecore_file_exists(buf))
+          {
+             _e_config_domain_data_update("e");
+             ELB(ELBT_DFT, "DOMAIN_LOAD", 0);
+          }
+     }
+   else
+     {
+        memset(buf1, 0, sizeof(buf1));
+        memset(buf2, 0, sizeof(buf2));
+
+        // read and compare version of
+        // "/usr/share/enlightenment/config/e/config/version.txt" &
+        // "/home/app/.e/e/config/version.txt"
+        // buf already points to -> "/home/app/.e/e/config/version.txt"
+        LOGE("FILE %s", buf);
+        f = fopen(buf, "r");
+        if (f)
+          {
+             fgets(buf1, sizeof(buf1), f);
+             LOGE("FILE %s : version %s", buf, buf1);
+             fclose(f);
+          }
+        e_prefix_data_snprintf(buf, sizeof(buf), "config/e/config/version.txt");
+        LOGE("FILE %s", buf);
+        f = fopen(buf, "r");
+        if (f)
+          {
+             fgets(buf2, sizeof(buf2), f);
+             LOGE("FILE %s : version %s", buf, buf2);
+             fclose(f);
+          }
+
+        if (strncmp(buf1, buf2, strlen(buf1)))
+          {
+             LOGE("Versions mismatch, copy e_config files...");
+             _e_config_domain_data_update("e");
+             ELB(ELBT_DFT, "DOMAIN_LOAD", 0);
+          }
+     }
+#endif
+
    e_config = e_config_domain_load("e", _e_config_edd);
+
+#ifndef _F_COPY_FROM_DATA_DIR_
    if (e_config)
      {
         int reload = 0;
@@ -1127,6 +1205,7 @@ e_config_load(void)
              e_config = e_config_domain_load("e", _e_config_edd);
           }
      }
+#endif /* _F_COPY_FROM_DATA_DIR_ */
    if (!e_config)
      {
         ERR("EEEK! no config of any sort! abort abort abort!");
@@ -1139,6 +1218,7 @@ e_config_load(void)
                              "for the profile you are using before proceeeding.");
         abort();
      }
+#ifndef _F_COPY_FROM_DATA_DIR_
    if (e_config->config_version < E_CONFIG_FILE_VERSION)
      {
         /* we need an upgrade of some sort */
@@ -1326,6 +1406,13 @@ e_config_load(void)
           COPYVAL(window_grouping);
           IFCFGEND;
 
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+          IFCFG(0x0162);
+          COPYSTR(desktop_default_window_profile);
+          COPYVAL(use_desktop_window_profile);
+          IFCFGEND;
+#endif
+
           e_config->config_version = E_CONFIG_FILE_VERSION;
           _e_config_free(tcfg);
        }
@@ -1347,6 +1434,9 @@ e_config_load(void)
      E_CONFIG_LIMIT(e_config->cache_flush_poll_interval, 8, 32768);
      E_CONFIG_LIMIT(e_config->zone_desks_x_count, 1, 64);
      E_CONFIG_LIMIT(e_config->zone_desks_y_count, 1, 64);
+#ifdef _F_USE_WM_ZONE_HOST_
+     E_CONFIG_LIMIT(e_config->tizen_zone_active, 0, 1);
+#endif
      E_CONFIG_LIMIT(e_config->show_desktop_icons, 0, 1);
      E_CONFIG_LIMIT(e_config->edge_flip_dragging, 0, 1);
      E_CONFIG_LIMIT(e_config->window_placement_policy, E_WINDOW_PLACEMENT_SMART, E_WINDOW_PLACEMENT_MANUAL);
@@ -1395,6 +1485,7 @@ e_config_load(void)
      E_CONFIG_LIMIT(e_config->allow_above_fullscreen, 0, 1);
      E_CONFIG_LIMIT(e_config->kill_if_close_not_possible, 0, 1);
      E_CONFIG_LIMIT(e_config->kill_process, 0, 1);
+     E_CONFIG_LIMIT(e_config->kill_hung_process_by_module, 0, 1);
      E_CONFIG_LIMIT(e_config->kill_timer_wait, 0.0, 120.0);
      E_CONFIG_LIMIT(e_config->ping_clients, 0, 1);
      E_CONFIG_LIMIT(e_config->move_info_follows, 0, 1);
@@ -1486,6 +1577,15 @@ e_config_load(void)
      E_CONFIG_LIMIT(e_config->powersave.max, E_POWERSAVE_MODE_NONE, E_POWERSAVE_MODE_EXTREME);
 
      E_CONFIG_LIMIT(e_config->multiscreen_flip, 0, 1);
+
+     E_CONFIG_LIMIT(e_config->priority_raise_on_focus, 0, 1);
+     E_CONFIG_LIMIT(e_config->max_hung_count, 0, 32);
+
+#ifdef _F_USE_ICONIFY_RESIZE_
+     E_CONFIG_LIMIT(e_config->iconify_resize_w, 1, 320);
+     E_CONFIG_LIMIT(e_config->iconify_resize_h, 1, 320);
+#endif /* _F_USE_ICONIFY_RESIZE_ */
+#endif /* _F_COPY_FROM_DATA_DIR_ */
 
      /* FIXME: disabled auto apply because it causes problems */
      e_config->cfgdlg_auto_apply = 0;
@@ -1667,13 +1767,13 @@ e_config_save_block_get(void)
    return _e_config_save_block;
 }
 
-/**  
+/**
  * Loads configurations from file located in the working profile
- * The configurations are stored in a struct declated by the 
- * macros E_CONFIG_DD_NEW and E_CONFIG_<b>TYPE</b> 
+ * The configurations are stored in a struct declated by the
+ * macros E_CONFIG_DD_NEW and E_CONFIG_<b>TYPE</b>
  *
  * @param domain of the configuration file.
- * @param edd to struct definition 
+ * @param edd to struct definition
  * @return returns allocated struct on success, if unable to find config returns null
  */
 EAPI void *
@@ -1712,98 +1812,8 @@ e_config_domain_load(const char *domain, E_Config_DD *edd)
    data = e_config_domain_system_load(domain, edd);
    if (data)
      {
-        char *home_path;
-        e_prefix_data_snprintf(buf, sizeof(buf), "config");
-        ELBF(ELBT_DFT, 0, 0, "domain:%s buf:%s", domain, buf);
-
-        home_path = getenv("HOME");
-        if (!home_path)
-          home_path = "/opt/home/app";
-
-        char *src_base = buf;
-        char tgt_base[PATH_MAX];
-        snprintf(tgt_base, sizeof(tgt_base), "%s/.e", home_path);
-
-        Eina_Bool res = ecore_file_mkdir(tgt_base);
-        ELBF(ELBT_DFT, 0, 0, "MKDIR(%d) %s", res, tgt_base);
-        if (!res)
-          ELBF(ELBT_DFT, 0, 0, "Error(%d) %s", errno, strerror(errno));
-
-        const char *dir = eina_stringshare_add(src_base);
-        Eina_List *list = NULL;
-        list = eina_list_append(list, dir);
-
-        while (eina_list_count(list) > 0)
-          {
-             Eina_List *l = eina_list_last(list);
-             dir = eina_list_data_get(l);
-             list = eina_list_remove(list, dir);
-
-             if ((l) && (dir))
-               {
-                  Eina_File_Direct_Info *info;
-                  Eina_Iterator *ls = eina_file_direct_ls(dir);
-                  if (ls)
-                    {
-                       EINA_ITERATOR_FOREACH(ls, info)
-                         {
-                            Eina_Bool d = EINA_FALSE;
-                            if (info->type == EINA_FILE_DIR) d = EINA_TRUE;
-
-                            char **result = NULL;
-                            unsigned int elements;
-                            result = eina_str_split_full(info->path, src_base, -1, &elements);
-
-                            if (elements == 2)
-                              {
-                                 Eina_Strbuf *strbuf = eina_strbuf_new();
-                                 eina_strbuf_append(strbuf, tgt_base);
-                                 eina_strbuf_append(strbuf, result[1]);
-                                 const char *f = eina_strbuf_string_get(strbuf);
-
-                                 if (d)
-                                   {
-                                      const char *sub = eina_stringshare_add(info->path);
-                                      list = eina_list_append(list, sub);
-
-                                      /* make sub directory */
-                                      res = ecore_file_mkdir(f);
-                                      ELBF(ELBT_DFT, 0, 0, "MKDIR(%d) %s", res, f);
-                                   }
-                                 else
-                                   {
-                                      /* copy file */
-                                      res = ecore_file_cp(info->path, f);
-                                      ELBF(ELBT_DFT, 0, 0, "COPY(%d) %s -> %s", res, info->path, f);
-                                   }
-
-                                 if (!res)
-                                   ELBF(ELBT_DFT, 0, 0, "Error(%d) %s", errno, strerror(errno));
-
-                                 eina_strbuf_free(strbuf);
-                              }
-                            else
-                              {
-                                 ELBF(ELBT_DFT, 0, 0, "ERROR elements:%d", elements);
-                              }
-
-                            if (elements > 0)
-                              {
-                                 free(result[0]);
-                                 free(result);
-                              }
-                         }
-                    }
-                  eina_iterator_free(ls);
-               }
-
-             if (dir)
-               eina_stringshare_del(dir);
-          }
-
-        eina_list_free(list);
-
-        ELB(ELBT_DFT, "DOMAIN_SYSTEM_LOAD", 0);
+        _e_config_domain_data_update(domain);
+        ELB(ELBT_DFT, "DOMAIN_LOAD", 0);
         return e_config_domain_load(domain, edd);
      }
 #endif
@@ -1946,14 +1956,14 @@ e_config_profile_save(void)
    return ok;
 }
 
-/**  
+/**
   * Saves configurations to file located in the working profile
- * The configurations are read from a struct declated by the 
- * macros E_CONFIG_DD_NEW and E_CONFIG_<b>TYPE</b> 
- *  
+ * The configurations are read from a struct declated by the
+ * macros E_CONFIG_DD_NEW and E_CONFIG_<b>TYPE</b>
+ *
  * @param domain  name of the configuration file.
  * @param edd pointer to struct definition
- * @param data struct to save as configuration file 
+ * @param data struct to save as configuration file
  * @return 1 if save success, 0 on failure
  */
 EAPI int
@@ -2189,8 +2199,19 @@ _e_config_free(E_Config *ecf)
    E_Config_Env_Var *evr;
    E_Config_XKB_Layout *cl;
    E_Config_XKB_Option *op;
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+   E_Config_Desktop_Window_Profile *wp;
+#endif
 
    if (!ecf) return;
+
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+   EINA_LIST_FREE(ecf->desktop_window_profiles, wp)
+     {
+        eina_stringshare_del(wp->profile);
+        E_FREE(wp);
+     }
+#endif
 
    if (e_config->xkb.default_model)
      eina_stringshare_del(e_config->xkb.default_model);
@@ -2375,17 +2396,6 @@ _e_config_free(E_Config *ecf)
      eina_stringshare_del(ecf->xsettings.gtk_font_name);
    if (ecf->backlight.sysdev)
      eina_stringshare_del(ecf->backlight.sysdev);
-
-#ifdef _F_KILL_HUNG_PROCESS_THROUGH_RD_
-   if (ecf->rd_dbus_msg.dest)
-     eina_stringshare_del(ecf->rd_dbus_msg.dest);
-   if (ecf->rd_dbus_msg.path)
-     eina_stringshare_del(ecf->rd_dbus_msg.path);
-   if (ecf->rd_dbus_msg.interface)
-     eina_stringshare_del(ecf->rd_dbus_msg.interface);
-   if (ecf->rd_dbus_msg.method)
-     eina_stringshare_del(ecf->rd_dbus_msg.method);
-#endif
 
    E_FREE(ecf);
 }
@@ -2589,4 +2599,118 @@ _e_config_acpi_bindings_add(void)
    binding->params = eina_stringshare_add("now");
    e_config->acpi_bindings = eina_list_append(e_config->acpi_bindings, binding);
 }
+
+#ifdef _F_COPY_FROM_DATA_DIR_
+static void
+_e_config_domain_data_update(const char *domain)
+{
+   char buf[4096];
+   int i;
+   char *home_path;
+
+   e_prefix_data_snprintf(buf, sizeof(buf), "config");
+   ELBF(ELBT_DFT, 0, 0, "domain:%s buf:%s", domain, buf);
+
+   home_path = getenv("HOME");
+   if (!home_path)
+     home_path = "/opt/home/app";
+
+   char *src_base = buf;
+   char tgt_base[PATH_MAX];
+   snprintf(tgt_base, sizeof(tgt_base), "%s/.e", home_path);
+
+   Eina_Bool res = ecore_file_mkdir(tgt_base);
+   ELBF(ELBT_DFT, 0, 0, "MKDIR(%d) %s", res, tgt_base);
+   if (!res)
+     {
+        int _errno = errno;
+        char buffer[1024];
+        strerror_r(_errno, buffer, sizeof(buffer));
+        ELBF(ELBT_DFT, 0, 0, "Error(%d) %s", _errno, buffer);
+     }
+
+   const char *dir = eina_stringshare_add(src_base);
+   Eina_List *list = NULL;
+   list = eina_list_append(list, dir);
+
+   while (eina_list_count(list) > 0)
+     {
+        Eina_List *l = eina_list_last(list);
+        dir = eina_list_data_get(l);
+        list = eina_list_remove(list, dir);
+
+        if ((l) && (dir))
+          {
+             Eina_File_Direct_Info *info;
+             Eina_Iterator *ls = eina_file_direct_ls(dir);
+             if (ls)
+               {
+                  EINA_ITERATOR_FOREACH(ls, info)
+                    {
+                       Eina_Bool d = EINA_FALSE;
+                       if (info->type == EINA_FILE_DIR) d = EINA_TRUE;
+
+                       char **result = NULL;
+                       unsigned int elements;
+                       result = eina_str_split_full(info->path, src_base, -1, &elements);
+
+                       if (elements == 2)
+                         {
+                            Eina_Strbuf *strbuf = eina_strbuf_new();
+                            eina_strbuf_append(strbuf, tgt_base);
+                            eina_strbuf_append(strbuf, result[1]);
+                            const char *f = eina_strbuf_string_get(strbuf);
+
+                            if (d)
+                              {
+                                 const char *sub = eina_stringshare_add(info->path);
+                                 list = eina_list_append(list, sub);
+
+                                 /* make sub directory */
+                                 if (f) res = ecore_file_mkdir(f);
+                                 else res = EINA_FALSE;
+
+                                 ELBF(ELBT_DFT, 0, 0, "MKDIR(%d) %s", res, f);
+                              }
+                            else
+                              {
+                                 /* copy file */
+                                 res = ecore_file_cp(info->path, f);
+                                 ELBF(ELBT_DFT, 0, 0, "COPY(%d) %s -> %s", res, info->path, f);
+                              }
+
+                            if (!res)
+                              {
+                                 int _errno = errno;
+                                 char buffer[4096];
+                                 strerror_r(_errno, buffer, sizeof(buffer));
+                                 ELBF(ELBT_DFT, 0, 0, "Error(%d) %s", _errno, buffer);
+                              }
+
+                            eina_strbuf_free(strbuf);
+                         }
+                       else
+                         {
+                            ELBF(ELBT_DFT, 0, 0, "ERROR elements:%d", elements);
+                         }
+
+                       if (result)
+                         {
+                            free(result[0]);
+                            free(result);
+                         }
+                    }
+               }
+
+             eina_iterator_free(ls);
+          }
+
+        if (dir)
+          eina_stringshare_del(dir);
+     }
+
+   eina_list_free(list);
+}
+#endif
+
 

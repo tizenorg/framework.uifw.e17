@@ -24,6 +24,9 @@ typedef struct _E_Event_Container_Resize   E_Event_Container_Resize;
 #define E_CONTAINER_TYPE (int) 0xE0b01003
 #define E_CONTAINER_SHAPE_TYPE (int) 0xE0b01004
 
+/*Add layer for Tizen UX */
+#define NUM_OF_LAYERS 13
+
 struct _E_Container
 {
    E_Object             e_obj_inherit;
@@ -50,7 +53,7 @@ struct _E_Container
    struct {
       Ecore_X_Window win;
       Eina_List *clients;
-   } layers[12];
+   } layers[NUM_OF_LAYERS];
 
    Ecore_X_Window       scratch_win;
 };

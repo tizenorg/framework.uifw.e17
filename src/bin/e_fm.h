@@ -144,6 +144,8 @@ struct _E_Fm2_Icon_Info
    Eina_Bool     broken_link : 1;
 };
 
+#ifndef _F_DISABLE_E_FM
+
 typedef void (*E_Fm_Cb)(void *data, Evas_Object *obj, E_Menu *m, E_Fm2_Icon_Info *info);
 
 EINTERN int           e_fm2_init(void);
@@ -211,5 +213,6 @@ EAPI int              _e_fm2_client_mount(const char *udi, const char *mountpoin
 EAPI int              _e_fm2_client_unmount(const char *udi);
 EAPI void             _e_fm2_file_force_update(const char *path);
 
+#endif
 #endif
 #endif

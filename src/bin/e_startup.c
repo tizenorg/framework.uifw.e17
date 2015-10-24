@@ -8,7 +8,9 @@
 /* local subsystem functions */
 static void _e_startup(void);
 static void _e_startup_next_cb(void *data);
+#ifndef _F_DISABLE_E_EFREET_
 static Eina_Bool _e_startup_event_cb(void *data, int ev_type, void *ev);
+#endif
 
 /* local subsystem globals */
 static E_Order *startup_apps = NULL;
@@ -33,10 +35,12 @@ e_startup(E_Startup_Mode mode)
 	if (!ecore_file_exists(buf))
 	  e_prefix_data_concat_static(buf, "data/applications/restart/.order");
      }
+#ifndef _F_DISABLE_E_EFREET_
    desktop_cache_update_handler =
       ecore_event_handler_add(EFREET_EVENT_DESKTOP_CACHE_BUILD,
                               _e_startup_event_cb,
                               strdup(buf));
+#endif
    e_init_undone();
 }
 
@@ -44,7 +48,7 @@ e_startup(E_Startup_Mode mode)
 static void
 _e_startup(void)
 {
-   Efreet_Desktop *desktop;
+   Efreet_Desktop *desktop = NULL;
    char buf[8192];
 
    if (!startup_apps)

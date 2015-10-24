@@ -2,9 +2,11 @@
 
 static void      _e_configure_menu_module_item_cb(void *data, E_Menu *m, E_Menu_Item *mi);
 static void      _e_configure_menu_add(void *data, E_Menu *m);
+#ifndef _F_DISABLE_E_EFREET_
 static void      _e_configure_efreet_desktop_cleanup(void);
 static void      _e_configure_efreet_desktop_update(void);
 static Eina_Bool _e_configure_cb_efreet_desktop_cache_update(void *data, int type, void *event);
+#endif
 static void      _e_configure_registry_item_full_add(const char *path, int pri, const char *label, const char *icon_file, const char *icon, E_Config_Dialog *(*func)(E_Container * con, const char *params), void (*generic_func)(E_Container *con, const char *params), Efreet_Desktop *desktop, const char *params);
 static void      _e_configure_registry_item_free(E_Configure_It *eci);
 
@@ -285,21 +287,26 @@ _e_configure_menu_add(void *data __UNUSED__, E_Menu *m)
 static void
 _configure_job(void *data __UNUSED__)
 {
+#ifndef _F_DISABLE_E_EFREET_
    _e_configure_efreet_desktop_update();
+#endif
    update_job = NULL;
 }
 
 static Eina_Bool
 _configure_init_timer(void *data __UNUSED__)
 {
+#ifndef _F_DISABLE_E_EFREET_
    handlers = eina_list_append
        (handlers, ecore_event_handler_add
          (EFREET_EVENT_DESKTOP_CACHE_UPDATE, _e_configure_cb_efreet_desktop_cache_update, NULL));
+#endif
    if (update_job) ecore_job_del(update_job);
    update_job = ecore_job_add(_configure_job, NULL);
    return EINA_FALSE;
 }
 
+#ifndef _F_DISABLE_E_EFREET_
 static void
 _e_configure_efreet_desktop_cleanup(void)
 {
@@ -445,6 +452,7 @@ _e_configure_cb_efreet_desktop_cache_update(void *data __UNUSED__, int type __UN
    update_job = ecore_job_add(_configure_job, NULL);
    return 1;
 }
+#endif
 
 static int
 _e_configure_compare_cb(E_Configure_It *eci, E_Configure_It *eci2)
@@ -469,6 +477,7 @@ _e_configure_registry_item_full_add(const char *path, int pri, const char *label
    E_Configure_It *eci;
    E_Configure_Cat *ecat;
    Eina_Bool external;
+   Eina_Bool free_eci = EINA_TRUE;
 
    /* path is "category/item" */
    cat = ecore_file_dir_get(path);
@@ -486,13 +495,16 @@ _e_configure_registry_item_full_add(const char *path, int pri, const char *label
    eci->func = func;
    eci->generic_func = generic_func;
    eci->desktop = desktop;
+#ifndef _F_DISABLE_E_EFREET_
    if (eci->desktop) efreet_desktop_ref(eci->desktop);
+#endif
    external = !strncmp(path, "preferences/", sizeof("preferences/") - 1);
    if (!external) external = !strncmp(path, "system/", sizeof("system/") - 1);
 
    EINA_LIST_FOREACH(e_configure_registry, l, ecat)
      if (!strcmp(cat, ecat->cat))
        {
+          free_eci = EINA_FALSE;
           if (external)
             {
                ecat->items = eina_list_sorted_insert(ecat->items, EINA_COMPARE_CB(_e_configure_compare_cb), eci);
@@ -502,6 +514,18 @@ _e_configure_registry_item_full_add(const char *path, int pri, const char *label
           break;
        }
 
+   if (EINA_TRUE == free_eci)
+     {
+        eina_stringshare_del(eci->item);
+        eina_stringshare_del(eci->label);
+        if (icon_file) eina_stringshare_del(eci->icon_file);
+        if (icon) eina_stringshare_del(eci->icon);
+        if (params) eina_stringshare_del(eci->params);
+#ifndef _F_DISABLE_E_EFREET_
+        if (eci->desktop) efreet_desktop_unref(eci->desktop);
+#endif
+        E_FREE(eci);
+     }
 done:
    free(cat);
 }
@@ -513,7 +537,9 @@ _e_configure_registry_item_free(E_Configure_It *eci)
    eina_stringshare_del(eci->label);
    eina_stringshare_del(eci->icon);
    if (eci->icon_file) eina_stringshare_del(eci->icon_file);
+#ifndef _F_DISABLE_E_EFREET_
    if (eci->desktop) efreet_desktop_free(eci->desktop);
+#endif
    if (eci->params) eina_stringshare_del(eci->params);
    free(eci);
 }

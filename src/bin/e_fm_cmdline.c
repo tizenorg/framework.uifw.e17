@@ -47,9 +47,11 @@ fm_open(const char *path)
         char buf[PATH_MAX];
         if (!getcwd(buf, sizeof(buf)))
           {
+             char error_buf[256] = {0};
+             strerror_r(errno, error_buf, sizeof(char) * 256);
              fprintf(stderr,
                      "ERROR: Could not get current working directory: %s\n",
-                     strerror(errno));
+                     error_buf);
              ecore_idler_add(fm_error_quit_last, NULL);
              return;
           }

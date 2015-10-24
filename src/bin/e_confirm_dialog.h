@@ -32,6 +32,8 @@ struct _E_Confirm_Dialog
    Eina_Bool no_run : 1;
 };
 
+#ifndef _F_DISABLE_E_SHELF
+
 /*
  * @title - dialog title
  * @icon  - dialog icon
@@ -47,5 +49,6 @@ struct _E_Confirm_Dialog
  */
 EAPI E_Confirm_Dialog *e_confirm_dialog_show(const char *title, const char *icon, const char *text, const char *button_text, const char *button2_text, void (*func)(void *data), void (*func2)(void *data), void *data, void *data2, void (*del_func)(void *data), void *del_data);
 
+#endif
 #endif
 #endif

@@ -407,17 +407,14 @@ e_widget_focus_steal(Evas_Object *obj)
    for (;; )
      {
         sd = evas_object_smart_data_get(parent);
-        if (sd)
-          {
-             sd->focused = 1;
-             if (sd->on_focus_func) sd->on_focus_func(sd->on_focus_data, parent);
-          }
+        sd->focused = 1;
+        if (sd->on_focus_func) sd->on_focus_func(sd->on_focus_data, parent);
         o = e_widget_parent_get(parent);
         if (!o) break;
         parent = o;
      }
    sd = evas_object_smart_data_get(obj);
-   if ((sd) && (sd->focus_func)) sd->focus_func(obj);
+   if (sd->focus_func) sd->focus_func(obj);
 }
 
 EAPI void

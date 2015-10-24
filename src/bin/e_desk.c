@@ -20,6 +20,10 @@ static Eina_Bool _e_desk_show_animator(void *data);
 static void      _e_desk_hide_begin(E_Desk *desk, int mode, int dx, int dy);
 static void      _e_desk_hide_end(E_Desk *desk);
 static Eina_Bool _e_desk_hide_animator(void *data);
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+static void      _e_desk_window_profile_change_protocol_set(void);
+#endif
+
 #ifdef _F_USE_TILED_DESK_LAYOUT_
 static void      _e_desk_layout_free(E_Desk_Layout *desk_ly);
 static void      _e_desk_layout_event_move_resize_free(void *data, void *ev);
@@ -489,6 +493,9 @@ e_desk_last_focused_focus(E_Desk *desk)
    Eina_List *l = NULL;
    E_Border *bd;
 
+   if (!desk)
+     return;
+
    EINA_LIST_FOREACH(e_border_focus_stack_get(), l, bd)
      {
         if ((!bd->iconic) && (bd->visible) &&
@@ -711,6 +718,13 @@ e_desk_window_profile_update(void)
    E_Config_Desktop_Window_Profile *cfprof;
    int d_x, d_y, ok;
 
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+   _e_desk_window_profile_change_protocol_set();
+
+   if (!(e_config->use_desktop_window_profile))
+     return;
+#endif
+
    EINA_LIST_FOREACH(e_manager_list(), m, man)
      {
         EINA_LIST_FOREACH(man->containers, c, con)
@@ -859,15 +873,16 @@ e_desk_layout_move_resize(E_Desk_Layout *desk_ly,
 
    /* update borders which belong in this desk layout */
    bl = e_container_border_list_last(desk_ly->desk->zone->container);
-   while ((bd = e_container_border_list_prev(bl)))
+   if (bl)
      {
-        if ((bd->client.e.state.ly.support) &&
-            (bd->client.e.state.ly.curr_ly == desk_ly))
+        while ((bd = e_container_border_list_prev(bl)))
           {
-             e_border_move_resize(bd, x, y, w, h);
+             if ((bd->client.e.state.ly.support) &&
+                 (bd->client.e.state.ly.curr_ly == desk_ly))
+               e_border_desk_layout_border_update(bd);
           }
+        e_container_border_list_free(bl);
      }
-   e_container_border_list_free(bl);
 }
 
 EAPI E_Desk_Layout *e_desk_layout_get(E_Desk *desk, int id)
@@ -1314,6 +1329,21 @@ _e_desk_hide_animator(void *data)
 
    return ECORE_CALLBACK_RENEW;
 }
+
+#ifdef _F_USE_DESK_WINDOW_PROFILE_
+static void
+_e_desk_window_profile_change_protocol_set(void)
+{
+   Eina_List *l = NULL;
+   E_Manager *man;
+
+   EINA_LIST_FOREACH(e_manager_list(), l, man)
+     {
+        ecore_x_e_window_profile_supported_set
+           (man->root, e_config->use_desktop_window_profile);
+     }
+}
+#endif
 
 #ifdef _F_USE_TILED_DESK_LAYOUT_
 static void

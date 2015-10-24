@@ -569,13 +569,13 @@ _e_fm_main_udisks_format_error_msg(char     **buf,
    size = vu + vm + en + strlen(error->message) + 1;
    tmp = *buf = malloc(size);
 
-   strcpy(tmp, v->udi);
+   strncpy(tmp, v->udi, vu);
    tmp += vu;
-   strcpy(tmp, v->mount_point);
+   strncpy(tmp, v->mount_point, vm);
    tmp += vm;
-   strcpy(tmp, error->name);
+   strncpy(tmp, error->name, en);
    tmp += en;
-   strcpy(tmp, error->message);
+   strncpy(tmp, error->message, strlen(error->message));
 
    return size;
 }
@@ -607,6 +607,7 @@ _e_fm_main_udisks_cb_vol_mounted(E_Volume               *v,
 {
    char *buf;
    int size;
+   int len_udi, len_mount_point;
 
    if (v->guard)
      {
@@ -630,10 +631,14 @@ _e_fm_main_udisks_cb_vol_mounted(E_Volume               *v,
    v->op = NULL;
    v->mounted = EINA_TRUE;
    INF("MOUNT: %s from %s", v->udi, v->mount_point);
-   size = strlen(v->udi) + 1 + strlen(v->mount_point) + 1;
+   len_udi = strlen(v->udi);
+   len_mount_point = strlen(v->mount_point);
+   size = len_udi + 1 + len_mount_point + 1;
    buf = alloca(size);
-   strcpy(buf, v->udi);
-   strcpy(buf + strlen(buf) + 1, v->mount_point);
+   strncpy(buf, v->udi, len_udi);
+   buf[len_udi] = '\0';
+   strncpy(buf + strlen(buf) + 1, v->mount_point, len_mount_point);
+   buf[len_udi + 1 + len_mount_point] = '\0';
    ecore_ipc_server_send(_e_fm_ipc_server,
                          6 /*E_IPC_DOMAIN_FM*/,
                          E_FM_OP_MOUNT_DONE,
@@ -667,6 +672,7 @@ _e_fm_main_udisks_cb_vol_unmounted(E_Volume               *v,
 {
    char *buf;
    int size;
+   int len_udi, len_mount_point;
 
    if (v->guard)
      {
@@ -691,10 +697,14 @@ _e_fm_main_udisks_cb_vol_unmounted(E_Volume               *v,
 
    v->mounted = EINA_FALSE;
    INF("UNMOUNT: %s from %s", v->udi, v->mount_point);
-   size = strlen(v->udi) + 1 + strlen(v->mount_point) + 1;
+   len_udi = strlen(v->udi);
+   len_mount_point = strlen(v->mount_point);
+   size = len_udi + 1 + len_mount_point + 1;
    buf = alloca(size);
-   strcpy(buf, v->udi);
-   strcpy(buf + strlen(buf) + 1, v->mount_point);
+   strncpy(buf, v->udi, len_udi);
+   buf[len_udi] = '\0';
+   strncpy(buf + strlen(buf) + 1, v->mount_point, len_mount_point);
+   buf[len_udi + 1 + len_mount_point] = '\0';
    ecore_ipc_server_send(_e_fm_ipc_server,
                          6 /*E_IPC_DOMAIN_FM*/,
                          E_FM_OP_UNMOUNT_DONE,
@@ -774,7 +784,7 @@ _e_fm_main_udisks_cb_vol_ejected(E_Volume               *v,
 
    size = strlen(v->udi) + 1;
    buf = alloca(size);
-   strcpy(buf, v->udi);
+   strncpy(buf, v->udi, size - 1);
    ecore_ipc_server_send(_e_fm_ipc_server,
                          6 /*E_IPC_DOMAIN_FM*/,
                          E_FM_OP_EJECT_DONE,

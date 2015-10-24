@@ -71,7 +71,9 @@ e_widget_textblock_plain_set(Evas_Object *obj, const char *text)
    char *markup;
    char *d;
    const char *p;
+   const char *string;
    int mlen;
+   int length;
 
    if (!text)
      {
@@ -101,27 +103,37 @@ e_widget_textblock_plain_set(Evas_Object *obj, const char *text)
      {
 	if (*p == '\n')
 	  {
-	     strcpy(d, "<br>");
+	     string = "<br>";
+	     length = strlen(string);
+	     strncpy(d, string, length);
 	     d += 4 - 1;
 	  }
 	else if (*p == '\t')
 	  {
-	     strcpy(d, "        ");
+	     string = "        ";
+	     length = strlen(string);
+	     strncpy(d, string, length);
 	     d += 8 - 1;
 	  }
 	else if (*p == '<')
 	  {
-	     strcpy(d, "&lt;");
+	     string = "&lt;";
+	     length = strlen(string);
+	     strncpy(d, string, length);
 	     d += 4 - 1;
 	  }
 	else if (*p == '>')
 	  {
-	     strcpy(d, "&gt;");
+	     string = "&gt;";
+	     length = strlen(string);
+	     strncpy(d, string, length);
 	     d += 4 - 1;
 	  }
 	else if (*p == '&')
 	  {
-	     strcpy(d, "&amp;");
+	     string = "&amp;";
+	     length = strlen(string);
+	     strncpy(d, string, length);
 	     d += 5 - 1;
 	  }
 	else *d = *p;

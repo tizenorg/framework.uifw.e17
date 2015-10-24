@@ -7,6 +7,10 @@ EAPI Evas_Object *e_layout_add               (Evas *evas);
 EAPI int          e_layout_freeze            (Evas_Object *obj);
 EAPI int          e_layout_thaw              (Evas_Object *obj);
 EAPI void         e_layout_virtual_size_set  (Evas_Object *obj, Evas_Coord w, Evas_Coord h);
+#ifdef _F_USE_VIRT_RESOLUTION_
+EAPI void         e_layout_stereo_size_set  (Evas_Object *obj, Evas_Coord rect_x, Evas_Coord rect_y,
+                                             Evas_Coord rect_w, Evas_Coord rect_h);
+#endif /* end of _F_USE_VIRT_RESOLUTION_ */
 EAPI void         e_layout_virtual_size_get  (Evas_Object *obj, Evas_Coord *w, Evas_Coord *h);
 
 EAPI void e_layout_coord_canvas_to_virtual (Evas_Object *obj, Evas_Coord cx, Evas_Coord cy, Evas_Coord *vx, Evas_Coord *vy);

@@ -42,7 +42,7 @@ e_font_apply(void)
         len = strlen(eff->name);
         if (len < blen)
           {
-             strcpy(buf, eff->name);
+             strncpy(buf, eff->name, sizeof(buf) - 1);
              blen -= len;
           }
         EINA_LIST_FOREACH(eina_list_next(l), l, eff)
@@ -50,13 +50,13 @@ e_font_apply(void)
              len = 1;
              if (len < blen)
                {
-                  strcat(buf, ",");
+                  strncat(buf, ",", blen);
                   blen -= len;
                }
              len = strlen(eff->name);
              if (len < blen)
                {
-                  strcat(buf, eff->name);
+                  strncat(buf, eff->name, blen);
                   blen -= len;
                }
           }
@@ -461,7 +461,7 @@ e_font_default_string_get(const char *text_class, Evas_Font_Size *size_ret)
    len = strlen(efd->font);
    if (len < blen)
      {
-        strcpy(_fn_buf, efd->font);
+        strncpy(_fn_buf, efd->font, sizeof(_fn_buf) - 1);
         blen -= len;
      }
 
@@ -470,13 +470,13 @@ e_font_default_string_get(const char *text_class, Evas_Font_Size *size_ret)
         len = 1;
         if (len < blen)
           {
-             strcat(_fn_buf, ",");
+             strncat(_fn_buf, ",", blen);
              blen -= len;
           }
         len = strlen(eff->name);
         if (len < blen)
           {
-             strcat(_fn_buf, eff->name);
+             strncat(_fn_buf, eff->name, blen);
              blen -= len;
           }
      }

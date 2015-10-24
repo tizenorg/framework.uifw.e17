@@ -79,9 +79,12 @@ e_int_border_remember(E_Border *bd)
         v->create_cfdata = _create_data;
         v->free_cfdata = _free_data;
         v->basic.apply_cfdata = _basic_apply_data;
+#ifndef _F_DISABLE_E_WIDGET
         v->basic.create_widgets = _basic_create_widgets;
-        v->advanced.apply_cfdata = _advanced_apply_data;
         v->advanced.create_widgets = _advanced_create_widgets;
+#endif
+        v->advanced.apply_cfdata = _advanced_apply_data;
+
         v->override_auto_apply = 1;
 
         /* create config dialog for bd object/data */
@@ -586,6 +589,7 @@ _advanced_apply_data(E_Config_Dialog *cfd, E_Config_Dialog_Data *cfdata)
    return 1; /* Apply was OK */
 }
 
+#ifndef _F_DISABLE_E_WIDGET
 /**--GUI--**/
 static Evas_Object *
 _basic_create_widgets(E_Config_Dialog *cfd __UNUSED__, Evas *evas, E_Config_Dialog_Data *cfdata)
@@ -765,4 +769,5 @@ _advanced_create_widgets(E_Config_Dialog *cfd __UNUSED__, Evas *evas, E_Config_D
 
    return o;
 }
+#endif
 

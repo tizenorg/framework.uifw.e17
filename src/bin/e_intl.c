@@ -191,7 +191,9 @@ e_intl_language_set(const char *lang)
         e_util_env_set("LANG", lang);
         /* Unset LANGUAGE, apparently causes issues if set */
         e_util_env_set("LANGUAGE", NULL);
+#ifndef _F_DISABLE_E_EFREET_
         efreet_lang_reset();
+#endif
         setlocale(LC_ALL, lang);
      }
    else
@@ -682,7 +684,7 @@ e_intl_locale_parts_get(const char *locale)
              break;
 
            case 2: /* Gathering Codeset */
-             if (locale_char == '@')
+             if (locale_char == '@' && tmp_idx < 32 )
                {
                   state++;
                   codeset[tmp_idx] = 0;
@@ -719,11 +721,15 @@ e_intl_locale_parts_get(const char *locale)
         tmp_idx = 0;
 
       case 2:
-        codeset[tmp_idx] = 0;
-        tmp_idx = 0;
+        if(tmp_idx < 32)
+          {
+             codeset[tmp_idx] = 0;
+             tmp_idx = 0;
+          }
 
       case 3:
-        modifier[tmp_idx] = 0;
+        if(tmp_idx < 32)
+          modifier[tmp_idx] = 0;
 
       default:
         break;
@@ -802,24 +808,24 @@ e_intl_locale_parts_combine(E_Locale_Parts *locale_parts, int mask)
    locale[0] = 0;
 
    if (mask & E_INTL_LOC_LANG)
-     strcat(locale, locale_parts->lang);
+     strncat(locale, locale_parts->lang, locale_size - strlen(locale) - 1);
 
    if (mask & E_INTL_LOC_REGION)
      {
-        if (locale[0] != 0) strcat(locale, "_");
-        strcat(locale, locale_parts->region);
+        if (locale[0] != 0) strncat(locale, "_", 1);
+        strncat(locale, locale_parts->region, locale_size - strlen(locale) - 1);
      }
 
    if (mask & E_INTL_LOC_CODESET)
      {
-        if (locale[0] != 0) strcat(locale, ".");
-        strcat(locale, locale_parts->codeset);
+        if (locale[0] != 0) strncat(locale, ".", 1);
+        strncat(locale, locale_parts->codeset, locale_size - strlen(locale) - 1);
      }
 
    if (mask & E_INTL_LOC_MODIFIER)
      {
-        if (locale[0] != 0) strcat(locale, "@");
-        strcat(locale, locale_parts->modifier);
+        if (locale[0] != 0) strncat(locale, "@", 1);
+        strncat(locale, locale_parts->modifier, locale_size - strlen(locale) - 1);
      }
 
    return locale;

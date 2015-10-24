@@ -705,7 +705,7 @@ _e_desklock_cb_key_down(void *data __UNUSED__, int type __UNUSED__, void *event)
                }
              if ((strlen(edd->passwd) < (PASSWD_LEN - strlen(ev->compose))))
                {
-                  strcat(edd->passwd, ev->compose);
+                  strncat(edd->passwd, ev->compose, strlen(ev->compose));
                   _e_desklock_passwd_update();
                }
           }

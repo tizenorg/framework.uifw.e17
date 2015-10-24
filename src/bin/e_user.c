@@ -99,8 +99,10 @@ e_user_desktop_dir_get(void)
 {
    static char dir[PATH_MAX] = "";
 
+#ifndef _F_DISABLE_E_EFREET_
    if (!dir[0])
      snprintf(dir, sizeof(dir), "%s/applications", efreet_data_home_get());
+#endif
 
    return dir;
 }
@@ -115,8 +117,10 @@ e_user_icon_dir_get(void)
 {
    static char dir[PATH_MAX] = "";
 
+#ifndef _F_DISABLE_E_EFREET_
    if (!dir[0])
      snprintf(dir, sizeof(dir), "%s/icons", efreet_data_home_get());
+#endif
 
    return dir;
 }
