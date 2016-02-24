@@ -4918,7 +4918,7 @@ e_border_unmaximize(E_Border  *bd,
    E_OBJECT_TYPE_CHECK(bd, E_BORDER_TYPE);
    if (!(max & E_MAXIMIZE_DIRECTION))
      {
-        ERR("BUG: Unmaximize call without direction!");
+        CRI("BUG: Unmaximize call without direction!");
         return;
      }
 
@@ -11721,7 +11721,7 @@ _e_border_eval0(E_Border *bd)
 
    if (e_object_is_del(E_OBJECT(bd)))
      {
-        ERR("_e_border_eval(%p) with deleted border!\n", bd);
+        CRI("_e_border_eval(%p) with deleted border!\n", bd);
         bd->changed = 0;
         traceEnd(TTRACE_TAG_WINDOW_MANAGER);
         return;
@@ -13646,7 +13646,7 @@ _e_border_eval(E_Border *bd)
 
    if (e_object_is_del(E_OBJECT(bd)))
      {
-        ERR("_e_border_eval(%p) with deleted border! - %d\n", bd, bd->new_client);
+        CRI("_e_border_eval(%p) with deleted border! - %d\n", bd, bd->new_client);
         bd->changed = 0;
         traceEnd(TTRACE_TAG_WINDOW_MANAGER);
         return;
@@ -14508,7 +14508,7 @@ _e_border_eval(E_Border *bd)
      {
         E_Zone *zone = bd->zone;
 
-        if (bd->moving) e_border_move_cancel();
+        if (bd->moving) e_border_act_move_end(bd, NULL);
 
         if ((!zone->rot.block_count) &&
             (!bd->client.e.state.deiconify_approve.pending_list) &&
